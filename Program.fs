@@ -1,8 +1,29 @@
-﻿// Learn more about F# at http://fsharp.org
+﻿namespace FVim
 
 open System
+open Avalonia
+open Avalonia.Logging.Serilog
 
-[<EntryPoint>]
-let main argv =
-    printfn "Hello World from F#!"
-    0 // return an integer exit code
+module Program =
+
+    // Avalonia configuration, don't remove; also used by visual designer.
+    [<CompiledName "BuildAvaloniaApp">]
+    let buildAvaloniaApp() =
+        AppBuilder
+            .Configure<App>()
+            .UsePlatformDetect()
+            .LogToDebug()
+
+    // Your application's entry point.
+    [<CompiledName "AppMain">]
+    let appMain (app: Application) (args: string[]) =
+        app.Run(new MainWindow())
+
+    // Initialization code. Don't use any Avalonia, third-party APIs or any
+    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
+    // yet and stuff might break.
+    [<EntryPoint>]
+    [<CompiledName "Main">]
+    let main(args: string[]) =
+        buildAvaloniaApp().Start(appMain, args)
+        0

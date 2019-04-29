@@ -3,10 +3,23 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
+    <AssemblyName>FVim</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="neovim.fs" />
+    <Compile Include="MainWindow.fs" />
+    <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="**\*.xaml.fs">
+      <DependentUpon>%(Filename)</DependentUpon>
+    </Compile>
+    <AvaloniaResource Include="**\*.xaml">
+      <SubType>Designer</SubType>
+    </AvaloniaResource>
   </ItemGroup>
 
   <ItemGroup>
@@ -15,4 +28,7 @@
     <PackageReference Include="MessagePack.FSharpExtensions" Version="1.4.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AdditionalFiles Include="*.xaml" />
+  </ItemGroup>
 </Project>
