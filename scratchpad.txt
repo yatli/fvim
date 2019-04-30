@@ -1,0 +1,468 @@
+﻿initialize avalonia UI...
+registering msgpack-rpc handlers...
+starting neovim instance...
+READ!
+call: [0,0,"nvim_ui_attach",[100,50,{"rgb":true}]]
+redraw: [|
+
+    [|"option_set"; [|"arabicshape"; true|]; [|"ambiwidth"; "single"|];
+        [|"emoji"; true|]; [|"guifont"; ""|]; [|"guifontset"; ""|];
+        [|"guifontwide"; ""|]; [|"linespace"; 0uy|]; [|"pumblend"; 0uy|];
+        [|"showtabline"; 1uy|]; [|"termguicolors"; false|];
+        [|"ext_linegrid"; false|]; [|"ext_multigrid"; false|];
+        [|"ext_hlstate"; false|]; [|"ext_termcolors"; false|]|];
+
+  [|"default_colors_set"; [|16777215u; 0uy; 16711680u; 0uy; 0uy|]|];
+
+  [|"update_fg"; [|16777215u|]|]; 
+
+  [|"update_bg"; [|0uy|]|];
+
+  [|"update_sp"; [|16711680u|]|];
+
+  [|"option_set"; [|"ext_cmdline"; false|]; [|"ext_popupmenu"; false|];
+    [|"ext_tabline"; false|]; [|"ext_wildmenu"; false|];
+    [|"ext_messages"; false|]|];
+
+  [|"default_colors_set"; [|16777215u; 0uy; 16711680u; 0uy; 0uy|]|];
+
+  [|"update_fg"; [|16777215u|]|]; [|"update_bg"; [|0uy|]|];
+
+  [|"update_sp"; [|16711680u|]|]; [|"resize"; [|100uy; 50uy|]|];
+
+  [|"mode_info_set";
+    [|true;
+      [|seq
+          [[mouse_shape, 0]; [cursor_shape, block]; [cell_percentage, 0];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, block]; [cell_percentage, 0];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, vertical]; [cell_percentage, 25];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, horizontal]; [cell_percentage, 20];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, block]; [cell_percentage, 0];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, vertical]; [cell_percentage, 25];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, horizontal]; [cell_percentage, 20];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, horizontal]; [cell_percentage, 20];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, vertical]; [cell_percentage, 25];
+           [blinkwait, 0]; ...];
+        seq [[mouse_shape, 0]; [name, cmdline_hover]; [short_name, e]];
+        seq [[mouse_shape, 0]; [name, statusline_hover]; [short_name, s]];
+        seq [[mouse_shape, 0]; [name, statusline_drag]; [short_name, sd]];
+        seq [[mouse_shape, 0]; [name, vsep_hover]; [short_name, vs]];
+        seq [[mouse_shape, 0]; [name, vsep_drag]; [short_name, vd]];
+        seq [[mouse_shape, 0]; [name, more]; [short_name, m]];
+        seq [[mouse_shape, 0]; [name, more_lastline]; [short_name, ml]];
+        seq
+          [[cursor_shape, block]; [cell_percentage, 0]; [blinkwait, 0];
+           [blinkon, 0]; ...]|]|]|];
+
+  [|"cursor_goto"; [|32370017465860201UL; 28429462280405096UL|]|];
+
+  [|"flush"; [||]|]
+  
+  |]
+
+redraw: [|[|"clear"; [||]|]; [|"mouse_on"; [||]|];
+  [|"option_set"; [|"termguicolors"; true|]|];
+  [|"default_colors_set"; [|0uy; 16777215u; 16711680u; 0uy; 0uy|]|];
+  [|"update_fg"; [|0uy|]|]; [|"update_bg"; [|16777215u|]|];
+  [|"update_sp"; [|16711680u|]|];
+  [|"default_colors_set"; [|0uy; 16777215u; 16711680u; 0uy; 0uy|]|];
+  [|"update_fg"; [|0uy|]|]; [|"update_bg"; [|16777215u|]|];
+  [|"update_sp"; [|16711680u|]|];
+  [|"default_colors_set"; [|4342338u; 15856113u; 16711680u; 9uy; 16uy|]|];
+  [|"update_fg"; [|4342338u|]|]; [|"update_bg"; [|15856113u|]|];
+  [|"update_sp"; [|16711680u|]|];
+  [|"mode_info_set";
+    [|true;
+      [|seq
+          [[mouse_shape, 0]; [cursor_shape, block]; [cell_percentage, 0];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, block]; [cell_percentage, 0];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, vertical]; [cell_percentage, 25];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, horizontal]; [cell_percentage, 20];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, block]; [cell_percentage, 0];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, vertical]; [cell_percentage, 25];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, horizontal]; [cell_percentage, 20];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, horizontal]; [cell_percentage, 20];
+           [blinkwait, 0]; ...];
+        seq
+          [[mouse_shape, 0]; [cursor_shape, vertical]; [cell_percentage, 25];
+           [blinkwait, 0]; ...];
+        seq [[mouse_shape, 0]; [name, cmdline_hover]; [short_name, e]];
+        seq [[mouse_shape, 0]; [name, statusline_hover]; [short_name, s]];
+        seq [[mouse_shape, 0]; [name, statusline_drag]; [short_name, sd]];
+        seq [[mouse_shape, 0]; [name, vsep_hover]; [short_name, vs]];
+        seq [[mouse_shape, 0]; [name, vsep_drag]; [short_name, vd]];
+        seq [[mouse_shape, 0]; [name, more]; [short_name, m]];
+        seq [[mouse_shape, 0]; [name, more_lastline]; [short_name, ml]];
+        seq
+          [[cursor_shape, block]; [cell_percentage, 0]; [blinkwait, 0];
+           [blinkon, 0]; ...]|]|]|]; [|"mode_change"; [|"normal"; 0uy|]|];
+  [|"flush"; [||]|]|]
+
+  redraw: [|[|"update_menu"; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||];
+    [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||]; [||];
+    [||]; [||]; [||]; [||]; [||]|];
+  [|"hl_attr_define";
+    [|130uy; seq [[underline, True]];
+      seq [[underline, True]; [foreground, -1]; [background, -1]]; [||]|];
+    [|131uy; seq [[foreground, 16711680]];
+      seq [[foreground, 9]; [background, -1]]; [||]|];
+    [|132uy; seq [[foreground, 16749099]];
+      seq [[foreground, 130]; [background, -1]]; [||]|];
+    [|133uy; seq [[foreground, 16429061]];
+      seq [[foreground, 11]; [background, -1]]; [||]|];
+    [|134uy; seq [[foreground, 1419967]];
+      seq [[foreground, 12]; [background, -1]]; [||]|];
+    [|135uy; seq [[foreground, 16468276]];
+      seq [[foreground, 9]; [background, -1]]; [||]|];
+    [|136uy; seq [[foreground, 10066329]];
+      seq [[foreground, 248]; [background, -1]]; [||]|];
+    [|137uy; seq [[background, 16382457]]; seq [[foreground, -1]]; [||]|]|];
+  [|"mouse_on"; [||]|]; [|"option_set"; [|"showtabline"; 2uy|]|];
+  [|"hl_attr_define";
+    [|138uy; seq [[foreground, 5131854]; [background, 3158064]];
+      seq [[foreground, 239]; [background, 236]]; [||]|];
+    [|139uy; seq [[bold, True]; [foreground, 5131854]; [background, 3158064]];
+      seq [[bold, True]; [foreground, 239]; [background, 236]]; [||]|];
+    [|140uy; seq [[foreground, 16711680]; [background, 3158064]];
+      seq [[foreground, 160]; [background, 236]]; [||]|];
+    [|141uy; seq [[foreground, 5131854]; [background, 2500134]];
+      seq [[foreground, 239]; [background, 235]]; [||]|];
+    [|142uy; seq [[bold, True]; [foreground, 5131854]; [background, 2500134]];
+      seq [[bold, True]; [foreground, 239]; [background, 235]]; [||]|];
+    [|143uy; seq [[foreground, 16711680]; [background, 2500134]];
+      seq [[foreground, 160]; [background, 235]]; [||]|];
+    [|144uy; seq [[foreground, 5131854]; [background, 1842204]];
+      seq [[foreground, 239]; [background, 234]]; [||]|];
+    [|145uy; seq [[bold, True]; [foreground, 5131854]; [background, 1842204]];
+      seq [[bold, True]; [foreground, 239]; [background, 234]]; [||]|];
+    [|146uy; seq [[foreground, 16711680]; [background, 1842204]];
+      seq [[foreground, 160]; [background, 234]]; [||]|];
+    [|147uy; seq [[foreground, 10289107]; [background, 2105376]];
+      seq [[foreground, 85]; [background, 232]]; [||]|];
+    [|148uy; seq [[bold, True]; [foreground, 10289107]; [background, 2105376]];
+      seq [[bold, True]; [foreground, 85]; [background, 232]]; [||]|];
+    [|149uy; seq [[foreground, 16711680]; [background, 2105376]];
+      seq [[foreground, 160]; [background, 232]]; [||]|];
+    [|150uy; seq [[foreground, 0]; [background, 10027008]];
+      seq [[foreground, 232]; [background, 160]]; [||]|];
+    [|151uy; seq [[bold, True]; [foreground, 0]; [background, 10027008]];
+      seq [[bold, True]; [foreground, 232]; [background, 160]]; [||]|];
+    [|152uy; seq [[foreground, 16711680]; [background, 10027008]];
+      seq [[foreground, 160]; [background, 160]]; [||]|];
+    [|153uy; seq [[foreground, 0]; [background, 14638848]];
+      seq [[foreground, 232]; [background, 166]]; [||]|];
+    [|154uy; seq [[bold, True]; [foreground, 0]; [background, 14638848]];
+      seq [[bold, True]; [foreground, 232]; [background, 166]]; [||]|];
+    [|155uy; seq [[foreground, 16711680]; [background, 14638848]];
+      seq [[foreground, 160]; [background, 166]]; [||]|];
+    [|156uy; seq [[foreground, 10289107]; [background, 2105376]];
+      seq [[foreground, 85]; [background, 234]]; [||]|];
+    [|157uy; seq [[bold, True]; [foreground, 10289107]; [background, 2105376]];
+      seq [[bold, True]; [foreground, 85]; [background, 234]]; [||]|];
+    [|158uy; seq [[foreground, 16711680]; [background, 2105376]];
+      seq [[foreground, 160]; [background, 234]]; [||]|];
+    [|159uy; seq [[foreground, 16777215]; [background, 4473924]];
+      seq [[foreground, 255]; [background, 238]]; [||]|];
+    [|160uy; seq [[bold, True]; [foreground, 16777215]; [background, 4473924]];
+      seq [[bold, True]; [foreground, 255]; [background, 238]]; [||]|];
+    [|161uy; seq [[foreground, 16711680]; [background, 4473924]];
+      seq [[foreground, 160]; [background, 238]]; [||]|];
+    [|162uy; seq [[foreground, 95]; [background, 14679808]];
+      seq [[foreground, 17]; [background, 190]]; [||]|];
+    [|163uy; seq [[bold, True]; [foreground, 95]; [background, 14679808]];
+      seq [[bold, True]; [foreground, 17]; [background, 190]]; [||]|];
+    [|164uy; seq [[foreground, 16711680]; [background, 14679808]];
+      seq [[foreground, 160]; [background, 190]]; [||]|];
+    [|165uy; seq [[foreground, 0]; [background, 16756480]];
+      seq [[foreground, 232]; [background, 214]]; [||]|];
+    [|166uy; seq [[foreground, 95]; [background, 57343]];
+      seq [[foreground, 17]; [background, 45]]; [||]|];
+    [|167uy; seq [[foreground, 16777215]; [background, 6226015]];
+      seq [[foreground, 255]; [background, 53]]; [||]|];
+    [|168uy; seq [[foreground, 14679808]; [background, 4473924]];
+      seq [[foreground, -1]; [background, -1]]; [||]|];
+    [|169uy; seq [[foreground, 4473924]; [background, 2105376]];
+      seq [[foreground, -1]; [background, -1]]; [||]|];
+    [|170uy; seq [[foreground, 2105376]; [background, 2105376]];
+      seq [[foreground, -1]; [background, -1]]; [||]|];
+    [|171uy; seq [[foreground, 14638848]; [background, 14679808]];
+      seq [[foreground, -1]; [background, -1]]; [||]|]|]; [|"flush"; [||]|]|]
+redraw: [|[|"grid_clear"; [|1uy|]|];
+  [|"hl_attr_define";
+    [|172uy; seq [[foreground, 14679808]; [background, 2105376]];
+      seq [[foreground, -1]; [background, -1]]; [||]|]|];
+  [|"grid_line";
+    [|1uy; 0uy; 0uy;
+      [|[|" "; 162uy|]; [|"["|]; [|"N"|]; [|"o"|]; [|" "|]; [|"N"|]; [|"a"|];
+        [|"m"|]; [|"e"|]; [|"]"|]; [|" "|]; [|"?"; 172uy|]; [|" "; 156uy; 77uy|];
+        [|"?"; 170uy|]; [|"?"; 169uy|]; [|" "; 159uy|]; [|"b"|]; [|"u"|];
+        [|"f"; 159uy; 2uy|]; [|"e"|]; [|"r"|]; [|"s"|]; [|" "|]|]|];
+    [|1uy; 1uy; 0uy;
+      [|[|" "; 102uy; 2uy|]; [|"1"|]; [|" "|]; [|" "; 103uy; 96uy|]|]|];
+    [|1uy; 2uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 3uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 4uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 5uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 6uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 7uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 8uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 9uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 10uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 11uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 12uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 13uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 14uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 15uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 16uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 17uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 18uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 19uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 20uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 21uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 22uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 23uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 24uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 25uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 26uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 27uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 28uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 29uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 30uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 31uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 32uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 33uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 34uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 35uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 36uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 37uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 38uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 39uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 40uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 41uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 42uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 43uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 44uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 45uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 46uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 47uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 48uy; 0uy;
+      [|[|" "; 162uy|]; [|"N"; 163uy|]; [|"O"|]; [|"R"|]; [|"M"|]; [|"A"|];
+        [|"L"|]; [|" "; 162uy|]; [|"?"; 168uy|]; [|"?"; 169uy|]; [|" "; 156uy|];
+        [|"["|]; [|"N"|]; [|"o"|]; [|" "|]; [|"N"|]; [|"a"|]; [|"m"|]; [|"e"|];
+        [|"]"|]; [|" "; 156uy; 47uy|]; [|"?"; 170uy|]; [|"?"; 169uy|];
+        [|" "; 159uy|]; [|"["|]; [|"d"|]; [|"o"|]; [|"s"|]; [|"]"|]; [|" "|];
+        [|"?"; 168uy|]; [|" "; 162uy|]; [|"1"|]; [|"0"; 162uy; 2uy|]; [|"%"|];
+        [|" "|]; [|"?"; 163uy|]; [|" "; 163uy; 4uy|]; [|"0"|]; [|"/"|]; [|"1"|];
+        [|" "|]; [|"?"|]; [|" "; 162uy|]; [|":"|]; [|" "; 162uy; 2uy|]; [|"1"|];
+        [|" "|]; [|"?"; 171uy|]|]|];
+    [|1uy; 18uy; 37uy;
+      [|[|"N"; 0uy|]; [|"V"|]; [|"I"|]; [|"M"|]; [|" "|]; [|"v"|]; [|"0"|];
+        [|"."|]; [|"4"|]; [|"."|]; [|"0"|]; [|"-"|]; [|"6"|]; [|"3"|]; [|"8"|];
+        [|"-"|]; [|"g"|]; [|"9"|]; [|"d"|]; [|"7"; 0uy; 2uy|]; [|"a"|]; [|"0"|];
+        [|"7"|]; [|"6"|]; [|"8"|]|]|];
+    [|1uy; 20uy; 28uy;
+      [|[|"N"; 0uy|]; [|"v"|]; [|"i"|]; [|"m"|]; [|" "|]; [|"i"|]; [|"s"|];
+        [|" "|]; [|"o"|]; [|"p"|]; [|"e"|]; [|"n"|]; [|" "|]; [|"s"|]; [|"o"|];
+        [|"u"|]; [|"r"|]; [|"c"|]; [|"e"|]; [|" "|]; [|"a"|]; [|"n"|]; [|"d"|];
+        [|" "|]; [|"f"|]; [|"r"|]; [|"e"; 0uy; 2uy|]; [|"l"|]; [|"y"|]; [|" "|];
+        [|"d"|]; [|"i"|]; [|"s"|]; [|"t"|]; [|"r"|]; [|"i"|]; [|"b"|]; [|"u"|];
+        [|"t"|]; [|"a"|]; [|"b"|]; [|"l"|]; [|"e"|]|]|];
+    [|1uy; 21uy; 38uy;
+      [|[|"h"; 0uy|]; [|"t"; 0uy; 2uy|]; [|"p"|]; [|"s"|]; [|":"|];
+        [|"/"; 0uy; 2uy|]; [|"n"|]; [|"e"|]; [|"o"|]; [|"v"|]; [|"i"|]; [|"m"|];
+        [|"."|]; [|"i"|]; [|"o"|]; [|"/"|]; [|"#"|]; [|"c"|]; [|"h"|]; [|"a"|];
+        [|"t"|]|]|];
+    [|1uy; 23uy; 27uy;
+      [|[|"t"; 0uy|]; [|"y"|]; [|"p"|]; [|"e"|]; [|" "; 0uy; 2uy|]; [|":"|];
+        [|"h"|]; [|"e"|]; [|"l"|]; [|"p"|]; [|" "|]; [|"n"|]; [|"v"|]; [|"i"|];
+        [|"m"|]|]|];
+    [|1uy; 23uy; 43uy;
+      [|[|"<"; 97uy|]; [|"E"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|]; [|">"|]|]|];
+    [|1uy; 23uy; 50uy;
+      [|[|" "; 0uy; 7uy|]; [|"i"|]; [|"f"|]; [|" "|]; [|"y"|]; [|"o"|]; [|"u"|];
+        [|" "|]; [|"a"|]; [|"r"|]; [|"e"|]; [|" "|]; [|"n"|]; [|"e"|]; [|"w"|];
+        [|"!"|]; [|" "|]|]|];
+    [|1uy; 24uy; 27uy;
+      [|[|"t"; 0uy|]; [|"y"|]; [|"p"|]; [|"e"|]; [|" "; 0uy; 2uy|]; [|":"|];
+        [|"c"|]; [|"h"|]; [|"e"|]; [|"c"|]; [|"k"|]; [|"h"|]; [|"e"|]; [|"a"|];
+        [|"l"|]; [|"t"|]; [|"h"|]|]|];
+    [|1uy; 24uy; 45uy;
+      [|[|"<"; 97uy|]; [|"E"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|]; [|">"|]|]|];
+    [|1uy; 24uy; 52uy;
+      [|[|" "; 0uy; 5uy|]; [|"t"|]; [|"o"|]; [|" "|]; [|"o"|]; [|"p"|]; [|"t"|];
+        [|"i"|]; [|"m"|]; [|"i"|]; [|"z"|]; [|"e"|]; [|" "|]; [|"N"|]; [|"v"|];
+        [|"i"|]; [|"m"|]|]|];
+    [|1uy; 25uy; 27uy;
+      [|[|"t"; 0uy|]; [|"y"|]; [|"p"|]; [|"e"|]; [|" "; 0uy; 2uy|]; [|":"|];
+        [|"q"|]|]|];
+    [|1uy; 25uy; 35uy;
+      [|[|"<"; 97uy|]; [|"E"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|]; [|">"|]|]|];
+    [|1uy; 25uy; 42uy;
+      [|[|" "; 0uy; 15uy|]; [|"t"|]; [|"o"|]; [|" "|]; [|"e"|]; [|"x"|]; [|"i"|];
+        [|"t"|]; [|" "; 0uy; 9uy|]|]|];
+    [|1uy; 26uy; 27uy;
+      [|[|"t"; 0uy|]; [|"y"|]; [|"p"|]; [|"e"|]; [|" "; 0uy; 2uy|]; [|":"|];
+        [|"h"|]; [|"e"|]; [|"l"|]; [|"p"|]|]|];
+    [|1uy; 26uy; 38uy;
+      [|[|"<"; 97uy|]; [|"E"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|]; [|">"|]|]|];
+    [|1uy; 26uy; 45uy;
+      [|[|" "; 0uy; 12uy|]; [|"f"|]; [|"o"|]; [|"r"|]; [|" "|]; [|"h"|]; [|"e"|];
+        [|"l"|]; [|"p"|]; [|" "; 0uy; 8uy|]|]|];
+    [|1uy; 28uy; 35uy;
+      [|[|"H"; 0uy|]; [|"e"|]; [|"l"|]; [|"p"|]; [|" "|]; [|"p"|];
+        [|"o"; 0uy; 2uy|]; [|"r"|]; [|" "|]; [|"c"|]; [|"h"|]; [|"i"|]; [|"l"|];
+        [|"d"|]; [|"r"|]; [|"e"|]; [|"n"|]; [|" "|]; [|"i"|]; [|"n"|]; [|" "|];
+        [|"U"|]; [|"g"|]; [|"a"|]; [|"n"|]; [|"d"|]; [|"a"|]; [|"!"|]|]|];
+    [|1uy; 29uy; 27uy;
+      [|[|"t"; 0uy|]; [|"y"|]; [|"p"|]; [|"e"|]; [|" "; 0uy; 2uy|]; [|":"|];
+        [|"h"|]; [|"e"|]; [|"l"|]; [|"p"|]; [|" "|]; [|"i"|]; [|"c"; 0uy; 2uy|];
+        [|"f"|]|]|];
+    [|1uy; 29uy; 43uy;
+      [|[|"<"; 97uy|]; [|"E"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|]; [|">"|]|]|];
+    [|1uy; 29uy; 50uy;
+      [|[|" "; 0uy; 7uy|]; [|"f"|]; [|"o"|]; [|"r"|]; [|" "|]; [|"i"|]; [|"n"|];
+        [|"f"|]; [|"o"|]; [|"r"|]; [|"m"|]; [|"a"|]; [|"t"|]; [|"i"|]; [|"o"|];
+        [|"n"|]; [|" "|]|]|]|]; [|"grid_cursor_goto"; [|1uy; 1uy; 4uy|]|];
+  [|"flush"; [||]|]|]
+redraw: redraw: [|[|"grid_cursor_goto"; [|1uy; 1uy; 4uy|]|]; [|"flush"; [||]|]|]
+redraw: [|[|"grid_line";
+    [|1uy; 49uy; 7uy;
+      [|[|"o"; 95uy|]; [|"n"|]; [|"E"|]; [|"r"; 95uy; 2uy|]; [|"o"|]; [|"r"|];
+        [|"N"|]; [|"T"|]; [|" "|]; [|"("|]; [|"i"|]; [|"n"|]; [|"t"|]; [|"e"|];
+        [|"r"|]; [|"n"|]; [|"a"|]; [|"l"|]; [|"/"|]; [|"c"|]; [|"h"|]; [|"i"|];
+        [|"l"|]; [|"d"|]; [|"_"|]; [|"p"|]; [|"r"|]; [|"o"|]; [|"c"|]; [|"e"|];
+        [|"s"; 95uy; 2uy|]; [|"."|]; [|"j"|]; [|"s"|]; [|":"|]; [|"4"|]; [|"0"|];
+        [|"7"|]; [|":"|]; [|"1"|]; [|"6"|]; [|")"|]|]|];
+    [|1uy; 49uy; 51uy; [|[|" "; 0uy; 26uy|]|]|]|];
+  [|"grid_cursor_goto"; [|1uy; 49uy; 51uy|]|]; [|"flush"; [||]|]|]
+redraw: [|[|"grid_line";
+    [|1uy; 49uy; 0uy;
+      [|[|"["; 95uy|]; [|"c"|]; [|"o"|]; [|"c"|]; [|"."|]; [|"n"|]; [|"v"|];
+        [|"i"|]; [|"m"|]; [|"]"|]; [|" "|]; [|"e"|]; [|"r"; 95uy; 2uy|]; [|"o"|];
+        [|"r"|]; [|":"|]; [|" "|]; [|"U"|]; [|"n"|]; [|"c"|]; [|"a"|]; [|"u"|];
+        [|"g"|]; [|"h"|]; [|"t"|]; [|" "|]; [|"e"|]; [|"x"|]; [|"c"|]; [|"e"|];
+        [|"p"|]; [|"t"|]; [|"i"|]; [|"o"|]; [|"n"|]; [|":"|]; [|" "|]; [|"E"|];
+        [|"r"; 95uy; 2uy|]; [|"o"|]; [|"r"|]; [|":"|]; [|" "|]; [|"s"|]; [|"p"|];
+        [|"a"|]; [|"w"|]; [|"n"|]; [|" "|]; [|"y"|]; [|"a"|]; [|"r"|]; [|"n"|];
+        [|"p"|]; [|"k"|]; [|"g"|]; [|" "|]; [|"E"|]; [|"N"|]; [|"O"|]; [|"E"|];
+        [|"N"|]; [|"T"|]|]|]; [|1uy; 49uy; 65uy; [|[|" "; 0uy; 35uy|]|]|]|];
+  [|"grid_cursor_goto"; [|1uy; 49uy; 65uy|]|]; [|"flush"; [||]|]|]
+[|[|"grid_line";
+    [|1uy; 0uy; 0uy;
+      [|[|" "; 162uy|]; [|"["|]; [|"N"|]; [|"o"|]; [|" "|]; [|"N"|]; [|"a"|];
+        [|"m"|]; [|"e"|]; [|"]"|]; [|" "|]; [|"?"; 172uy|]; [|" "; 156uy; 77uy|];
+        [|"?"; 170uy|]; [|"?"; 169uy|]; [|" "; 159uy|]; [|"b"|]; [|"u"|];
+        [|"f"; 159uy; 2uy|]; [|"e"|]; [|"r"|]; [|"s"|]; [|" "|]|]|];
+    [|1uy; 1uy; 0uy;
+      [|[|" "; 102uy; 2uy|]; [|"1"|]; [|" "|]; [|" "; 103uy; 96uy|]|]|];
+    [|1uy; 2uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 3uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 4uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 5uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 6uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 7uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 8uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 9uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 10uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 11uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 12uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 13uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 14uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 15uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 16uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 17uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 18uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 19uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 20uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 21uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 22uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 23uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 24uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 25uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 26uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 27uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 28uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 29uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 30uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 31uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 32uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 33uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 34uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 35uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 36uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 37uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 38uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 39uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 40uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 41uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 42uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 43uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 44uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 45uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 46uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 47uy; 0uy; [|[|"~"; 98uy|]; [|" "; 98uy; 99uy|]|]|];
+    [|1uy; 48uy; 0uy;
+      [|[|" "; 162uy|]; [|"N"; 163uy|]; [|"O"|]; [|"R"|]; [|"M"|]; [|"A"|];
+        [|"L"|]; [|" "; 162uy|]; [|"?"; 168uy|]; [|"?"; 169uy|]; [|" "; 156uy|];
+        [|"["|]; [|"N"|]; [|"o"|]; [|" "|]; [|"N"|]; [|"a"|]; [|"m"|]; [|"e"|];
+        [|"]"|]; [|" "; 156uy; 47uy|]; [|"?"; 170uy|]; [|"?"; 169uy|];
+        [|" "; 159uy|]; [|"["|]; [|"d"|]; [|"o"|]; [|"s"|]; [|"]"|]; [|" "|];
+        [|"?"; 168uy|]; [|" "; 162uy|]; [|"1"|]; [|"0"; 162uy; 2uy|]; [|"%"|];
+        [|" "|]; [|"?"; 163uy|]; [|" "; 163uy; 4uy|]; [|"0"|]; [|"/"|]; [|"1"|];
+        [|" "|]; [|"?"|]; [|" "; 162uy|]; [|":"|]; [|" "; 162uy; 2uy|]; [|"1"|];
+        [|" "|]; [|"?"; 171uy|]|]|]|]; [|"flush"; [||]|]|]
+redraw: [|[|"grid_line";
+    [|1uy; 49uy; 7uy;
+      [|[|"p"; 95uy|]; [|"r"|]; [|"o"|]; [|"c"|]; [|"e"|]; [|"s"; 95uy; 2uy|];
+        [|"."|]; [|"_"|]; [|"t"|]; [|"i"|]; [|"c"|]; [|"k"|]; [|"C"|]; [|"a"|];
+        [|"l"; 95uy; 2uy|]; [|"b"|]; [|"a"|]; [|"c"|]; [|"k"|]; [|" "|]; [|"("|];
+        [|"i"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|]; [|"n"|]; [|"a"|]; [|"l"|];
+        [|"/"|]; [|"p"|]; [|"r"|]; [|"o"|]; [|"c"|]; [|"e"|]; [|"s"; 95uy; 2uy|];
+        [|"/"|]; [|"n"|]; [|"e"|]; [|"x"|]; [|"t"|]; [|"_"|]; [|"t"|]; [|"i"|];
+        [|"c"|]; [|"k"|]; [|"."|]; [|"j"|]; [|"s"|]; [|":"|]; [|"6"|]; [|"3"|];
+        [|":"|]; [|"1"|]; [|"9"|]; [|")"|]|]|]|];
+  [|"grid_cursor_goto"; [|1uy; 49uy; 66uy|]|]; [|"flush"; [||]|]|]
+redraw: [|[|"grid_line";
+    [|1uy; 49uy; 0uy;
+      [|[|" "; 95uy; 4uy|]; [|"a"|]; [|"t"|]; [|" "|]; [|"P"|]; [|"r"|]; [|"o"|];
+        [|"c"|]; [|"e"|]; [|"s"; 95uy; 2uy|]; [|"."|]; [|"C"|]; [|"h"|]; [|"i"|];
+        [|"l"|]; [|"d"|]; [|"P"|]; [|"r"|]; [|"o"|]; [|"c"|]; [|"e"|];
+        [|"s"; 95uy; 2uy|]; [|"."|]; [|"_"|]; [|"h"|]; [|"a"|]; [|"n"|]; [|"d"|];
+        [|"l"|]; [|"e"|]; [|"."|]; [|"o"|]; [|"n"|]; [|"e"|]; [|"x"|]; [|"i"|];
+        [|"t"|]; [|" "|]; [|"("|]; [|"i"|]; [|"n"|]; [|"t"|]; [|"e"|]; [|"r"|];
+        [|"n"|]; [|"a"|]; [|"l"|]; [|"/"|]; [|"c"|]; [|"h"|]; [|"i"|]; [|"l"|];
+        [|"d"|]; [|"_"|]; [|"p"|]; [|"r"|]; [|"o"|]; [|"c"|]; [|"e"|];
+        [|"s"; 95uy; 2uy|]; [|"."|]; [|"j"|]; [|"s"|]; [|":"|]; [|"2"|]; [|"3"|];
+        [|"2"|]; [|":"|]; [|"1"|]; [|"9"|]; [|")"|]|]|]|];
+  [|"grid_cursor_goto"; [|1uy; 49uy; 77uy|]|]; [|"flush"; [||]|]|]
+

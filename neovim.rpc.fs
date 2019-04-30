@@ -1,4 +1,5 @@
-﻿module FVim.neovim
+﻿module FVim.neovim.rpc
+open def
 
 open System
 open System.Diagnostics
@@ -10,49 +11,19 @@ open System.Collections.Generic
 open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
+open FSharp.Control.Tasks.V2.ContextSensitive
+open System.Drawing
+open System.Reactive.PlatformServices
 
-type NeovimRequest = 
-    {
-        method:     string
-        parameters: obj[]
-    }
-
-type NeovimResponse = 
-    {
-        result: Choice<obj, obj>
-    }
-
-type NeovimEvent =
-| Request      of int * NeovimRequest
-| Response     of int * NeovimResponse
-| Notification of NeovimRequest
-| Error        of string
-
-[<Struct>]
-[<MessagePackObject(keyAsPropertyName=true)>]
-type UiOptions =
-    {
-        rgb            : bool
-        //ext_popupmenu  : bool
-        //ext_tabline    : bool
-        //ext_cmdline    : bool
-        //ext_wildmenu   : bool
-        //ext_messages   : bool
-        //ext_linegrid   : bool
-        //ext_multigrid  : bool
-        //ext_hlstate    : bool
-        //ext_termcolors : bool
-    }
-
-type NeovimEventParseException(data: obj) =
+type EventParseException(data: obj) =
     inherit exn()
     member __.Input = data
     override __.Message = sprintf "Could not parse the neovim message: %A" data
 
-let private default_notify (e: NeovimRequest) =
+let private default_notify (e: Request) =
     failwith ""
 
-let private default_call (e: NeovimRequest) =
+let private default_call (e: Request) =
     failwith ""
 
 let mkparams1 (t1: 'T1)                                              = [| box t1 |]
@@ -60,8 +31,16 @@ let mkparams2 (t1: 'T1) (t2: 'T2)                                    = [| box t1
 let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)                          = [| box t1; box t2; box t3 |]
 let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)                = [| box t1; box t2; box t3; box t4|]
 
+let private (|Integer32|_|) (x:obj) =
+    match x with
+    | :? int32  as x  -> Some(int32 x)
+    | :? int16  as x  -> Some(int32 x)
+    | :? int8   as x  -> Some(int32 x)
+    | :? uint16 as x  -> Some(int32 x)
+    | :? uint8  as x  -> Some(int32 x)
+    | _ -> None
 
-type NeovimProcess() = 
+type Process() = 
     let m_id = Guid.NewGuid()
     let mutable m_notify = default_notify
     let mutable m_call   = default_call
@@ -100,31 +79,40 @@ type NeovimProcess() =
         let stdout = proc.StandardOutput.BaseStream
         let stdin  = proc.StandardInput.BaseStream
 
-        let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
-            let read_async = async {
-                 while not proc.HasExited && not cancel.IsCancellationRequested do
-                     printfn "polling"
-                     let! data = Async.AwaitTask(MessagePackSerializer.DeserializeAsync<obj>(stdout))
-                     printfn "data = %A" data
-                     ob.OnNext(data)
-            }
-            Async.StartAsTask(read_async, cancellationToken=cancel) :> Task
 
-        let pending = ConcurrentDictionary<int, TaskCompletionSource<NeovimResponse>>()
-        let parse (data: obj) : NeovimEvent =
+        let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
+            Task.Run(fun () -> 
+                 printfn "READ!"
+                 while not proc.HasExited && not cancel.IsCancellationRequested do
+                     let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
+                     ob.OnNext(data)
+                 printfn "READ COMPLETE!"
+                 ob.OnCompleted()
+            , cancel)
+        let reply (id: int) (rsp: Response) = async {
+            let result, error = 
+                match rsp.result with
+                | Choice1Of2 r -> r, null
+                | Choice2Of2 e -> null, e
+            do! Async.AwaitTask(MessagePackSerializer.SerializeAsync(stdin, mkparams4 1 id result error))
+            do! Async.AwaitTask(stdin.FlushAsync())
+        }
+
+        let pending = ConcurrentDictionary<int, TaskCompletionSource<Response>>()
+        let parse (data: obj) : Event =
             match data :?> obj[] with
             // request
-            | [| :? int as msg_type; :? int as msg_id ; :? string as method; :? (obj[]) as parameters |] when msg_type = 0 
-                -> Request(msg_id, { method = method; parameters = parameters })
+            | [| (Integer32 msg_type); (Integer32 msg_id) ; :? string as method; :? (obj[]) as parameters |] when msg_type = 0
+                -> Request(msg_id, { method = method; parameters = parameters }, reply)
             // response
-            | [| :? int as msg_type; :? int as msg_id ; err; result |] when msg_type = 1
+            | [| (Integer32 msg_type); (Integer32 msg_id) ; err; result |] when msg_type = 1
                 -> Response(msg_id, { result = if err = null then Choice1Of2 result else Choice2Of2 err })
             // notification
-            | [| :? int as msg_type; :? string as method ; :? (obj[]) as parameters |] when msg_type = 2 
+            | [| (Integer32 msg_type); :? string as method ; :? (obj[]) as parameters |] when msg_type = 2 
                 -> Notification { method = method; parameters = parameters }
-            | _ -> raise <| NeovimEventParseException(data)
+            | _ -> raise <| EventParseException(data)
 
-        let intercept (ev: NeovimEvent) =
+        let intercept (ev: Event) =
             match ev with
             | Response(msgid, rsp) ->
                 // intercept response message, if it can be completed successfully
@@ -134,7 +122,7 @@ type NeovimProcess() =
             | _ -> true
 
         let rec exhandler (ex) = 
-            // TODO log the ex
+            printfn "exhandler: %A" ex
             System.Reactive.Linq.Observable.Create(read)
             |> Observable.map       parse
             |> Observable.catchWith exhandler
@@ -150,31 +138,26 @@ type NeovimProcess() =
         let events = Observable.merge stdout stderr
         
 
-        let notify (ev: NeovimRequest) = async {
+        let notify (ev: Request) = task {
             let payload = mkparams3 2 ev.method ev.parameters
-            MessagePackSerializer.ToJson(payload) |> printfn "notify: %s"
-            let task = MessagePackSerializer.SerializeAsync(stdin, payload)
-            do! Async.AwaitTask(task)
-            //do! Async.AwaitTask(stdin.FlushAsync())
-            //printfn "notify: flushed."
+            // MessagePackSerializer.ToJson(payload) |> printfn "notify: %s"
+            do! MessagePackSerializer.SerializeAsync(stdin, payload)
+            do! stdin.FlushAsync()
         }
 
         let mutable call_id = 0
-        let call (ev: NeovimRequest) = async {
+        let call (ev: Request) = task {
             let myid = call_id
             call_id <- call_id + 1
-            let src = TaskCompletionSource<NeovimResponse>()
+            let src = TaskCompletionSource<Response>()
             if not <| pending.TryAdd(myid, src)
             then failwith "call: cannot create call request"
 
             let payload = mkparams4 0 myid ev.method ev.parameters
             MessagePackSerializer.ToJson(payload) |> printfn "call: %s"
-            do! MessagePackSerializer.SerializeAsync(stdin, payload) |> Async.AwaitTask
-            do! stdin.FlushAsync() |> Async.AwaitTask
-            printfn "call: flushed. waiting for response"
-            let! result = src.Task |> Async.AwaitTask
-            printfn "call: result = %A" result
-            return result
+            do! MessagePackSerializer.SerializeAsync(stdin, payload)
+            do! stdin.FlushAsync()
+            return! src.Task
         }
 
         proc.BeginErrorReadLine()
@@ -197,7 +180,7 @@ type NeovimProcess() =
             m_call <- default_call
         | _ -> ()
 
-    member this.subscribe (ctx: SynchronizationContext) (fn: NeovimEvent -> unit) =
+    member this.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
         this.events
         |> Observable.observeOnContext ctx
         |> Observable.subscribe        fn
@@ -208,7 +191,7 @@ type NeovimProcess() =
                 rgb            = true 
                 //ext_cmdline    = false
                 //ext_hlstate    = false
-                //ext_linegrid   = false
+                ext_linegrid   = true
                 //ext_messages   = false
                 //ext_multigrid  = false
                 //ext_popupmenu  = false

@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="neovim.fs" />
+    <Compile Include="neovim.def.fs" />
+    <Content Include="scratchpad.txt" />
+    <Compile Include="neovim.rpc.fs" />
     <Compile Include="MainWindow.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
@@ -27,11 +29,14 @@
     <PackageReference Include="Avalonia.Desktop" Version="0.8.0" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
+    <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <AdditionalFiles Include="*.xaml" />
   </ItemGroup>
+
+  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="4.6.2" />
