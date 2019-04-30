@@ -14,6 +14,7 @@ open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
 open System.Drawing
 open System.Reactive.PlatformServices
+open System
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -26,10 +27,10 @@ let private default_notify (e: Request) =
 let private default_call (e: Request) =
     failwith ""
 
-let mkparams1 (t1: 'T1)                                              = [| box t1 |]
-let mkparams2 (t1: 'T1) (t2: 'T2)                                    = [| box t1; box t2 |]
-let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)                          = [| box t1; box t2; box t3 |]
-let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)                = [| box t1; box t2; box t3; box t4|]
+let mkparams1 (t1: 'T1)                                = [| box t1 |]
+let mkparams2 (t1: 'T1) (t2: 'T2)                      = [| box t1; box t2 |]
+let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)            = [| box t1; box t2; box t3 |]
+let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)  = [| box t1; box t2; box t3; box t4|]
 
 let private (|Integer32|_|) (x:obj) =
     match x with
@@ -39,6 +40,57 @@ let private (|Integer32|_|) (x:obj) =
     | :? uint16 as x  -> Some(int32 x)
     | :? uint8  as x  -> Some(int32 x)
     | _ -> None
+
+let private (|String|_|) (x:obj) =
+    match x with
+    | :? string as x -> Some x
+    | _ -> None
+
+let private (|Bool|_|) (x:obj) =
+    match x with
+    | :? bool as x -> Some x
+    | _ -> None
+
+let private (|ObjArray|_|) (x:obj) =
+    match x with
+    | :? (obj[]) as x -> Some x
+    | _ -> None
+
+let private (|C|_|) (x:obj) =
+    match x with
+    | ObjArray x -> 
+        match x.[0] with
+        | (String cmd) -> Some(cmd, x |> Seq.ofArray |> Seq.skip 1)
+        | _ -> None
+    | _ -> None
+
+let private (|P|_|) (parser: obj -> 'a) (xs:obj seq) =
+    let result = Seq.map parser xs
+    Some result
+
+let private (|KV|_|) (key: string) (x: obj) =
+    match x with
+    | ObjArray [| (String key); x |] -> Some x
+    | _ -> None
+
+let private (|AmbiWidth|_|) (x: obj) =
+    match x with
+    | String "single" -> Some AmbiWidth.Single
+    | String "double" -> Some AmbiWidth.Double
+    | _ -> None
+
+let private parse_uioption (x: obj) =
+    match x with
+    | KV "arabicshape"  (Bool x)      -> ArabicShape x
+    | KV "ambiwidth"    (AmbiWidth x) -> AmbiWidth x
+    | KV "emoji"        (Bool x)      -> Emoji x
+    | KV "guifont"      (String x)    -> Guifont x
+    //| KV "guifontset"   (String x)    -> Guifont x
+    | KV "guifontwide"  (String x)    -> GuifontWide x
+
+let private parse_redrawcmd (x: obj) =
+    match x with
+    | C("option_set", P(parse_uioption)options) -> SetOption options
 
 type Process() = 
     let m_id = Guid.NewGuid()
@@ -79,7 +131,6 @@ type Process() =
         let stdout = proc.StandardOutput.BaseStream
         let stdin  = proc.StandardInput.BaseStream
 
-
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Run(fun () -> 
                  printfn "READ!"
@@ -89,6 +140,7 @@ type Process() =
                  printfn "READ COMPLETE!"
                  ob.OnCompleted()
             , cancel)
+
         let reply (id: int) (rsp: Response) = async {
             let result, error = 
                 match rsp.result with
@@ -102,13 +154,16 @@ type Process() =
         let parse (data: obj) : Event =
             match data :?> obj[] with
             // request
-            | [| (Integer32 msg_type); (Integer32 msg_id) ; :? string as method; :? (obj[]) as parameters |] when msg_type = 0
+            | [| (Integer32 0); (Integer32 msg_id) ; (String method); :? (obj[]) as parameters |] 
                 -> Request(msg_id, { method = method; parameters = parameters }, reply)
             // response
-            | [| (Integer32 msg_type); (Integer32 msg_id) ; err; result |] when msg_type = 1
+            | [| (Integer32 1); (Integer32 msg_id) ; err; result |]
                 -> Response(msg_id, { result = if err = null then Choice1Of2 result else Choice2Of2 err })
+            // redraw
+            | [| (Integer32 2); (String "redraw"); :? (obj[]) as cmds |] 
+                -> Redraw (Array.map parse_redrawcmd cmds)
             // notification
-            | [| (Integer32 msg_type); :? string as method ; :? (obj[]) as parameters |] when msg_type = 2 
+            | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
                 -> Notification { method = method; parameters = parameters }
             | _ -> raise <| EventParseException(data)
 

@@ -100,10 +100,10 @@ type GridCell =
 
 type RedrawCommand =
 // global
-| SetOption of UiOption list
+| SetOption of UiOption seq
 | SetTitle of string
 | SetIcon of string
-| ModeInfoSet of bool * ModeInfo list
+| ModeInfoSet of bool * ModeInfo seq
 | ModeChange of name: string * index: int
 | Mouse of on: bool
 | Busy of on: bool
@@ -131,7 +131,7 @@ type Event =
 | Request      of int32 * Request * (int32 -> Response -> unit Async)
 | Response     of int32 * Response
 | Notification of Request
-| Redraw       of RedrawCommand list
+| Redraw       of RedrawCommand[]
 | Error        of string
 
 [<Struct>]
