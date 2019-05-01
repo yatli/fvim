@@ -17,7 +17,7 @@ module Program =
     // Your application's entry point.
     [<CompiledName "AppMain">]
     let appMain (app: Application) (args: string[]) =
-        app.Run(new MainWindow())
+        app.Run(MainWindow(FVimViewModel()))
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized

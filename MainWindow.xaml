@@ -2,8 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:fvim="clr-namespace:FVim;assembly=FVim"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="300"
         x:Class="FVim.MainWindow"
+        Height="{Binding WindowHeight}"
+        Width="{Binding WindowWidth}"
+        CanResize="True"
         Title="fvim" >
-    Welcome to Avalonia!
+  <fvim:Editor VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
 </Window>

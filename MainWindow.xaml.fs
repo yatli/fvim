@@ -3,8 +3,8 @@
 open Avalonia
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
-open FVim.neovim
 open Avalonia.Threading
+open FVim.neovim
 open System.Threading
 open System.Collections.Generic
 open System.Threading.Tasks
@@ -12,9 +12,7 @@ open System
 open FVim.neovim.rpc
 open FVim.neovim.def
 
-
-
-type MainWindow() as this =
+type MainWindow(datactx: FVimViewModel) as this =
     inherit Window()
     let nvim = Process()
     let requestHandlers      = Dictionary<string, obj[] -> Response Async>()
@@ -23,39 +21,44 @@ type MainWindow() as this =
     let request  name fn = requestHandlers.Add(name, fn)
     let notify   name fn = notificationHandlers.Add(name, fn)
 
+    let on_closing(args) =
+        //TODO send closing request to neovim
+        ()
+
+    let on_closed (args) =
+        printfn "terminating nvim..."
+        nvim.stop 1
+
+    let msg_dispatch =
+        function
+        | Request(id, req, reply) -> 
+           Async.Start(async { 
+               let! rsp = requestHandlers.[req.method](req.parameters)
+               do! reply id rsp
+           })
+        | Notification req -> 
+           Async.Start(notificationHandlers.[req.method](req.parameters))
+        | Redraw cmd -> datactx.Redraw cmd
+        | _ -> ()
+
     do
         printfn "initialize avalonia UI..."
-        this.Closing.Add this.OnClosing
-        this.Closed.Add  this.OnClosed
+        this.DataContext <- datactx
+        this.Closing.Add on_closing
+        this.Closed.Add  on_closed
+        this.SizeToContent <- SizeToContent.WidthAndHeight
+
         AvaloniaXamlLoader.Load this
+        Avalonia.DevToolsExtensions.AttachDevTools(this);
 
         // the UI should be ready for some drawing now.
         printfn "registering msgpack-rpc handlers..."
-
-        notify "redraw" (fun args -> async {
-            printfn "redraw: %A" args
-            ()
-        })
-
 
         printfn "starting neovim instance..."
         nvim.start()
         ignore <|
         nvim.subscribe 
             (AvaloniaSynchronizationContext.Current) 
-            (function 
-             | Request(id, req, reply) -> 
-                Async.Start(async { 
-                    let! rsp = requestHandlers.[req.method](req.parameters)
-                    do! reply id rsp
-                })
-             | Notification req -> 
-                Async.Start(notificationHandlers.[req.method](req.parameters))
-             | _ -> ())
+            (msg_dispatch)
         ignore <| nvim.ui_attach(100, 30)
-    member this.OnClosing(args) =
-        //TODO send closing request to neovim
-        ()
-    member this.OnClosed(args) =
-        printfn "terminating nvim..."
-        nvim.stop 1
+

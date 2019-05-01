@@ -5,15 +5,12 @@ open System
 open System.Diagnostics
 open System.Text
 open System.Collections.Concurrent
-open System.Diagnostics.Tracing
 open MessagePack
 open System.Collections.Generic
 open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
-open System.Reactive.PlatformServices
-open System
 open Avalonia.Media
 
 type EventParseException(data: obj) =
@@ -32,31 +29,52 @@ let mkparams2 (t1: 'T1) (t2: 'T2)                      = [| box t1; box t2 |]
 let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)            = [| box t1; box t2; box t3 |]
 let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)  = [| box t1; box t2; box t3; box t4|]
 
-let private (|ObjArray|Bool|String|Integer32|Obj|) (x:obj) =
+let private (|ObjArray|_|) (x:obj) =
     match x with
-    | :? (obj[]) as x    -> ObjArray x
-    | :? (obj list) as x -> ObjArray(Array.ofList x)
-    | :? (obj seq) as x  -> ObjArray(Array.ofSeq x)
-    | :? bool as x       -> Bool x
-    | :? string as x     -> String x
-    | :? int32  as x     -> Integer32(int32 x)
-    | :? int16  as x     -> Integer32(int32 x)
-    | :? int8   as x     -> Integer32(int32 x)
-    | :? uint16 as x     -> Integer32(int32 x)
-    | :? uint8  as x     -> Integer32(int32 x)
-    | _                  -> Obj x
+    | :? (obj[]) as x    -> Some x
+    | :? (obj list) as x -> Some(Array.ofList x)
+    | :? (obj seq) as x  -> Some(Array.ofSeq x)
+    | _                  -> None
+
+let private (|Bool|_|) (x:obj) =
+    match x with
+    | :? bool as x       -> Some x
+    | _ -> None
+
+let private (|String|_|) (x:obj) =
+    match x with
+    | :? string as x     -> Some x
+    | _ -> None
+
+let private (|Integer32|_|) (x:obj) =
+    match x with
+    | :? int32  as x     -> Some(int32 x)
+    | :? int16  as x     -> Some(int32 x)
+    | :? int8   as x     -> Some(int32 x)
+    | :? uint16 as x     -> Some(int32 x)
+    | :? uint32 as x     -> Some(int32 x)
+    | :? uint8  as x     -> Some(int32 x)
+    | _ -> None
 
 let private (|C|_|) (x:obj) =
     match x with
     | ObjArray x -> 
         match x.[0] with
-        | (String cmd) -> Some(cmd, x |> Seq.ofArray |> Seq.skip 1)
+        | (String cmd) -> Some(cmd, x |> Array.skip 1)
         | _ -> None
     | _ -> None
 
-let private (|P|_|) (parser: obj -> 'a option) (xs:obj seq) =
-    let result = Seq.choose parser xs
-    Some result
+let private (|C1|_|) (x:obj) =
+    match x with
+    | ObjArray [| (String cmd); ObjArray ps |] -> Some(cmd, ps)
+    | _ -> None
+
+let private (|P|_|) (parser: obj -> 'a option) (xs:obj) =
+    match xs with
+    | :? (obj seq) as xs ->
+        let result = Seq.choose parser xs |> Array.ofSeq
+        Some result
+    | _ -> None
 
 let private (|KV|_|) (k: string) (x: obj) =
     match x with
@@ -78,7 +96,42 @@ let private (|ShowTabline|_|) (x: obj) =
 
 let private (|Color|_|) (x: obj) =
     match x with
-    | Integer32 x -> Some <| Color.FromUInt32(uint32 x)
+    | Integer32 x -> 
+        // fill in the alpha channel
+        Some <| Color.FromUInt32((uint32 x) ||| 0xFF000000u)
+    | _ -> None
+
+let private (|CursorShape|_|) (x: obj) =
+    match x with
+    | String "block"      -> Some Block
+    | String "horizontal" -> Some Horizontal
+    | String "vertical"   -> Some Vertical
+    | _                   -> None
+
+let private _cs = (|CursorShape|_|)
+let private _i  = (|Integer32|_|)
+let private _c  = (|Color|_|)
+let private _s  = (|String|_|)
+let private _b  = (|Bool|_|)
+
+let private (|HighlightAttr|_|) (x: obj) =
+    match x with
+    | :? Dictionary<obj, obj> as map ->
+        let _get (key: string) (fn: obj -> 'a option) =
+            let (|OK_FN|_|) = fn
+            match map.TryGetValue key with
+            | true, OK_FN x -> Some x
+            | _ -> None
+        Some {
+            foreground = _get "foreground" _c
+            background = _get "background" _c
+            special    = _get "special" _c
+            reverse    = _get "reverse" _b
+            italic     = _get "italic" _b
+            bold       = _get "bold" _b
+            underline  = _get "underline" _b
+            undercurl  = _get "undercurl" _b
+        }
     | _ -> None
 
 let private parse_uioption (x: obj) =
@@ -93,26 +146,103 @@ let private parse_uioption (x: obj) =
     //| KV "pumblend"    (Integer32 x)   -> Some <| Pumblend x
     | KV "showtabline"   (ShowTabline x) -> Some <| ShowTabline x
     | KV "termguicolors" (Bool x)        -> Some <| TermGuiColors x
-    | _                                  -> Some <| Unknown x
+    | _                                  -> Some <| UnknownOption x
 
 let private parse_mode_info (x: obj) =
     match x with
-    | ObjArray map ->
-        let mutable m = ModeInfo()
-        m.short_name <- ""
-        map |> Array.map (
-            function
-            | KV "cursor_shape" (CursorShape x) -> m <-)
-        Some m
+    | :? Dictionary<obj, obj> as map ->
+        let _get (key: string) (fn: obj -> 'a option) =
+            let (|OK_FN|_|) = fn
+            match map.TryGetValue key with
+            | true, OK_FN x -> Some x
+            | _ -> None
+        Some {
+                cursor_shape    = _get  "cursor_shape"    _cs
+                short_name      = (_get  "short_name" _s).Value
+                name            = (_get  "name" _s).Value
+                cell_percentage = _get  "cell_percentage" _i
+                blinkwait       = _get  "blinkwait"       _i
+                blinkon         = _get  "blinkon"         _i
+                blinkoff        = _get  "blinkoff"        _i
+                attr_id         = _get  "attr_id"         _i
+                attr_id_lm      = _get  "attr_id_lm"      _i
+             }
+    | _ -> None
+
+let private parse_hi_attr (x: obj) =
+    match x with
+    | ObjArray [| (Integer32 id); (HighlightAttr rgb); (HighlightAttr cterm); (ObjArray info) |] 
+        -> Some {id = id; rgb_attr = rgb; cterm_attr = cterm; info = info }
+    | _ -> None
+
+let private parse_grid_cell (x: obj) =
+    match x with
+    | ObjArray [| (String txt) |] 
+        -> Some { text = txt; hl_id = None; repeat = None}
+    | ObjArray [| (String txt); (Integer32 hl_id) |] 
+        -> Some { text = txt; hl_id = Some hl_id; repeat = None}
+    | ObjArray [| (String txt); (Integer32 hl_id); (Integer32 repeat) |] 
+        -> Some { text = txt; hl_id = Some hl_id; repeat = Some repeat}
+    | _ -> None
+
+let private parse_grid_line (x: obj) =
+    match x with
+    | ObjArray [| (Integer32 grid); (Integer32 row) ; (Integer32 col_start) ; P(parse_grid_cell)cells |] 
+        -> Some {grid = grid; row=row; col_start=col_start; cells=cells}
     | _ -> None
 
 let private parse_redrawcmd (x: obj) =
     match x with
-    | C("option_set", P(parse_uioption)options) -> SetOption options
-    | C("default_colors_set", ObjArray [| (Color fg); (Color bg); (Color sp); (Color cfg); (Color cbg) |]) -> DefaultColorsSet(fg,bg,sp,cfg,cbg)
-    | C("set_title", String title) -> SetTitle title
-    | C("set_icon", String icon) -> SetIcon icon
-    | C("mode_info_set", ObjArray[| (Bool x); ObjArray(P(parse_mode_info)info) |]) -> ModeInfoSet(x, info)
+    | C("option_set", P(parse_uioption)options)
+        -> SetOption options
+    | C1("default_colors_set", [| (Color fg); (Color bg); (Color sp); (Color cfg); (Color cbg) |]) 
+        -> DefaultColorsSet(fg,bg,sp,cfg,cbg)
+    | C("set_title", String title)                                                                                      
+        -> SetTitle title
+    | C("set_icon", String icon)                                                                                        
+        -> SetIcon icon
+    | C1("mode_info_set", [| (Bool x); P(parse_mode_info)info |])
+        -> ModeInfoSet(x, info)
+    | C1("mode_change", [| (String m); (Integer32 i) |])                                                         
+        -> ModeChange(m, i)
+    | C("mouse_on", _)                                                                                                  
+        -> Mouse(true)
+    | C("mouse_off", _)                                                                                                 
+        -> Mouse(false)
+    | C("busy_start", _)                                                                                                
+        -> Busy(true)
+    | C("busy_stop", _)                                                                                                 
+        -> Busy(false)
+    | C("bell", _)                                                                                                      
+        -> Bell
+    | C("visual_bell", _)                                                                                               
+        -> VisualBell
+    | C("flush", _)                                                                                                     
+        -> Flush
+    | C("hl_attr_define", P(parse_hi_attr) attrs)
+        -> HighlightAttrDefine attrs
+    | C1("grid_clear", [| (Integer32 id) |])                                                                                                     
+        -> GridClear id
+    | C1("grid_resize", [| (Integer32 id); (Integer32 w); (Integer32 h) |])                                                                                                     
+        -> GridResize(id, w, h)
+    | C1("grid_destroy", [| (Integer32 id) |])                                                                                                     
+        -> GridDestroy id
+    | C1("grid_cursor_goto", [| (Integer32 grid); (Integer32 row); (Integer32 col) |])                                                                                                     
+        -> GridCursorGoto(grid, row, col)
+    | C1("grid_scroll", 
+         [| (Integer32 grid)
+            (Integer32 top); (Integer32 bot) 
+            (Integer32 left); (Integer32 right) 
+            (Integer32 rows); (Integer32 cols) 
+         |])
+        -> GridScroll(grid, top, bot, left, right, rows, cols)
+    | C("grid_line", P(parse_grid_line)lines)
+        -> GridLine lines
+    | _ -> 
+        //printfn "UnknwonCommand: %A" x
+        UnknownCommand x
+    //| C("suspend", _) -> 
+    //| C("update_menu", _) -> 
 
 type Process() = 
     let m_id = Guid.NewGuid()

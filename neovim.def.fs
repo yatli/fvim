@@ -19,16 +19,18 @@ type CursorShape =
 | Horizontal
 | Vertical
 
-type ModeInfo(sname, name) =
-    member val cursor_shape: CursorShape = CursorShape.Block with get,set
-    member val cell_percentage: int = 0 with get,set
-    member val blinkwait: int = 0 with get,set
-    member val blinkon: int = 0 with get,set
-    member val blinkoff: int = 0 with get,set
-    member val attr_id: int = 0 with get,set
-    member val attr_id_lm: int = 0 with get,set
-    member val short_name: string = sname with get,set
-    member val name: string = name with get,set
+type ModeInfo =
+    {
+        cursor_shape: CursorShape option
+        cell_percentage: int option
+        blinkwait: int option
+        blinkon: int option
+        blinkoff: int option
+        attr_id: int option
+        attr_id_lm: int option
+        short_name: string
+        name: string
+    }
 
 type AmbiWidth = Single | Double
 type ShowTabline = Never | AtLeastTwo | Always
@@ -73,7 +75,7 @@ type UiOption =
     ///  compatible terminal.
     | TermGuiColors of bool
     // TODO ui-ext-options
-    | Unknown of obj
+    | UnknownOption of obj
 
 [<Struct>]
 type RgbAttr =
@@ -87,6 +89,18 @@ type RgbAttr =
         underline : bool option
         undercurl : bool option
     }
+    with 
+    static member Empty =
+        {
+            foreground = None
+            background = None
+            special = None
+            reverse = None
+            italic = None
+            bold = None
+            underline = None
+            undercurl = None
+        }
 
 type GridCell = 
     {
@@ -95,25 +109,49 @@ type GridCell =
         repeat: int option
     }
 
+type HighlightAttr = 
+    {
+        id: int 
+        rgb_attr: RgbAttr 
+        cterm_attr: RgbAttr 
+        info: obj[]
+    }
+    with
+    static member Default =
+        {
+            id = -1
+            rgb_attr = RgbAttr.Empty
+            cterm_attr = RgbAttr.Empty
+            info = [||]
+        }
+
+type GridLine =
+    {
+        grid: int 
+        row: int 
+        col_start: int 
+        cells: GridCell[]
+    }
+
 type RedrawCommand =
 // global
-| SetOption of UiOption seq
+| SetOption of UiOption[]
 | SetTitle of string
 | SetIcon of string
-| ModeInfoSet of bool * ModeInfo seq
+| ModeInfoSet of cursor_style_enabled: bool * mode_info: ModeInfo[] 
 | ModeChange of name: string * index: int
 | Mouse of on: bool
 | Busy of on: bool
 | Bell
 | VisualBell
-| Suspend
-| UpdateMenu // ??
+//| Suspend // ??
+//| UpdateMenu // ??
 | Flush
 // grid events
 // note, cterm_* are transmitted as term 256-color codes
 | DefaultColorsSet of fg: Color * bg: Color * sp: Color * cterm_fg: Color * cterm_bg: Color
-| HighlightAttrDefine of id: int * rgb_attr: RgbAttr * cterm_attr: RgbAttr * info: obj[]
-| GridLine of grid: int * row: int * col_start: int * cells: GridCell list
+| HighlightAttrDefine of HighlightAttr[]
+| GridLine of GridLine[]
 | GridClear of grid: int
 | GridDestroy of grid: int
 | GridCursorGoto of grid: int * row: int * col: int
@@ -123,6 +161,7 @@ type RedrawCommand =
 //| UpdateFg of Color
 //| UpdateBg of Color
 //| UpdateSp of Color
+| UnknownCommand of data: obj
 
 type Event =
 | Request      of int32 * Request * (int32 -> Response -> unit Async)
