@@ -1,7 +1,7 @@
 ﻿module FVim.neovim.def
 
-open System.Drawing
 open MessagePack
+open Avalonia.Media
 
 type Request = 
     {
@@ -19,19 +19,16 @@ type CursorShape =
 | Horizontal
 | Vertical
 
-type ModeInfo =
-    {
-        cursor_shape: CursorShape
-        cell_percentage: int
-        blinkwait: int
-        blinkon: int
-        blinkoff: int
-        attr_id: int
-        attr_id_lm: int
-        short_name: string
-        name: string
-        // mouse_shape (to be implemented)
-    }
+type ModeInfo(sname, name) =
+    member val cursor_shape: CursorShape = CursorShape.Block with get,set
+    member val cell_percentage: int = 0 with get,set
+    member val blinkwait: int = 0 with get,set
+    member val blinkon: int = 0 with get,set
+    member val blinkoff: int = 0 with get,set
+    member val attr_id: int = 0 with get,set
+    member val attr_id_lm: int = 0 with get,set
+    member val short_name: string = sname with get,set
+    member val name: string = name with get,set
 
 type AmbiWidth = Single | Double
 type ShowTabline = Never | AtLeastTwo | Always

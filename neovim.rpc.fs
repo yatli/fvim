@@ -12,9 +12,9 @@ open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
-open System.Drawing
 open System.Reactive.PlatformServices
 open System
+open Avalonia.Media
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -32,29 +32,19 @@ let mkparams2 (t1: 'T1) (t2: 'T2)                      = [| box t1; box t2 |]
 let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)            = [| box t1; box t2; box t3 |]
 let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)  = [| box t1; box t2; box t3; box t4|]
 
-let private (|Integer32|_|) (x:obj) =
+let private (|ObjArray|Bool|String|Integer32|Obj|) (x:obj) =
     match x with
-    | :? int32  as x  -> Some(int32 x)
-    | :? int16  as x  -> Some(int32 x)
-    | :? int8   as x  -> Some(int32 x)
-    | :? uint16 as x  -> Some(int32 x)
-    | :? uint8  as x  -> Some(int32 x)
-    | _ -> None
-
-let private (|String|_|) (x:obj) =
-    match x with
-    | :? string as x -> Some x
-    | _ -> None
-
-let private (|Bool|_|) (x:obj) =
-    match x with
-    | :? bool as x -> Some x
-    | _ -> None
-
-let private (|ObjArray|_|) (x:obj) =
-    match x with
-    | :? (obj[]) as x -> Some x
-    | _ -> None
+    | :? (obj[]) as x    -> ObjArray x
+    | :? (obj list) as x -> ObjArray(Array.ofList x)
+    | :? (obj seq) as x  -> ObjArray(Array.ofSeq x)
+    | :? bool as x       -> Bool x
+    | :? string as x     -> String x
+    | :? int32  as x     -> Integer32(int32 x)
+    | :? int16  as x     -> Integer32(int32 x)
+    | :? int8   as x     -> Integer32(int32 x)
+    | :? uint16 as x     -> Integer32(int32 x)
+    | :? uint8  as x     -> Integer32(int32 x)
+    | _                  -> Obj x
 
 let private (|C|_|) (x:obj) =
     match x with
@@ -64,13 +54,13 @@ let private (|C|_|) (x:obj) =
         | _ -> None
     | _ -> None
 
-let private (|P|_|) (parser: obj -> 'a) (xs:obj seq) =
-    let result = Seq.map parser xs
+let private (|P|_|) (parser: obj -> 'a option) (xs:obj seq) =
+    let result = Seq.choose parser xs
     Some result
 
-let private (|KV|_|) (key: string) (x: obj) =
+let private (|KV|_|) (k: string) (x: obj) =
     match x with
-    | ObjArray [| (String key); x |] -> Some x
+    | ObjArray [| (String key); x |] when key = k -> Some x
     | _ -> None
 
 let private (|AmbiWidth|_|) (x: obj) =
@@ -79,18 +69,50 @@ let private (|AmbiWidth|_|) (x: obj) =
     | String "double" -> Some AmbiWidth.Double
     | _ -> None
 
+let private (|ShowTabline|_|) (x: obj) =
+    match x with
+    | Integer32 0 -> Some ShowTabline.Never
+    | Integer32 1 -> Some ShowTabline.AtLeastTwo
+    | Integer32 2 -> Some ShowTabline.Always
+    | _ -> None
+
+let private (|Color|_|) (x: obj) =
+    match x with
+    | Integer32 x -> Some <| Color.FromUInt32(uint32 x)
+    | _ -> None
+
 let private parse_uioption (x: obj) =
     match x with
-    | KV "arabicshape"  (Bool x)      -> ArabicShape x
-    | KV "ambiwidth"    (AmbiWidth x) -> AmbiWidth x
-    | KV "emoji"        (Bool x)      -> Emoji x
-    | KV "guifont"      (String x)    -> Guifont x
-    //| KV "guifontset"   (String x)    -> Guifont x
-    | KV "guifontwide"  (String x)    -> GuifontWide x
+    | KV "arabicshape"   (Bool x)        -> Some <| ArabicShape x
+    | KV "ambiwidth"     (AmbiWidth x)   -> Some <| AmbiWidth x
+    | KV "emoji"         (Bool x)        -> Some <| Emoji x
+    | KV "guifont"       (String x)      -> Some <| Guifont x
+    //| KV "guifontset"   (String x)     -> Some <| Guifont x
+    | KV "guifontwide"   (String x)      -> Some <| GuifontWide x
+    | KV "linespace"     (Integer32 x)   -> Some <| LineSpace x
+    //| KV "pumblend"    (Integer32 x)   -> Some <| Pumblend x
+    | KV "showtabline"   (ShowTabline x) -> Some <| ShowTabline x
+    | KV "termguicolors" (Bool x)        -> Some <| TermGuiColors x
+    | _                                  -> Some <| Unknown x
+
+let private parse_mode_info (x: obj) =
+    match x with
+    | ObjArray map ->
+        let mutable m = ModeInfo()
+        m.short_name <- ""
+        map |> Array.map (
+            function
+            | KV "cursor_shape" (CursorShape x) -> m <-)
+        Some m
+    | _ -> None
 
 let private parse_redrawcmd (x: obj) =
     match x with
     | C("option_set", P(parse_uioption)options) -> SetOption options
+    | C("default_colors_set", ObjArray [| (Color fg); (Color bg); (Color sp); (Color cfg); (Color cbg) |]) -> DefaultColorsSet(fg,bg,sp,cfg,cbg)
+    | C("set_title", String title) -> SetTitle title
+    | C("set_icon", String icon) -> SetIcon icon
+    | C("mode_info_set", ObjArray[| (Bool x); ObjArray(P(parse_mode_info)info) |]) -> ModeInfoSet(x, info)
 
 type Process() = 
     let m_id = Guid.NewGuid()
