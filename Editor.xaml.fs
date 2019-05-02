@@ -1,24 +1,20 @@
 ﻿namespace FVim
-open Avalonia.Controls
-open Avalonia.Media
-open Avalonia.Controls.Primitives
+
 open FVim.neovim.def
-open System
+
 open Avalonia
+open Avalonia.Controls
 open Avalonia.Markup.Xaml
-open Avalonia.Media.Imaging
-open Avalonia.Native
-open Avalonia.Native.Interop
-open Avalonia.Rendering
-open System.Collections.Generic
+open Avalonia.Media
+open System
 
 [<Struct>]
 type private GridBufferCell =
     {
-        mutable txt:  char
-        mutable hlid: int32
+        mutable text:  string
+        mutable hlid:  int32
     } 
-    with static member empty = { txt  = '?'; hlid = 0 }
+    with static member empty = { text  = " "; hlid = 0 }
 
 [<Struct>]
 type private GridSize =
@@ -74,7 +70,7 @@ type Editor() as this =
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let markDirty (region: GridRect) =
-        if grid_dirty.height < 1 || grid_dirty.row < 1 
+        if grid_dirty.height < 1 || grid_dirty.width < 1 
         then
             // was not dirty
             grid_dirty <- region
@@ -82,9 +78,10 @@ type Editor() as this =
             // calculate union
             let top  = min grid_dirty.row region.row
             let left = min grid_dirty.col region.col
-            let bottom = min grid_dirty.row_end region.row_end
-            let right = min grid_dirty.col_end region.col_end
+            let bottom = max grid_dirty.row_end region.row_end
+            let right = max grid_dirty.col_end region.col_end
             grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
+        printfn "markDirty: region is now %A" grid_dirty
 
     let markAllDirty () =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
@@ -106,7 +103,7 @@ type Editor() as this =
         printfn "createBuffer: grid buffer size %A" grid_size
 
     let putBuffer (line: GridLine) =
-        let mutable row  = line.row
+        let         row  = line.row
         let mutable col  = line.col_start
         let mutable hlid = -1
         let mutable rep = 1
@@ -115,11 +112,10 @@ type Editor() as this =
             rep  <- Option.defaultValue 1 cell.repeat
             for i in 0..rep-1 do
                 grid_buffer.[row, col].hlid <- hlid
-                grid_buffer.[row, col].txt <- cell.text.[0] // XXX
+                grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
-                ()
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
-        printfn "putBuffer: writing to %A" dirty
+        // printfn "putBuffer: writing to %A" dirty
         markDirty dirty
 
     let setCursor row col =
@@ -169,15 +165,33 @@ type Editor() as this =
         printfn "RENDER! my size is: %f %f" w h
 
         let drawText row col colend hlid =
-            let topLeft = Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
+            let topLeft     = Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
             let bottomRight = topLeft + Point(double(colend - col) * glyph_size.Width, glyph_size.Height)
-            let region  = Rect(topLeft, bottomRight)
+            let region      = Rect(topLeft, bottomRight)
 
-            let fg = Option.defaultValue default_fg hi_defs.[hlid].rgb_attr.foreground
-            let bg = Option.defaultValue default_bg hi_defs.[hlid].rgb_attr.background
-            let sp = Option.defaultValue default_sp hi_defs.[hlid].rgb_attr.special
+            let attrs = hi_defs.[hlid].rgb_attr
 
-            ()
+            let fg = Option.defaultValue default_fg attrs.foreground
+            let bg = Option.defaultValue default_bg attrs.background
+            let sp = Option.defaultValue default_sp attrs.special
+
+            let typeface = 
+                if   attrs.italic then typeface_italic
+                elif attrs.bold   then typeface_bold
+                else                   typeface_normal
+
+            let bg_brush = SolidColorBrush(bg)
+            let fg_brush = SolidColorBrush(fg)
+
+            let text = FormattedText()
+            text.Text <- grid_buffer.[row, col..colend-1] |> Array.map (fun x -> x.text) |> String.concat ""
+            text.Typeface <- typeface
+
+            // printfn "drawText: %A" text.Text
+
+            // draw background
+            ctx.FillRectangle(bg_brush, region)
+            ctx.DrawText(fg_brush, topLeft, text)
 
         for y in grid_dirty.row..grid_dirty.row_end-1 do
             let mutable x0   = grid_dirty.col
@@ -189,7 +203,6 @@ type Editor() as this =
                     hlid <- myhlid 
                     x0 <- x
             drawText y x0 grid_dirty.col_end hlid
-
 
         markClean()
 

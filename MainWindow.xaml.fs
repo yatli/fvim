@@ -60,5 +60,5 @@ type MainWindow(datactx: FVimViewModel) as this =
         nvim.subscribe 
             (AvaloniaSynchronizationContext.Current) 
             (msg_dispatch)
-        ignore <| nvim.ui_attach(100, 30)
+        ignore <| nvim.ui_attach(80, 25)
 
