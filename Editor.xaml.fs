@@ -4,6 +4,7 @@ open FVim.neovim.def
 
 open Avalonia
 open Avalonia.Controls
+open Avalonia.Data
 open Avalonia.Markup.Xaml
 open Avalonia.Media
 open System
@@ -44,15 +45,14 @@ type Editor() as this =
     let mutable default_bg = Colors.Black
     let mutable default_sp = Colors.Black
 
-    let mutable hi_defs = Array.empty<HighlightAttr>
+    let mutable hi_defs = Array.zeroCreate<HighlightAttr>(256)
     let mutable font_family    = "Iosevka Slab"
     let mutable font_size      = 18.0
     let mutable glyph_size     = Size(1., 1.)
 
-    let mutable typeface_normal  = Typeface(font_family, font_size, FontStyle.Normal, FontWeight.Regular)
-    let mutable typeface_italic  = Typeface(font_family, font_size, FontStyle.Italic, FontWeight.Regular)
-    let mutable typeface_oblique = Typeface(font_family, font_size, FontStyle.Oblique, FontWeight.Regular)
-    let mutable typeface_bold    = Typeface(font_family, font_size, FontStyle.Oblique, FontWeight.Bold)
+    let mutable typeface_normal  = null
+    let mutable typeface_italic  = null
+    let mutable typeface_bold    = null
 
     let mutable grid_size = { rows = 100; cols=50 }
     let mutable grid_buffer: GridBufferCell[,]  = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
@@ -60,6 +60,19 @@ type Editor() as this =
 
     let mutable cursor_row = 0
     let mutable cursor_col = 0
+
+    let setFont name size =
+        font_family     <- name
+        font_size       <- size
+        typeface_normal <- Typeface(font_family, font_size, FontStyle.Normal, FontWeight.Regular)
+        typeface_italic <- Typeface(font_family, font_size, FontStyle.Italic, FontWeight.Regular)
+        typeface_bold   <- Typeface(font_family, font_size, FontStyle.Normal, FontWeight.Bold)
+
+        let txt = FormattedText()
+        txt.Text        <- "X"
+        txt.Typeface    <- typeface_normal
+        glyph_size      <- txt.Bounds.Size
+        printfn "setFont: %A" glyph_size
 
     let setDefaultColors fg bg sp = 
         default_fg <- fg
@@ -81,7 +94,6 @@ type Editor() as this =
             let bottom = max grid_dirty.row_end region.row_end
             let right = max grid_dirty.col_end region.col_end
             grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
-        printfn "markDirty: region is now %A" grid_dirty
 
     let markAllDirty () =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
@@ -92,10 +104,6 @@ type Editor() as this =
         markAllDirty()
 
     let initBuffer nrow ncol =
-        let txt = FormattedText()
-        txt.Text <- "X"
-        txt.Typeface <- typeface_normal
-        glyph_size   <- txt.Bounds.Size
         grid_size    <- { rows = nrow; cols = ncol }
         clearBuffer()
 
@@ -145,18 +153,19 @@ type Editor() as this =
         | _ -> ()
 
     do
-        Array.Resize(&hi_defs, 256)
+        this.Initialized.Add this.OnReady
+        setFont font_family font_size
         AvaloniaXamlLoader.Load(this)
 
-    override this.OnDataContextChanged(_) =
+    interface IGridUI with
+        member this.Id = this.GridId
+        member this.GridHeight = int( this.DesiredSize.Height / glyph_size.Height )
+        member this.GridWidth  = int( this.DesiredSize.Width  / glyph_size.Width  )
+        member this.Connect cmds = cmds.Add (Array.iter redraw)
 
-        match this.DataContext with
-        | :? FVimViewModel as ctx ->
-            ctx.RedrawCommands.Add (Array.iter redraw)
-        | _ -> failwithf "%O" this.DataContext
-
-    //let mutable m_font = Typeface(m_defa)
-    //member this.NrLines =
+    override this.MeasureOverride(size) =
+        printfn "MeasureOverride: %A" size
+        size
 
     override this.Render(ctx) =
         use transform = ctx.PushPreTransform(Matrix.CreateScale(1.0, 1.0))
@@ -206,9 +215,17 @@ type Editor() as this =
 
         markClean()
 
-    //member this.RedrawCommands
-    //    with get() : IEvent<RedrawCommand[]> = this.GetValue(Editor.RedrawCommandsProperty)
-    //    and  set(v) = this.SetValue(Editor.RedrawCommandsProperty, v)
+    member this.OnReady _ =
+        printfn "OnReady. measureValid = %A" this.IsMeasureValid
+        match this.DataContext with
+        | :? FVimViewModel as ctx ->
+            ctx.OnGridReady(this)
+        | _ -> failwithf "%O" this.DataContext
 
-    //static member RedrawCommandsProperty = AvaloniaProperty.Register<Editor, IEvent<RedrawCommand[]>>("RedrawCommands")
+    member val GridId: int = 0 with get, set
 
+    static member GridIdProperty = 
+        AvaloniaProperty.RegisterDirect<Editor, int>(
+            "GridId", 
+            (fun e -> e.GridId),
+            (fun e v -> e.GridId <- v))

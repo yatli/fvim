@@ -5,9 +5,9 @@
         xmlns:fvim="clr-namespace:FVim;assembly=FVim"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="300"
         x:Class="FVim.MainWindow"
-        Height="{Binding WindowHeight}"
-        Width="{Binding WindowWidth}"
+        Height="{Binding WindowHeight, Mode=OneTime}"
+        Width="{Binding WindowWidth, Mode=OneTime}"
         CanResize="True"
         Title="fvim" >
-  <fvim:Editor VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+  <fvim:Editor VerticalAlignment="Stretch" HorizontalAlignment="Stretch" GridId="1" />
 </Window>
