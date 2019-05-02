@@ -83,11 +83,11 @@ type RgbAttr =
         foreground : Color option
         background : Color option
         special : Color option
-        reverse : bool option
-        italic : bool option
-        bold : bool option
-        underline : bool option
-        undercurl : bool option
+        reverse : bool 
+        italic : bool
+        bold : bool
+        underline : bool
+        undercurl : bool
     }
     with 
     static member Empty =
@@ -95,11 +95,11 @@ type RgbAttr =
             foreground = None
             background = None
             special = None
-            reverse = None
-            italic = None
-            bold = None
-            underline = None
-            undercurl = None
+            reverse = false
+            italic = false
+            bold = false
+            underline = false
+            undercurl = false
         }
 
 type GridCell = 

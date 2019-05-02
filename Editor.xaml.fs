@@ -17,7 +17,8 @@ type private GridBufferCell =
     {
         mutable txt:  char
         mutable hlid: int32
-    }
+    } 
+    with static member empty = { txt  = '?'; hlid = 0 }
 
 [<Struct>]
 type private GridSize =
@@ -36,9 +37,16 @@ type private GridRect =
         // exclusive
         width: int32
     }
+    with 
+    member x.row_end = x.row + x.height
+    member x.col_end = x.col + x.width
 
 type Editor() as this =
     inherit Control()
+
+    let mutable default_fg = Colors.Black
+    let mutable default_bg = Colors.Black
+    let mutable default_sp = Colors.Black
 
     let mutable hi_defs = Array.empty<HighlightAttr>
     let mutable font_family    = "Iosevka Slab"
@@ -51,17 +59,40 @@ type Editor() as this =
     let mutable typeface_bold    = Typeface(font_family, font_size, FontStyle.Oblique, FontWeight.Bold)
 
     let mutable grid_size = { rows = 100; cols=50 }
-    let mutable grid_buffer: GridBufferCell[,]  = Array2D.zeroCreate grid_size.rows grid_size.cols
+    let mutable grid_buffer: GridBufferCell[,]  = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty = { row = 0; col = 0; height = 100; width = 50 }
 
     let mutable cursor_row = 0
     let mutable cursor_col = 0
 
-    let markDirty (region: GridRect)
+    let setDefaultColors fg bg sp = 
+        default_fg <- fg
+        default_bg <- bg
+        default_sp <- sp
+
+    let markClean () =
+        grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
+
+    let markDirty (region: GridRect) =
+        if grid_dirty.height < 1 || grid_dirty.row < 1 
+        then
+            // was not dirty
+            grid_dirty <- region
+        else
+            // calculate union
+            let top  = min grid_dirty.row region.row
+            let left = min grid_dirty.col region.col
+            let bottom = min grid_dirty.row_end region.row_end
+            let right = min grid_dirty.col_end region.col_end
+            grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
+
+    let markAllDirty () =
+        grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
 
     let clearBuffer () =
         printfn "clearBuffer."
-        grid_buffer  <- Array2D.zeroCreate grid_size.rows grid_size.cols
+        grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
+        markAllDirty()
 
     let initBuffer nrow ncol =
         let txt = FormattedText()
@@ -75,24 +106,40 @@ type Editor() as this =
         printfn "createBuffer: grid buffer size %A" grid_size
 
     let putBuffer (line: GridLine) =
-        ()
+        let mutable row  = line.row
+        let mutable col  = line.col_start
+        let mutable hlid = -1
+        let mutable rep = 1
+        for cell in line.cells do
+            hlid <- Option.defaultValue hlid cell.hl_id
+            rep  <- Option.defaultValue 1 cell.repeat
+            for i in 0..rep-1 do
+                grid_buffer.[row, col].hlid <- hlid
+                grid_buffer.[row, col].txt <- cell.text.[0] // XXX
+                col <- col + 1
+                ()
+        let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
+        printfn "putBuffer: writing to %A" dirty
+        markDirty dirty
 
     let setCursor row col =
+        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
         cursor_row <- row
         cursor_col <- col
-        ()
+        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
 
     let setHighlight x =
         if hi_defs.Length < x.id + 1 then
             Array.Resize(&hi_defs, x.id + 1)
             printfn "set hl attr size %d" hi_defs.Length
         hi_defs.[x.id] <- x
-
+        markAllDirty()
 
     let redraw(cmd: RedrawCommand) =
         match cmd with
         | UnknownCommand x -> printfn "redraw: unknown command %A" x
         | HighlightAttrDefine hls -> Array.iter setHighlight hls
+        | DefaultColorsSet(fg,bg,sp,_,_) -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info) -> ()
         | GridResize(id, w, h) -> initBuffer h w
         | GridClear id -> clearBuffer()
@@ -117,10 +164,34 @@ type Editor() as this =
 
     override this.Render(ctx) =
         use transform = ctx.PushPreTransform(Matrix.CreateScale(1.0, 1.0))
-        let w, h = this.Bounds.Width, this.Bounds.Height
 
+        let w, h = this.Bounds.Width, this.Bounds.Height
         printfn "RENDER! my size is: %f %f" w h
-        ctx.FillRectangle(Brushes.Red, Rect(10., 10., w/2., h/2.))
+
+        let drawText row col colend hlid =
+            let topLeft = Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
+            let bottomRight = topLeft + Point(double(colend - col) * glyph_size.Width, glyph_size.Height)
+            let region  = Rect(topLeft, bottomRight)
+
+            let fg = Option.defaultValue default_fg hi_defs.[hlid].rgb_attr.foreground
+            let bg = Option.defaultValue default_bg hi_defs.[hlid].rgb_attr.background
+            let sp = Option.defaultValue default_sp hi_defs.[hlid].rgb_attr.special
+
+            ()
+
+        for y in grid_dirty.row..grid_dirty.row_end-1 do
+            let mutable x0   = grid_dirty.col
+            let mutable hlid = grid_buffer.[y, x0].hlid
+            for x in grid_dirty.col..grid_dirty.col_end-1 do
+                let myhlid = grid_buffer.[y,x].hlid 
+                if myhlid <> hlid then
+                    drawText y x0 x hlid
+                    hlid <- myhlid 
+                    x0 <- x
+            drawText y x0 grid_dirty.col_end hlid
+
+
+        markClean()
 
     //member this.RedrawCommands
     //    with get() : IEvent<RedrawCommand[]> = this.GetValue(Editor.RedrawCommandsProperty)

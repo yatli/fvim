@@ -122,15 +122,20 @@ let private (|HighlightAttr|_|) (x: obj) =
             match map.TryGetValue key with
             | true, OK_FN x -> Some x
             | _ -> None
+        let _getd (key: string) (fn: obj -> 'a option) d =
+            let (|OK_FN|_|) = fn
+            match map.TryGetValue key with
+            | true, OK_FN x -> x
+            | _ -> d
         Some {
             foreground = _get "foreground" _c
             background = _get "background" _c
             special    = _get "special" _c
-            reverse    = _get "reverse" _b
-            italic     = _get "italic" _b
-            bold       = _get "bold" _b
-            underline  = _get "underline" _b
-            undercurl  = _get "undercurl" _b
+            reverse    = _getd "reverse" _b false
+            italic     = _getd "italic" _b false
+            bold       = _getd "bold" _b false
+            underline  = _getd "underline" _b false
+            undercurl  = _getd "undercurl" _b false
         }
     | _ -> None
 
