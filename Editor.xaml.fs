@@ -371,7 +371,8 @@ type Editor() as this =
                         hlid <- myhlid 
                         x0 <- x
                 drawText y x0 grid_dirty.col_end hlid false
-            markClean()
+            // TODO find a way to retain render results
+            //markClean()
 
         let doRenderCursor() =
             let mode  = mode_defs.[cursor_modeidx]
