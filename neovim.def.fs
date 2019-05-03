@@ -169,6 +169,7 @@ type Event =
 | Notification of Request
 | Redraw       of RedrawCommand[]
 | Error        of string
+| Exit
 
 [<Struct>]
 [<MessagePackObject(keyAsPropertyName=true)>]

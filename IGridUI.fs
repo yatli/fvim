@@ -1,6 +1,7 @@
 ﻿namespace FVim
 
 open FVim.neovim.def
+open Avalonia.Input
 
 type IGridUI =
     abstract Id: int
@@ -8,3 +9,4 @@ type IGridUI =
     abstract GridHeight: int
     abstract GridWidth: int
     abstract Resized: IEvent<IGridUI>
+    abstract KeyInput: IEvent<KeyEventArgs>

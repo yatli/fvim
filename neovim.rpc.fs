@@ -1,5 +1,7 @@
 ﻿module FVim.neovim.rpc
-open def
+
+open FVim.neovim.def
+open FVim.log
 
 open System
 open System.Diagnostics
@@ -206,8 +208,9 @@ let private parse_redrawcmd (x: obj) =
         -> SetTitle title
     | C("set_icon", String icon)                                                                                        
         -> SetIcon icon
-    | C1("mode_info_set", [| (Bool x); P(parse_mode_info)info |])
-        -> ModeInfoSet(x, info)
+    | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])
+        -> trace "neovim" "parse_mode_info: %A" (x |> MessagePackSerializer.ToJson)
+           ModeInfoSet(csen, info)
     | C1("mode_change", [| (String m); (Integer32 i) |])                                                         
         -> ModeChange(m, i)
     | C("mouse_on", _)                                                                                                  
@@ -244,7 +247,6 @@ let private parse_redrawcmd (x: obj) =
     | C("grid_line", P(parse_grid_line)lines)
         -> GridLine lines
     | _ -> 
-        //printfn "UnknwonCommand: %A" x
         UnknownCommand x
     //| C("suspend", _) -> 
     //| C("update_menu", _) -> 
@@ -290,11 +292,11 @@ type Process() =
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Run(fun () -> 
-                 printfn "READ!"
+                 trace "neovim" "READ!"
                  while not proc.HasExited && not cancel.IsCancellationRequested do
                      let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                      ob.OnNext(data)
-                 printfn "READ COMPLETE!"
+                 trace "neovim" "READ COMPLETE!"
                  ob.OnCompleted()
             , cancel)
 
@@ -333,11 +335,14 @@ type Process() =
                 | _ -> false
             | _ -> true
 
-        let rec exhandler (ex) = 
-            printfn "exhandler: %A" ex
-            System.Reactive.Linq.Observable.Create(read)
-            |> Observable.map       parse
-            |> Observable.catchWith exhandler
+        let rec exhandler (ex: exn) = 
+            match ex with
+            | :? InvalidOperationException -> Observable.single Exit
+            | _ ->
+                trace "neovim" "exhandler: %A" ex
+                System.Reactive.Linq.Observable.Create(read)
+                |> Observable.map       parse
+                |> Observable.catchWith exhandler
 
         let stdout = 
             System.Reactive.Linq.Observable.Create(read)
@@ -352,7 +357,7 @@ type Process() =
 
         let notify (ev: Request) = task {
             let payload = mkparams3 2 ev.method ev.parameters
-            // MessagePackSerializer.ToJson(payload) |> printfn "notify: %s"
+            // MessagePackSerializer.ToJson(payload) |> trace "notify: %s"
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
         }
@@ -366,7 +371,7 @@ type Process() =
             then failwith "call: cannot create call request"
 
             let payload = mkparams4 0 myid ev.method ev.parameters
-            MessagePackSerializer.ToJson(payload) |> printfn "call: %s"
+            MessagePackSerializer.ToJson(payload) |> trace "neovim" "call: %s"
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
             return! src.Task
@@ -396,6 +401,10 @@ type Process() =
         this.events
         |> Observable.observeOnContext ctx
         |> Observable.subscribe        fn
+
+    member __.input (keys: string[]) =
+        let keys = Array.map (fun x -> box x) keys
+        m_call { method = "nvim_input"; parameters = keys }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
         m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }

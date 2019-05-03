@@ -1,13 +1,16 @@
 ﻿namespace FVim
 
 open FVim.neovim.def
+open FVim.log
 
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Data
+open Avalonia.Input
 open Avalonia.Markup.Xaml
 open Avalonia.Media
 open System
+open MessagePack
 
 [<Struct>]
 type private GridBufferCell =
@@ -65,6 +68,8 @@ type Editor() as this =
     let mutable cursor_blinkshow = true
     let mutable cursor_modeidx   = -1
 
+    let mutable mouse_en         = true
+
     let mutable is_ready         = false
     let mutable is_flushed       = false
     let mutable measured_size    = Size()
@@ -96,7 +101,7 @@ type Editor() as this =
         txt.Text        <- "X"
         txt.Typeface    <- typeface_normal
         glyph_size      <- txt.Bounds.Size
-        printfn "setFont: %A" glyph_size
+        trace "setFont" "%A %A" glyph_size glyph_size
         this.InvalidateMeasure()
 
     let setCursor row col =
@@ -108,7 +113,7 @@ type Editor() as this =
     let setHighlight x =
         if hi_defs.Length < x.id + 1 then
             Array.Resize(&hi_defs, x.id + 1)
-            printfn "set hl attr size %d" hi_defs.Length
+            trace "setHighlight" "set hl attr size %d" hi_defs.Length
         hi_defs.[x.id] <- x
         markAllDirty()
 
@@ -142,7 +147,7 @@ type Editor() as this =
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let clearBuffer () =
-        printfn "clearBuffer."
+        trace "clearBuffer" "."
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         markAllDirty()
 
@@ -150,8 +155,8 @@ type Editor() as this =
         grid_size    <- { rows = nrow; cols = ncol }
         clearBuffer()
 
-        printfn "createBuffer: glyph size %A" glyph_size
-        printfn "createBuffer: grid buffer size %A" grid_size
+        trace "createBuffer" "glyph size %A" glyph_size
+        trace "createBuffer" "grid buffer size %A" grid_size
 
     let putBuffer (line: GridLine) =
         let         row  = line.row
@@ -161,12 +166,12 @@ type Editor() as this =
         for cell in line.cells do
             hlid <- Option.defaultValue hlid cell.hl_id
             rep  <- Option.defaultValue 1 cell.repeat
-            for i in 0..rep-1 do
+            for i = 0 to rep-1 do
                 grid_buffer.[row, col].hlid <- hlid
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
-        //printfn "putBuffer: writing to %A" dirty
+        //trace "putBuffer: writing to %A" dirty
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
@@ -177,9 +182,75 @@ type Editor() as this =
         cursor_modeidx <- index
         markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
 
+    let bell (visual: bool) =
+        // TODO
+        trace "neovim" "bell: %A" visual
+        ()
+
+    let setBusy (v: bool) =
+        // TODO
+        trace "neovim" "busy: %A" v
+        ()
+
+    let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
+        //    If `rows` is bigger than 0, move a rectangle in the SR up, this can
+        //    happen while scrolling down.
+        //>
+        //    +-------------------------+
+        //    | (clipped above SR)      |            ^
+        //    |=========================| dst_top    |
+        //    | dst (still in SR)       |            |
+        //    +-------------------------+ src_top    |
+        //    | src (moved up) and dst  |            |
+        //    |-------------------------| dst_bot    |
+        //    | src (invalid)           |            |
+        //    +=========================+ src_bot
+        //<
+        //    If `rows` is less than zero, move a rectangle in the SR down, this can
+        //    happen while scrolling up.
+        //>
+        //    +=========================+ src_top
+        //    | src (invalid)           |            |
+        //    |------------------------ | dst_top    |
+        //    | src (moved down) and dst|            |
+        //    +-------------------------+ src_bot    |
+        //    | dst (still in SR)       |            |
+        //    |=========================| dst_bot    |
+        //    | (clipped below SR)      |            v
+        //    +-------------------------+
+        //<
+        //    `cols` is always zero in this version of Nvim, and reserved for future
+        //    use. 
+
+        // editor: scroll: 2 34 0 103 -1 0
+        // height = 36;
+        // width  = 103;
+        trace "editor" "scroll: %A %A %A %A %A %A" top bot left right rows cols
+
+        let copy src dst =
+            if src >= 0 && src < grid_size.rows && dst >= 0 && dst < grid_size.rows then
+                Array.Copy(grid_buffer, src * grid_size.cols + left, grid_buffer, dst * grid_size.cols + left, right - left)
+
+        if rows > 0 then
+            for i = top + 1 to bot - 1 do
+                copy i (i-rows)
+            markAllDirty()
+        elif rows < 0 then
+            for i = bot - 2 downto top do
+                copy i (i-rows)
+            markAllDirty()
+        ()
+
+    let setOptions (opts: UiOption[]) = 
+        trace "setOptions" "%A" opts
+        ()
+
+    let setMouse (en:bool) =
+        mouse_en <- en
+
     let redraw(cmd: RedrawCommand) =
         match cmd with
-        | UnknownCommand x -> printfn "redraw: unknown command %A" x
+        | UnknownCommand x -> trace "redraw" "unknown command %A" x
         | HighlightAttrDefine hls -> Array.iter setHighlight hls
         | DefaultColorsSet(fg,bg,sp,_,_) -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info) -> setModeInfo cs_en info
@@ -188,10 +259,21 @@ type Editor() as this =
         | GridClear id -> clearBuffer()
         | GridLine lines -> Array.iter putBuffer lines
         | GridCursorGoto(id, row, col) -> setCursor row col
+        | GridDestroy id when id = this.GridId -> () // TODO
+        | GridScroll(grid, top,bot,left,right,rows,cols) -> scrollBuffer top bot left right rows cols
         | Flush -> flush() 
-        | _ -> ()
+        | Bell -> bell false
+        | VisualBell -> bell true
+        | Busy is_busy -> setBusy is_busy
+        | SetOption opts -> setOptions opts
+        | SetTitle title -> Application.Current.MainWindow.Title <- title
+        | SetIcon icon -> trace "neovim" "icon: %s" icon // TODO
+        | SetOption opts -> setOptions opts
+        | Mouse en -> setMouse en
+        //| _ -> ()
 
     let resizeEvent = Event<IGridUI>()
+    let keyEvent = Event<KeyEventArgs>()
 
     let getDrawAttrs hlid = 
         let attrs = hi_defs.[hlid].rgb_attr
@@ -223,17 +305,26 @@ type Editor() as this =
         member this.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
         member this.Connect cmds = cmds.Add (Array.iter redraw)
         member this.Resized = resizeEvent.Publish
+        member this.KeyInput = keyEvent.Publish
 
     member this.OnReady _ =
         is_ready <- true
         measured_size <- this.Bounds.Size
+        this.Focus()
         match this.DataContext with
         | :? FVimViewModel as ctx ->
             ctx.OnGridReady(this)
         | _ -> failwithf "%O" this.DataContext
 
+    override this.OnKeyDown(e) =
+        e.Handled <- true
+        keyEvent.Trigger e
+
+    override this.OnKeyUp(e) =
+        e.Handled <- true
+
     override this.MeasureOverride(size) =
-        printfn "MeasureOverride: %A" size
+        trace "MeasureOverride" "%A" size
         let gridui = this :> IGridUI
         let gw, gh = gridui.GridWidth, gridui.GridHeight
         measured_size <- size
@@ -252,7 +343,7 @@ type Editor() as this =
 
         let drawText row col colend hlid invert =
             let topLeft                 = getPoint row col
-            let bottomRight             = topLeft + getPoint 1 (colend - col)
+            let bottomRight             = topLeft + getPoint 1 (colend - col) + Point(0., 0.5)
             let region                  = Rect(topLeft, bottomRight)
             let fg, bg, sp, typeface, _ = getDrawAttrs hlid
 
@@ -260,7 +351,7 @@ type Editor() as this =
             text.Text <- grid_buffer.[row, col..colend-1] |> Array.map (fun x -> x.text) |> String.concat ""
             text.Typeface <- typeface
 
-            //printfn "drawText: %d %d-%d hlid=%A" row col colend hlid
+            //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
             if invert then
                 ctx.FillRectangle(fg, region)
                 ctx.DrawText(bg, topLeft, text)
@@ -269,11 +360,11 @@ type Editor() as this =
                 ctx.DrawText(fg, topLeft, text)
 
         let doRenderBuffer() =
-            printfn "RENDER! dirty = %A" grid_dirty
-            for y in grid_dirty.row..grid_dirty.row_end-1 do
+            trace "RENDER!" "dirty = %s" (grid_dirty.ToString())
+            for y = grid_dirty.row to grid_dirty.row_end-1 do
                 let mutable x0   = grid_dirty.col
                 let mutable hlid = grid_buffer.[y, x0].hlid
-                for x in grid_dirty.col..grid_dirty.col_end-1 do
+                for x = grid_dirty.col to grid_dirty.col_end-1 do
                     let myhlid = grid_buffer.[y,x].hlid 
                     if myhlid <> hlid then
                         drawText y x0 x hlid false
@@ -291,16 +382,19 @@ type Editor() as this =
             let fg, bg, _, _, _ = getDrawAttrs hlid
             let origin = getPoint cursor_row cursor_col
 
-            printfn "doRenderCursor: %A hlid=%A" mode hlid
+            trace "doRenderCursor" "hlid=%A" hlid
+
+            let cellw p = min (double(p) / 100.0 * glyph_size.Width)  5.0
+            let cellh p = min (double(p) / 100.0 * glyph_size.Height) 5.0
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
                 drawText cursor_row cursor_col (cursor_col+1) hlid true
             | Some(CursorShape.Horizontal), Some p ->
-                let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 0) - Point(0.0, 1.0))
+                let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
                 ctx.FillRectangle(bg, region)
             | Some(CursorShape.Vertical), Some p ->
-                let region = Rect(origin, origin + (getPoint 1 0).WithX(1.0))
+                let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, 0.0))
                 ctx.FillRectangle(bg, region)
             | _ -> ()
 

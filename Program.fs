@@ -1,6 +1,5 @@
 ﻿namespace FVim
 
-open System
 open Avalonia
 open Avalonia.Logging.Serilog
 

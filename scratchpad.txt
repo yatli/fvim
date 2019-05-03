@@ -1,4 +1,13 @@
-﻿initialize avalonia UI...
+﻿
+/ Oem2
+[ Oem4
+] OemCloseBrackets
+- OemMinus
+= OemPlus
+` OemTilde
+
+
+initialize avalonia UI...
 registering msgpack-rpc handlers...
 starting neovim instance...
 READ!
