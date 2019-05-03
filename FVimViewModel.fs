@@ -11,6 +11,7 @@ open System.Collections.Generic
 open Avalonia.Threading
 open Avalonia.Input
 open Avalonia.Input.Raw
+open FSharp.Control.Reactive
 
 type FVimViewModel() =
     inherit ViewModelBase()
@@ -247,7 +248,10 @@ type FVimViewModel() =
     member this.OnGridReady(gridui: IGridUI) =
         // connect the redraw commands
         gridui.Connect redraw.Publish
-        gridui.Resized.Add this.OnGridResize
+        gridui.Resized 
+        |> Observable.throttle (TimeSpan.FromMilliseconds 100.0)
+        |> Observable.add this.OnGridResize
+
         gridui.KeyInput |> this.OnKeyInput
 
         // the UI should be ready for events now. notify nvim about its presence

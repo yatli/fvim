@@ -126,9 +126,6 @@ type Editor() as this =
         markAllDirty()
 
     let setDefaultColors fg bg sp = 
-        default_fg <- fg
-        default_bg <- bg
-        default_sp <- sp
 
         setHighlight {
             id = 0
