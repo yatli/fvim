@@ -41,8 +41,8 @@ type FVimViewModel() =
         printfn "registering msgpack-rpc handlers..."
 
 
-    member val WindowHeight: int         = 700 with get,set
-    member val WindowWidth:  int         = 900 with get,set
+    member val WindowWidth:  int         = 824 with get,set
+    member val WindowHeight: int         = 721 with get,set
 
     member this.RedrawCommands = redraw.Publish
     member this.Redraw(cmds: RedrawCommand[]) = redraw.Trigger cmds
@@ -55,14 +55,19 @@ type FVimViewModel() =
         //TODO send closing request to neovim
         ()
 
+    member this.OnGridResize(gridui: IGridUI) =
+        printfn "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
+        ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
+
     member this.OnGridReady(gridui: IGridUI) =
         // connect the redraw commands
         gridui.Connect redraw.Publish
+        gridui.Resized.Add this.OnGridResize
 
         // the UI should be ready for events now. notify nvim about its presence
         if gridui.Id = 1 then
             printfn "attaching to nvim on first grid ready signal. size = %A %A" gridui.GridWidth gridui.GridHeight
-            ignore <| nvim.ui_attach(gridui.GridWidth, gridui.GridHeight)
+            ignore <| nvim.ui_attach gridui.GridWidth gridui.GridHeight
         else
             failwithf "grid: unsupported: %A" gridui.Id
 

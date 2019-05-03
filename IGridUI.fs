@@ -7,3 +7,4 @@ type IGridUI =
     abstract Connect: IEvent<RedrawCommand[]> -> unit
     abstract GridHeight: int
     abstract GridWidth: int
+    abstract Resized: IEvent<IGridUI>

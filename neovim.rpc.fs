@@ -397,7 +397,10 @@ type Process() =
         |> Observable.observeOnContext ctx
         |> Observable.subscribe        fn
 
-    member __.ui_attach (w:int, h:int) =
+    member __.grid_resize (id: int) (w: int) (h: int) =
+        m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
+
+    member __.ui_attach (w:int) (h:int) =
         let opts = 
             { 
                 rgb            = true 
@@ -412,4 +415,4 @@ type Process() =
                 //ext_wildmenu   = false
             }
 
-        m_call { method = "nvim_ui_attach"; parameters = mkparams3 100 50 opts }
+        m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
