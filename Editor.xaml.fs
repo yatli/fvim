@@ -400,7 +400,7 @@ type Editor() as this =
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
-                drawText cursor_row cursor_col (cursor_col+1) hlid true
+                drawText cursor_row cursor_col (cursor_col+1) hlid false
             | Some(CursorShape.Horizontal), Some p ->
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
                 ctx.FillRectangle(bg, region)
