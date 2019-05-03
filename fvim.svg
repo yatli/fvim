@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="66mm"
+   height="66mm"
+   viewBox="0 0 66 65.999999"
+   version="1.1"
+   id="svg3728"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
+   sodipodi:docname="fvim.svg"
+   inkscape:export-filename="F:\git\fvim\fvim.png"
+   inkscape:export-xdpi="200.12122"
+   inkscape:export-ydpi="200.12122">
+  <defs
+     id="defs3722" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.979899"
+     inkscape:cx="-218.01434"
+     inkscape:cy="364.67808"
+     inkscape:document-units="mm"
+     inkscape:current-layer="g3796"
+     showgrid="false"
+     fit-margin-top="2"
+     fit-margin-left="2"
+     fit-margin-right="2"
+     fit-margin-bottom="2"
+     inkscape:pagecheckerboard="false"
+     inkscape:window-width="3840"
+     inkscape:window-height="2050"
+     inkscape:window-x="-12"
+     inkscape:window-y="-12"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata3725">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-23.068173,-67.465563)">
+    <g
+       id="g3796"
+       transform="translate(0,-9.5250003)">
+      <g
+         id="g8"
+         transform="matrix(0.26458333,0,0,0.26458333,39.763095,89.83125)">
+        <path
+           id="path2"
+           style="fill:#378bba"
+           d="M 5,63 61,7 V 35 L 33,63 61,91 v 28 z"
+           inkscape:connector-curvature="0" />
+        <path
+           id="path4"
+           style="fill:#378bba"
+           d="M 41,63 61,43 v 40 z"
+           inkscape:connector-curvature="0" />
+        <path
+           id="path6"
+           style="fill:#30b9db"
+           d="M 123,63 65,7 V 35 L 93,63 65,91 v 28 z"
+           inkscape:connector-curvature="0" />
+      </g>
+      <flowRoot
+         transform="matrix(1.3840663,0,0,0.49692946,2.2598914,91.149001)"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:67.34535217px;line-height:1.25;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#441650;fill-opacity:1;stroke:none;"
+         id="flowRoot3754-1"
+         xml:space="preserve"><flowRegion
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:67.34535217px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#441650;"
+           id="flowRegion3756-5"><rect
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:67.34535217px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#441650;"
+             y="18.189531"
+             x="16.785715"
+             height="101.42857"
+             width="109.64286"
+             id="rect3758-5" /></flowRegion><flowPara
+           id="flowPara3762-0">V</flowPara></flowRoot>    </g>
+  </g>
+</svg>
