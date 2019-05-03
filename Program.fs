@@ -11,6 +11,8 @@ module Program =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
+            .With(AvaloniaNativePlatformOptions( UseGpu = true ))
+            .With(Win32PlatformOptions ( UseDeferredRendering = true ))
             .LogToDebug()
 
     // Your application's entry point.

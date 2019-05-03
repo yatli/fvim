@@ -37,6 +37,10 @@
     <PackageReference Include="Avalonia.Desktop" Version="0.8.0" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
+    <PackageReference Include="NSubsys" Version="1.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
     <PackageReference Update="FSharp.Core" Version="4.6.2" />
   </ItemGroup>

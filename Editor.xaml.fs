@@ -90,6 +90,10 @@ type Editor() as this =
     let markAllDirty () =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
 
+    let flush() = 
+        is_flushed <- true
+        this.InvalidateVisual()
+
     let setFont name size =
         font_family     <- name
         font_size       <- size
@@ -112,9 +116,13 @@ type Editor() as this =
 
     let setHighlight x =
         if hi_defs.Length < x.id + 1 then
-            Array.Resize(&hi_defs, x.id + 1)
+            Array.Resize(&hi_defs, x.id + 100)
             trace "setHighlight" "set hl attr size %d" hi_defs.Length
         hi_defs.[x.id] <- x
+        if x.id = 0 then
+            default_fg <- x.rgb_attr.foreground.Value
+            default_bg <- x.rgb_attr.background.Value
+            default_sp <- x.rgb_attr.special.Value
         markAllDirty()
 
     let setDefaultColors fg bg sp = 
@@ -137,11 +145,8 @@ type Editor() as this =
                 undercurl = false
             }
         }
+        flush()
         
-    let flush() = 
-        is_flushed <- true
-        this.InvalidateVisual()
-
     let markClean () =
         is_flushed <- false
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
@@ -248,10 +253,15 @@ type Editor() as this =
     let setMouse (en:bool) =
         mouse_en <- en
 
+    let hiattrDefine (hls: HighlightAttr[]) =
+        Array.iter setHighlight hls
+        flush()
+        
+
     let redraw(cmd: RedrawCommand) =
         match cmd with
         | UnknownCommand x -> trace "redraw" "unknown command %A" x
-        | HighlightAttrDefine hls -> Array.iter setHighlight hls
+        | HighlightAttrDefine hls -> hiattrDefine hls
         | DefaultColorsSet(fg,bg,sp,_,_) -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info) -> setModeInfo cs_en info
         | ModeChange(name, index) -> changeMode name index
