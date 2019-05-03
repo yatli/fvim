@@ -165,6 +165,7 @@ type FVimViewModel() =
                 |  Key.Home, _                                    -> Special "Home"
                 |  Key.End, _                                     -> Special "End"
                 |  Key.PageUp, _                                  -> Special "PageUp"
+                |  Key.PageDown, _                                -> Special "PageDown"
                 //| Key.NumPadHome, _                             -> Special "kHome"
                 //| Key.NumPadEnd, _                              -> Special "kEnd"
                 //| Key.NumPadPageUp, _                           -> Special "kPageUp"
