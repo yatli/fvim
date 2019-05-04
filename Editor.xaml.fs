@@ -112,7 +112,7 @@ type Editor() as this =
         txt.Text        <- "@"
         txt.Typeface    <- typeface_normal
         glyph_size      <- txt.Bounds.Size
-        trace "setFont" "%A %A" glyph_size glyph_size
+        trace "setFont" "request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
         resizeEvent.Trigger(this)
 
     let setCursor row col =
@@ -261,7 +261,7 @@ type Editor() as this =
             | [|name; size|] when 
                 size.Length > 0 &&
                 size.[0] = 'h' -> 
-                setFont name (size.Substring(1).TrimEnd('\'','"') |> int |> float)
+                setFont <| name.Trim('\'', '"') <| (size.Substring(1).TrimEnd('\'','"') |> int |> float)
             | _ -> ()
         | _ -> ()
 
