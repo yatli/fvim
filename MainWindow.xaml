@@ -8,6 +8,7 @@
         Height="{Binding WindowHeight, Mode=OneTime}"
         Width="{Binding WindowWidth, Mode=OneTime}"
         CanResize="True"
+        Icon="Assets/fvim.png"
         Title="fvim" >
   <fvim:Editor VerticalAlignment="Stretch" HorizontalAlignment="Stretch" GridId="1" />
 </Window>
