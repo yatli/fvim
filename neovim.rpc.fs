@@ -291,14 +291,14 @@ type Process() =
         let stdin  = proc.StandardInput.BaseStream
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
-            Task.Run(fun () -> 
+            Task.Factory.StartNew(fun () -> 
                  trace "neovim" "READ!"
                  while not proc.HasExited && not cancel.IsCancellationRequested do
                      let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                      ob.OnNext(data)
                  trace "neovim" "READ COMPLETE!"
                  ob.OnCompleted()
-            , cancel)
+            , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
         let reply (id: int) (rsp: Response) = async {
             let result, error = 

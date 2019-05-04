@@ -11,7 +11,7 @@
     <Compile Include="neovim.def.fs" />
     <Content Include="scratchpad.txt" />
     <Compile Include="neovim.rpc.fs" />
-    <Compile Include="IGridUI.fs" />
+    <Compile Include="ui.def.fs" />
     <Compile Include="FVimViewModel.fs" />
     <Compile Include="MainWindow.xaml.fs" />
     <Compile Include="Editor.xaml.fs" />

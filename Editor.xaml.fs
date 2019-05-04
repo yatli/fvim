@@ -69,6 +69,7 @@ type Editor() as this =
     let mutable cursor_modeidx   = -1
 
     let mutable mouse_en         = true
+    let mutable mouse_pressed    = MouseButton.None
 
     let mutable is_ready         = false
     let mutable is_flushed       = false
@@ -91,6 +92,7 @@ type Editor() as this =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
 
     let flush() = 
+        trace "redraw" "flush."
         is_flushed <- true
         this.InvalidateVisual()
 
@@ -173,7 +175,7 @@ type Editor() as this =
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
-        //trace "putBuffer: writing to %A" dirty
+        //trace "redraw" "putBuffer: writing to %A" dirty
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
@@ -190,8 +192,11 @@ type Editor() as this =
         ()
 
     let setBusy (v: bool) =
-        // TODO
         trace "neovim" "busy: %A" v
+        cursor_en <- not v
+        //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
+        //else this.Cursor <- Cursor(StandardCursorType.Arrow)
+        this.InvalidateVisual()
         ()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
@@ -264,7 +269,10 @@ type Editor() as this =
         | ModeChange(name, index) -> changeMode name index
         | GridResize(id, w, h) -> initBuffer h w
         | GridClear id -> clearBuffer()
-        | GridLine lines -> Array.iter putBuffer lines
+        | GridLine lines -> 
+            trace "redraw" "putBuffer: %d segments" lines.Length
+            Array.iter putBuffer lines
+            trace "redraw" "putBuffer complete %d segments" lines.Length
         | GridCursorGoto(id, row, col) -> setCursor row col
         | GridDestroy id when id = this.GridId -> () // TODO
         | GridScroll(grid, top,bot,left,right,rows,cols) -> scrollBuffer top bot left right rows cols
@@ -280,7 +288,7 @@ type Editor() as this =
         //| _ -> ()
 
     let resizeEvent = Event<IGridUI>()
-    let keyEvent = Event<KeyEventArgs>()
+    let inputEvent = Event<InputEvent>()
 
     let getDrawAttrs hlid = 
         let attrs = hi_defs.[hlid].rgb_attr
@@ -299,8 +307,12 @@ type Editor() as this =
 
         fg_brush, bg_brush, sp_brush, typeface, attrs
 
+    //  converts grid position to UI Point
     let getPoint row col =
         Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
+
+    let getPos (p: Point) =
+        int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
     do
         setFont font_family font_size
@@ -312,7 +324,7 @@ type Editor() as this =
         member this.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
         member this.Connect cmds = cmds.Add (Array.iter redraw)
         member this.Resized = resizeEvent.Publish
-        member this.KeyInput = keyEvent.Publish
+        member this.Input = inputEvent.Publish
 
     member this.OnReady _ =
         is_ready <- true
@@ -325,10 +337,37 @@ type Editor() as this =
 
     override this.OnKeyDown(e) =
         e.Handled <- true
-        keyEvent.Trigger e
+        inputEvent.Trigger <| InputEvent.Key(e.Modifiers, e.Key)
 
     override this.OnKeyUp(e) =
         e.Handled <- true
+
+    override this.OnPointerPressed(e) =
+        if mouse_en then
+            let x, y = e.GetPosition this |> getPos
+            e.Handled <- true
+            mouse_pressed <- e.MouseButton
+            inputEvent.Trigger <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
+
+    override this.OnPointerReleased(e) =
+        if mouse_en then
+            let x, y = e.GetPosition this |> getPos
+            e.Handled <- true
+            mouse_pressed <- MouseButton.None
+            inputEvent.Trigger <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
+
+    override this.OnPointerMoved(e) =
+        if mouse_en && mouse_pressed <> MouseButton.None then
+            let x, y = e.GetPosition this |> getPos
+            e.Handled <- true
+            inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
+
+    override this.OnPointerWheelChanged(e) =
+        if mouse_en then
+            let x, y = e.GetPosition this |> getPos
+            let col, row = int(e.Delta.X), int(e.Delta.Y)
+            e.Handled <- true
+            inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, col, row)
 
     override this.MeasureOverride(size) =
         trace "MeasureOverride" "%A" size
@@ -343,11 +382,8 @@ type Editor() as this =
         Size(double(gw') * glyph_size.Width, double(gh') * glyph_size.Height)
 
     override this.Render(ctx) =
-
         if (not is_ready) then this.OnReady()
-
         use transform = ctx.PushPreTransform(Matrix.CreateScale(1.0, 1.0))
-
         let drawText row col colend hlid invert =
             let topLeft                 = getPoint row col
             let bottomRight             = topLeft + getPoint 1 (colend - col) + Point(0., 0.5)
