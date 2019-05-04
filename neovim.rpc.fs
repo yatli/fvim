@@ -155,6 +155,12 @@ let private parse_uioption (x: obj) =
     | KV "termguicolors" (Bool x)        -> Some <| TermGuiColors x
     | _                                  -> Some <| UnknownOption x
 
+let private parse_default_colors (x: obj) =
+    match x with
+    | ObjArray [| (Color fg); (Color bg); (Color sp); (Color cfg); (Color cbg) |] -> 
+        Some <| DefaultColorsSet(fg,bg,sp,cfg,cbg)
+    | _ -> None
+
 let private parse_mode_info (x: obj) =
     match x with
     | :? Dictionary<obj, obj> as map ->
@@ -202,8 +208,8 @@ let private parse_redrawcmd (x: obj) =
     match x with
     | C("option_set", P(parse_uioption)options)
         -> SetOption options
-    | C1("default_colors_set", [| (Color fg); (Color bg); (Color sp); (Color cfg); (Color cbg) |]) 
-        -> DefaultColorsSet(fg,bg,sp,cfg,cbg)
+    | C("default_colors_set", P(parse_default_colors)dcolors ) 
+        -> dcolors |> Array.last
     | C("set_title", String title)                                                                                      
         -> SetTitle title
     | C("set_icon", String icon)                                                                                        

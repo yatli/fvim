@@ -11,6 +11,7 @@ open Avalonia.Markup.Xaml
 open Avalonia.Media
 open System
 open MessagePack
+open System
 
 [<Struct>]
 type private GridBufferCell =
@@ -388,23 +389,21 @@ type Editor() as this =
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
         use transform = ctx.PushPreTransform(Matrix.CreateScale(1.0, 1.0))
-        let drawText row col colend hlid invert =
-            let topLeft                 = getPoint row col
-            let bottomRight             = topLeft + getPoint 1 (colend - col) + Point(0., 0.5)
-            let region                  = Rect(topLeft, bottomRight)
-            let fg, bg, sp, typeface, _ = getDrawAttrs hlid
+        let drawText row col colend hlid =
+            let topLeft                     = getPoint row col
+            let bottomRight                 = topLeft + getPoint 1 (colend - col) + Point(0., 0.5)
+            let region                      = Rect(topLeft, bottomRight)
+            let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
+
+            if attrs.reverse then trace "redraw" "reverse"
 
             let text = FormattedText()
             text.Text <- grid_buffer.[row, col..colend-1] |> Array.map (fun x -> x.text) |> String.concat ""
             text.Typeface <- typeface
 
             //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
-            if invert then
-                ctx.FillRectangle(fg, region)
-                ctx.DrawText(bg, topLeft, text)
-            else
-                ctx.FillRectangle(bg, region)
-                ctx.DrawText(fg, topLeft, text)
+            ctx.FillRectangle(bg, region)
+            ctx.DrawText(fg, topLeft, text)
 
         let doRenderBuffer() =
             trace "RENDER!" "dirty = %s" (grid_dirty.ToString())
@@ -414,12 +413,12 @@ type Editor() as this =
                 for x = grid_dirty.col to grid_dirty.col_end-1 do
                     let myhlid = grid_buffer.[y,x].hlid 
                     if myhlid <> hlid then
-                        drawText y x0 x hlid false
+                        drawText y x0 x hlid
                         hlid <- myhlid 
                         x0 <- x
-                drawText y x0 grid_dirty.col_end hlid false
+                drawText y x0 grid_dirty.col_end hlid
             // TODO find a way to retain render results
-            //markClean()
+            // markClean()
 
         let doRenderCursor() =
             let mode  = mode_defs.[cursor_modeidx]
@@ -437,7 +436,7 @@ type Editor() as this =
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
-                drawText cursor_row cursor_col (cursor_col+1) hlid false
+                drawText cursor_row cursor_col (cursor_col+1) hlid
             | Some(CursorShape.Horizontal), Some p ->
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
                 ctx.FillRectangle(bg, region)
