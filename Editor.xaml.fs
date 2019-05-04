@@ -11,6 +11,8 @@ open Avalonia.Markup.Xaml
 open Avalonia.Media
 open System
 open MessagePack
+open Avalonia.VisualTree
+open Avalonia.Media.Imaging
 
 [<Struct>]
 type private GridBufferCell =
@@ -76,8 +78,17 @@ type Editor() as this =
     let mutable is_flushed       = false
     let mutable measured_size    = Size()
 
+    let mutable framebuffer: RenderTargetBitmap = null
+
     let resizeEvent = Event<IGridUI>()
     let inputEvent = Event<InputEvent>()
+
+    //  converts grid position to UI Point
+    let getPoint row col =
+        Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
+
+    let getPos (p: Point) =
+        int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
     let markDirty (region: GridRect) =
         if grid_dirty.height < 1 || grid_dirty.width < 1 
@@ -157,6 +168,10 @@ type Editor() as this =
     let clearBuffer () =
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         markAllDirty()
+        //let scale    = this.GetVisualRoot().RenderScaling
+        //let size     = scale * getPoint grid_size.rows grid_size.cols
+        //let pxsize   = PixelSize(int size.X, int size.Y)
+        //framebuffer  <- new RenderTargetBitmap(pxsize)
 
     let initBuffer nrow ncol =
         grid_size    <- { rows = nrow; cols = ncol }
@@ -312,13 +327,6 @@ type Editor() as this =
         let sp_brush = SolidColorBrush(sp)
 
         fg_brush, bg_brush, sp_brush, typeface, attrs
-
-    //  converts grid position to UI Point
-    let getPoint row col =
-        Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
-
-    let getPos (p: Point) =
-        int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
     do
         setFont font_family font_size
