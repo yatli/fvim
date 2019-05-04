@@ -1,6 +1,7 @@
 ﻿namespace FVim
 
 open log
+open ui
 open neovim.def
 open neovim.rpc
 
@@ -247,20 +248,20 @@ type FVimViewModel() =
             (AvaloniaSynchronizationContext.Current) 
             (msg_dispatch)
 
-        trace "ViewModel" "registering msgpack-rpc handlers..."
-
     member this.OnGridReady(gridui: IGridUI) =
         // connect the redraw commands
         gridui.Connect redraw.Publish
         gridui.Resized 
-        |> Observable.throttle (TimeSpan.FromMilliseconds 100.0)
+        |> Observable.throttle (TimeSpan.FromMilliseconds 20.0)
         |> Observable.add onGridResize
 
         gridui.Input |> onInput
 
         // the UI should be ready for events now. notify nvim about its presence
         if gridui.Id = 1 then
-            trace "ViewModel" "attaching to nvim on first grid ready signal. size = %A %A" gridui.GridWidth gridui.GridHeight
+            trace "ViewModel" 
+                  "attaching to nvim on first grid ready signal. size = %A %A" 
+                  gridui.GridWidth gridui.GridHeight
             ignore <| nvim.ui_attach gridui.GridWidth gridui.GridHeight
         else
             failwithf "grid: unsupported: %A" gridui.Id

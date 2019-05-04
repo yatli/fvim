@@ -2,16 +2,15 @@
 
 open FVim.neovim.def
 open FVim.log
+open FVim.ui
 
 open Avalonia
 open Avalonia.Controls
-open Avalonia.Data
 open Avalonia.Input
 open Avalonia.Markup.Xaml
 open Avalonia.Media
 open System
 open MessagePack
-open System
 
 [<Struct>]
 type private GridBufferCell =
@@ -52,7 +51,8 @@ type Editor() as this =
     let mutable hi_defs          = Array.zeroCreate<HighlightAttr>(256)
     let mutable mode_defs        = Array.empty<ModeInfo>
     let mutable font_family      = "Iosevka Slab"
-    let mutable font_size        = 16.0
+    //let mutable font_family      = "abcabc"
+    let mutable font_size        = 14.0
     let mutable glyph_size       = Size(1., 1.)
 
     let mutable typeface_normal  = null
@@ -60,7 +60,7 @@ type Editor() as this =
     let mutable typeface_bold    = null
 
     let mutable grid_size        = { rows = 100; cols=50 }
-    let mutable grid_buffer: GridBufferCell[,]  = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
+    let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = { row = 0; col = 0; height = 100; width = 50 }
 
     let mutable cursor_row       = 0
@@ -75,6 +75,9 @@ type Editor() as this =
     let mutable is_ready         = false
     let mutable is_flushed       = false
     let mutable measured_size    = Size()
+
+    let resizeEvent = Event<IGridUI>()
+    let inputEvent = Event<InputEvent>()
 
     let markDirty (region: GridRect) =
         if grid_dirty.height < 1 || grid_dirty.width < 1 
@@ -98,18 +101,19 @@ type Editor() as this =
         this.InvalidateVisual()
 
     let setFont name size =
-        font_family     <- name
+        let ff = ui.FindFontFace name
+        font_family     <- ff.Name
         font_size       <- size
-        typeface_normal <- Typeface(font_family, font_size, FontStyle.Normal, FontWeight.Regular)
-        typeface_italic <- Typeface(font_family, font_size, FontStyle.Italic, FontWeight.Regular)
-        typeface_bold   <- Typeface(font_family, font_size, FontStyle.Normal, FontWeight.Bold)
+        typeface_normal <- Typeface(ff, font_size, FontStyle.Normal, FontWeight.Regular)
+        typeface_italic <- Typeface(ff, font_size, FontStyle.Italic, FontWeight.Regular)
+        typeface_bold   <- Typeface(ff, font_size, FontStyle.Normal, FontWeight.Bold)
 
         let txt = FormattedText()
-        txt.Text        <- "X"
+        txt.Text        <- "@"
         txt.Typeface    <- typeface_normal
         glyph_size      <- txt.Bounds.Size
         trace "setFont" "%A %A" glyph_size glyph_size
-        this.InvalidateMeasure()
+        resizeEvent.Trigger(this)
 
     let setCursor row col =
         markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
@@ -120,7 +124,6 @@ type Editor() as this =
     let setHighlight x =
         if hi_defs.Length < x.id + 1 then
             Array.Resize(&hi_defs, x.id + 100)
-            trace "setHighlight" "set hl attr size %d" hi_defs.Length
         hi_defs.[x.id] <- x
         if x.id = 0 then
             default_fg <- x.rgb_attr.foreground.Value
@@ -152,16 +155,12 @@ type Editor() as this =
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let clearBuffer () =
-        trace "clearBuffer" "."
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         markAllDirty()
 
     let initBuffer nrow ncol =
         grid_size    <- { rows = nrow; cols = ncol }
         clearBuffer()
-
-        trace "createBuffer" "glyph size %A" glyph_size
-        trace "createBuffer" "grid buffer size %A" grid_size
 
     let putBuffer (line: GridLine) =
         let         row  = line.row
@@ -253,9 +252,18 @@ type Editor() as this =
             markAllDirty()
         ()
 
-    let setOptions (opts: UiOption[]) = 
-        trace "setOptions" "%A" opts
-        ()
+    let setOption (opt: UiOption) = 
+        trace "setOption" "%A" opt
+        match opt with
+        | Guifont font ->
+            // try to parse with font\ name:hNN
+            match font.Split(':', StringSplitOptions.RemoveEmptyEntries) with
+            | [|name; size|] when 
+                size.Length > 0 &&
+                size.[0] = 'h' -> 
+                setFont name (size.Substring(1).TrimEnd('\'','"') |> int |> float)
+            | _ -> ()
+        | _ -> ()
 
     let setMouse (en:bool) =
         mouse_en <- en
@@ -274,10 +282,7 @@ type Editor() as this =
         | ModeChange(name, index) -> changeMode name index
         | GridResize(id, w, h) -> initBuffer h w
         | GridClear id -> clearBuffer()
-        | GridLine lines -> 
-            trace "redraw" "putBuffer: %d segments" lines.Length
-            Array.iter putBuffer lines
-            trace "redraw" "putBuffer complete %d segments" lines.Length
+        | GridLine lines -> Array.iter putBuffer lines
         | GridCursorGoto(id, row, col) -> setCursor row col
         | GridDestroy id when id = this.GridId -> () // TODO
         | GridScroll(grid, top,bot,left,right,rows,cols) -> scrollBuffer top bot left right rows cols
@@ -285,15 +290,11 @@ type Editor() as this =
         | Bell -> bell false
         | VisualBell -> bell true
         | Busy is_busy -> setBusy is_busy
-        | SetOption opts -> setOptions opts
         | SetTitle title -> Application.Current.MainWindow.Title <- title
         | SetIcon icon -> trace "neovim" "icon: %s" icon // TODO
-        | SetOption opts -> setOptions opts
+        | SetOption opts -> Array.iter setOption opts
         | Mouse en -> setMouse en
         //| _ -> ()
-
-    let resizeEvent = Event<IGridUI>()
-    let inputEvent = Event<InputEvent>()
 
     let getDrawAttrs hlid = 
         let attrs = hi_defs.[hlid].rgb_attr
@@ -375,7 +376,6 @@ type Editor() as this =
             inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, col, row)
 
     override this.MeasureOverride(size) =
-        trace "MeasureOverride" "%A" size
         let gridui = this :> IGridUI
         let gw, gh = gridui.GridWidth, gridui.GridHeight
         measured_size <- size
@@ -389,36 +389,40 @@ type Editor() as this =
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
         use transform = ctx.PushPreTransform(Matrix.CreateScale(1.0, 1.0))
-        let drawText row col colend hlid =
-            let topLeft                     = getPoint row col
-            let bottomRight                 = topLeft + getPoint 1 (colend - col) + Point(0., 0.5)
-            let region                      = Rect(topLeft, bottomRight)
+            
+        let drawText row col colend hlid (str: string list) =
             let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
 
-            if attrs.reverse then trace "redraw" "reverse"
-
             let text = FormattedText()
-            text.Text <- grid_buffer.[row, col..colend-1] |> Array.map (fun x -> x.text) |> String.concat ""
+            text.Text <- str |> String.Concat
             text.Typeface <- typeface
+            text.TextAlignment <- TextAlignment.Left
+
+            let topLeft      = getPoint row col
+            let bottomRight  = topLeft + getPoint 1 (colend - col) + Point(0.5, 0.8)
+            let bg_region    = Rect(topLeft, bottomRight)
 
             //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
-            ctx.FillRectangle(bg, region)
+            ctx.FillRectangle(bg, bg_region)
             ctx.DrawText(fg, topLeft, text)
 
         let doRenderBuffer() =
-            trace "RENDER!" "dirty = %s" (grid_dirty.ToString())
             for y = grid_dirty.row to grid_dirty.row_end-1 do
-                let mutable x0   = grid_dirty.col
-                let mutable hlid = grid_buffer.[y, x0].hlid
-                for x = grid_dirty.col to grid_dirty.col_end-1 do
+                let mutable x'   = grid_dirty.col_end - 1
+                let mutable hlid = grid_buffer.[y, x'].hlid
+                let mutable str = []
+                //  in each line we do backward rendering.
+                //  the benefit is that the italic fonts won't be covered by later drawings
+                for x = grid_dirty.col_end - 1 downto grid_dirty.col do
                     let myhlid = grid_buffer.[y,x].hlid 
                     if myhlid <> hlid then
-                        drawText y x0 x hlid
+                        drawText y (x + 1) (x' + 1) hlid str
                         hlid <- myhlid 
-                        x0 <- x
-                drawText y x0 grid_dirty.col_end hlid
-            // TODO find a way to retain render results
-            // markClean()
+                        x' <- x
+                        str <- []
+                    str <- grid_buffer.[y,x].text :: str
+                drawText y grid_dirty.col (x' + 1) hlid str
+            //markClean()
 
         let doRenderCursor() =
             let mode  = mode_defs.[cursor_modeidx]
@@ -429,14 +433,12 @@ type Editor() as this =
             let fg, bg, _, _, _ = getDrawAttrs hlid
             let origin = getPoint cursor_row cursor_col
 
-            trace "doRenderCursor" "hlid=%A" hlid
-
             let cellw p = min (double(p) / 100.0 * glyph_size.Width)  5.0
             let cellh p = min (double(p) / 100.0 * glyph_size.Height) 5.0
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
-                drawText cursor_row cursor_col (cursor_col+1) hlid
+                drawText cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
             | Some(CursorShape.Horizontal), Some p ->
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
                 ctx.FillRectangle(bg, region)
