@@ -200,6 +200,10 @@ type Editor() as this =
         ()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
+        //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
+        //        scrollBuffer first specifies the SR, and offsets SRC/DST according
+        //        to the following rules:
+        //
         //    If `rows` is bigger than 0, move a rectangle in the SR up, this can
         //    happen while scrolling down.
         //>
@@ -239,11 +243,11 @@ type Editor() as this =
                 Array.Copy(grid_buffer, src * grid_size.cols + left, grid_buffer, dst * grid_size.cols + left, right - left)
 
         if rows > 0 then
-            for i = top + 1 to bot - 1 do
+            for i = top + rows to bot do
                 copy i (i-rows)
             markAllDirty()
         elif rows < 0 then
-            for i = bot - 2 downto top do
+            for i = bot + rows - 1 downto top do
                 copy i (i-rows)
             markAllDirty()
         ()
