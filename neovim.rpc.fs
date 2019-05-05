@@ -257,7 +257,7 @@ let private parse_redrawcmd (x: obj) =
     //| C("suspend", _) -> 
     //| C("update_menu", _) -> 
 
-type Process() = 
+type Process(args: string[]) = 
     let m_id = Guid.NewGuid()
     let mutable m_notify = default_notify
     let mutable m_call   = default_call
@@ -281,7 +281,8 @@ type Process() =
         | _, Some(_) -> failwith "neovim: already started"
         | _ -> ()
 
-        let psi  = ProcessStartInfo("nvim", "--embed")
+        let args = "--embed" :: List.ofArray args 
+        let psi  = ProcessStartInfo("nvim", String.Join(' ', args))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true

@@ -185,7 +185,7 @@ type Editor() as this =
         for cell in line.cells do
             hlid <- Option.defaultValue hlid cell.hl_id
             rep  <- Option.defaultValue 1 cell.repeat
-            for i = 0 to rep-1 do
+            for i = 1 to rep do
                 grid_buffer.[row, col].hlid <- hlid
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
@@ -277,6 +277,8 @@ type Editor() as this =
                 size.Length > 0 &&
                 size.[0] = 'h' -> 
                 setFont <| name.Trim('\'', '"') <| (size.Substring(1).TrimEnd('\'','"') |> int |> float)
+            | [| "+" |] -> setFont font_family (font_size + 1.0)
+            | [| "-" |] -> setFont font_family (font_size - 1.0)
             | _ -> ()
         | _ -> ()
 
@@ -290,26 +292,26 @@ type Editor() as this =
 
     let redraw(cmd: RedrawCommand) =
         match cmd with
-        | UnknownCommand x -> trace "redraw" "unknown command %A" x
-        | HighlightAttrDefine hls -> hiattrDefine hls
-        | DefaultColorsSet(fg,bg,sp,_,_) -> setDefaultColors fg bg sp
-        | ModeInfoSet(cs_en, info) -> setModeInfo cs_en info
-        | ModeChange(name, index) -> changeMode name index
-        | GridResize(id, w, h) -> initBuffer h w
-        | GridClear id -> clearBuffer()
-        | GridLine lines -> Array.iter putBuffer lines
-        | GridCursorGoto(id, row, col) -> setCursor row col
-        | GridDestroy id when id = this.GridId -> () // TODO
-        | GridScroll(grid, top,bot,left,right,rows,cols) -> scrollBuffer top bot left right rows cols
-        | Flush -> flush() 
-        | Bell -> bell false
-        | VisualBell -> bell true
-        | Busy is_busy -> setBusy is_busy
-        | SetTitle title -> Application.Current.MainWindow.Title <- title
-        | SetIcon icon -> trace "neovim" "icon: %s" icon // TODO
-        | SetOption opts -> Array.iter setOption opts
-        | Mouse en -> setMouse en
-        //| _ -> ()
+        | UnknownCommand x                                                   -> trace "redraw" "unknown command %A" x
+        | HighlightAttrDefine hls                                            -> hiattrDefine hls
+        | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
+        | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
+        | ModeChange(name, index)                                            -> changeMode name index
+        | GridResize(id, w, h) when id = this.GridId                         -> initBuffer h w
+        | GridClear id when id = this.GridId                                 -> clearBuffer()
+        | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = this.GridId then putBuffer line) lines
+        | GridCursorGoto(id, row, col) when id = this.GridId                 -> setCursor row col
+        | GridDestroy id when id = this.GridId                               -> () // TODO
+        | GridScroll(id, top,bot,left,right,rows,cols) when id = this.GridId -> scrollBuffer top bot left right rows cols
+        | Flush                                                              -> flush() 
+        | Bell                                                               -> bell false
+        | VisualBell                                                         -> bell true
+        | Busy is_busy                                                       -> setBusy is_busy
+        | SetTitle title                                                     -> Application.Current.MainWindow.Title <- title
+        | SetIcon icon                                                       -> trace "neovim" "icon: %s" icon // TODO
+        | SetOption opts                                                     -> Array.iter setOption opts
+        | Mouse en                                                           -> setMouse en
+        | _                                                                  -> ()
 
     let getDrawAttrs hlid = 
         let attrs = hi_defs.[hlid].rgb_attr

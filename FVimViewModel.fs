@@ -14,10 +14,12 @@ open Avalonia.Input
 open Avalonia.Input.Raw
 open FSharp.Control.Reactive
 
-type FVimViewModel() =
+#nowarn "0058"
+
+type FVimViewModel(args: string[]) =
     inherit ViewModelBase()
     let redraw = Event<RedrawCommand[]>()
-    let nvim = Process()
+    let nvim = Process(args)
     let requestHandlers      = Dictionary<string, obj[] -> Response Async>()
     let notificationHandlers = Dictionary<string, obj[] -> unit Async>()
 
