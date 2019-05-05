@@ -8,6 +8,15 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - HiDPI support -- try dragging it across two screens with different DPIs ;)
 - Proper font rendering -- bold, italic etc.
 
+Try these bindings:
+```vimL
+    " good old 'set guifont' compatibility
+    set guifont=Iosevka\ Slab:h16
+    " Ctrl-ScrollWheel for zooming in/out
+    nnoremap <silent> <C-ScrollWheelUp> :set guifont=+<CR>
+    nnoremap <silent> <C-ScrollWheelDown> :set guifont=-<CR>
+```
+
 ### Goals
 
 - High performance rendering, low latency
