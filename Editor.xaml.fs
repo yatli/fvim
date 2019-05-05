@@ -151,7 +151,7 @@ type Editor() as this =
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
         let xN = min xN grid_size.cols
         let x0 = max x0 0
-        let y  = min y  grid_size.rows
+        let y  = min y  grid_size.rows - 1
         let mutable x'   = xN - 1
         let mutable hlid = grid_buffer.[y, x'].hlid
         let mutable str = []
@@ -214,7 +214,7 @@ type Editor() as this =
         //glyph_size      <- Size(Math.Truncate glyph_size.Width, Math.Truncate glyph_size.Height)
 
         trace "setFont" "request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
-        printfn "setFont: request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
+        //printfn "setFont: request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
         resizeEvent.Trigger(this)
 
     let setHighlight x =
@@ -388,10 +388,11 @@ type Editor() as this =
         if rows > 0 then
             for i = top + rows to bot do
                 copy i (i-rows)
+            markDirty {row = top; height = bot - top + 1 - rows; col = left; width = right - left }
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
-        markDirty {row = top; height = bot - top + 1; col = left; width = right - left }
+            markDirty {row = top - rows; height = bot - top + 1 + rows; col = left; width = right - left }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
