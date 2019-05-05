@@ -66,7 +66,7 @@ type Editor() as this =
 
     let mutable grid_size        = { rows = 100; cols=50 }
     let mutable grid_scale       = 1.0
-    let mutable grid_linespace   = 1.0
+    let mutable grid_linespace   = 0.0
 #if USE_FRAMEBUFFER
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_dc: IDrawingContextImpl = null
@@ -132,14 +132,14 @@ type Editor() as this =
         let fontPos      = topLeft 
 
         // now, make sure the background snaps to the device pixels.
-        let rounding (x: float) =
-            Math.Truncate x
+        //let rounding (x: float) =
+        //    Math.Truncate x
         
         // mind the linespace padding.
-        let topLeft      = topLeft * grid_scale
-        let topLeft      = Point(rounding topLeft.X, rounding topLeft.Y - grid_linespace) / grid_scale
-        let bottomRight  = bottomRight * grid_scale
-        let bottomRight  = Point(rounding bottomRight.X, rounding bottomRight.Y - grid_linespace) / grid_scale
+        //let topLeft      = topLeft * grid_scale
+        //let topLeft      = Point(rounding topLeft.X, rounding topLeft.Y - grid_linespace) / grid_scale
+        //let bottomRight  = bottomRight * grid_scale
+        //let bottomRight  = Point(rounding bottomRight.X, rounding bottomRight.Y - grid_linespace) / grid_scale
         let bg_region    = Rect(topLeft , bottomRight)
 
         //printfn "drawText: %d %d -> %f %f" row col fontPos.Y fontPos.X
@@ -151,7 +151,7 @@ type Editor() as this =
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
         let xN = min xN grid_size.cols
         let x0 = max x0 0
-        let y  = min y  grid_size.rows - 1
+        let y  = (min y  grid_size.rows - 1 ) |> max 0
         let mutable x'   = xN - 1
         let mutable hlid = grid_buffer.[y, x'].hlid
         let mutable str = []
@@ -207,8 +207,8 @@ type Editor() as this =
         typeface_bold   <- Typeface(ff, font_size, FontStyle.Normal, FontWeight.Bold)
 
         let txt = FormattedText()
-        txt.Text        <- "@"
-        txt.Typeface    <- typeface_normal
+        txt.Text        <- "X"
+        txt.Typeface    <- typeface_bold
         glyph_size      <- txt.Bounds.Size
         glyph_size      <- glyph_size.WithHeight(glyph_size.Height + 2.0 * grid_linespace)
         //glyph_size      <- Size(Math.Truncate glyph_size.Width, Math.Truncate glyph_size.Height)
@@ -251,12 +251,13 @@ type Editor() as this =
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let clearBuffer () =
+        grid_scale  <- Math.Sqrt <| this.GetVisualRoot().RenderScaling
         #if USE_FRAMEBUFFER
-        grid_scale  <- this.GetVisualRoot().RenderScaling
-        let size     = grid_scale * getPoint grid_size.rows grid_size.cols
-        let pxsize   = PixelSize(int size.X, int size.Y)
+        let size     = grid_scale * grid_scale * getPoint grid_size.rows grid_size.cols
+        let pxsize   = PixelSize(int <| Math.Ceiling size.X, int <| Math.Ceiling size.Y)
         this.DestroyFramebuffer()
-        grid_fb  <- new RenderTargetBitmap(pxsize)
+        //grid_fb  <- new RenderTargetBitmap(pxsize)
+        grid_fb  <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
         grid_dc  <- grid_fb.CreateDrawingContext(null)
         #endif
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
@@ -279,7 +280,7 @@ type Editor() as this =
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
-        //trace "redraw" "putBuffer: writing to %A" dirty
+        trace "redraw" "putBuffer: writing to %A" dirty
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
@@ -376,9 +377,6 @@ type Editor() as this =
         //    `cols` is always zero in this version of Nvim, and reserved for future
         //    use. 
 
-        // editor: scroll: 2 34 0 103 -1 0
-        // height = 36;
-        // width  = 103;
         trace "editor" "scroll: %A %A %A %A %A %A" top bot left right rows cols
 
         let copy src dst =
@@ -388,11 +386,13 @@ type Editor() as this =
         if rows > 0 then
             for i = top + rows to bot do
                 copy i (i-rows)
-            markDirty {row = top; height = bot - top + 1 - rows; col = left; width = right - left }
+            //markDirty {row = top; height = bot - top + 1 - rows; col = left; width = right - left }
+            markDirty {row = top; height = bot - top + 1 - rows; col = 0; width = grid_size.cols }
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
-            markDirty {row = top - rows; height = bot - top + 1 + rows; col = left; width = right - left }
+            //markDirty {row = top - rows; height = bot - top + 1 + rows; col = left; width = right - left }
+            markDirty {row = top - rows; height = bot - top + 1 + rows; col = 0; width = grid_size.cols }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
@@ -509,15 +509,16 @@ type Editor() as this =
 
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
-        use transform = ctx.PushPreTransform(Matrix.CreateTranslation(0.0,0.0))
         let ctx = ctx.PlatformImpl
         let bounds = this.Bounds
 
         let doRenderBuffer() =
             #if USE_FRAMEBUFFER
-            let fb_region = Rect(grid_fb.Size)
-            ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, fb_region)
-            //markClean()
+            if grid_fb <> null then
+                let fb_region = Rect(grid_fb.Size)
+                let bounds = this.Bounds
+                ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, bounds)
+                //markClean()
             #else
             for y = grid_dirty.row to grid_dirty.row_end-1 do
                 drawBufferLine ctx y grid_dirty.col grid_dirty.col_end
