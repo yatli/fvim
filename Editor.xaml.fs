@@ -314,7 +314,7 @@ type Editor() as this =
             | [|name; size|] when 
                 size.Length > 0 &&
                 size.[0] = 'h' -> 
-                setFont <| name.Trim('\'', '"') <| (size.Substring(1).TrimEnd('\'','"') |> int |> float)
+                setFont <| name.Trim('\'', '"') <| (size.Substring(1).TrimEnd('\'','"') |> float)
             | [| "+" |] -> setFont font_family (font_size + 1.0)
             | [| "-" |] -> setFont font_family (font_size - 1.0)
             | _ -> ()

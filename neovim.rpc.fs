@@ -116,19 +116,22 @@ let private _c  = (|Color|_|)
 let private _s  = (|String|_|)
 let private _b  = (|Bool|_|)
 
+let private _get (map: Dictionary<obj, obj>) (key: string) (fn: obj -> 'a option) =
+    let (|OK_FN|_|) = fn
+    match map.TryGetValue key with
+    | true, OK_FN x -> Some x
+    | _ -> None
+let private _getd (map: Dictionary<obj, obj>) (key: string) (fn: obj -> 'a option) d =
+    let (|OK_FN|_|) = fn
+    match map.TryGetValue key with
+    | true, OK_FN x -> x
+    | _ -> d
+
 let private (|HighlightAttr|_|) (x: obj) =
     match x with
     | :? Dictionary<obj, obj> as map ->
-        let _get (key: string) (fn: obj -> 'a option) =
-            let (|OK_FN|_|) = fn
-            match map.TryGetValue key with
-            | true, OK_FN x -> Some x
-            | _ -> None
-        let _getd (key: string) (fn: obj -> 'a option) d =
-            let (|OK_FN|_|) = fn
-            match map.TryGetValue key with
-            | true, OK_FN x -> x
-            | _ -> d
+        let inline _get a b = _get map a b
+        let inline _getd a b = _getd map a b
         Some {
             foreground = _get "foreground" _c
             background = _get "background" _c
@@ -164,21 +167,17 @@ let private parse_default_colors (x: obj) =
 let private parse_mode_info (x: obj) =
     match x with
     | :? Dictionary<obj, obj> as map ->
-        let _get (key: string) (fn: obj -> 'a option) =
-            let (|OK_FN|_|) = fn
-            match map.TryGetValue key with
-            | true, OK_FN x -> Some x
-            | _ -> None
+        let inline _get a b = _get map a b
         Some {
-                cursor_shape    = _get  "cursor_shape"    _cs
+                cursor_shape    =  _get  "cursor_shape"    _cs
                 short_name      = (_get  "short_name" _s).Value
                 name            = (_get  "name" _s).Value
-                cell_percentage = _get  "cell_percentage" _i
-                blinkwait       = _get  "blinkwait"       _i
-                blinkon         = _get  "blinkon"         _i
-                blinkoff        = _get  "blinkoff"        _i
-                attr_id         = _get  "attr_id"         _i
-                attr_id_lm      = _get  "attr_id_lm"      _i
+                cell_percentage =  _get  "cell_percentage" _i
+                blinkwait       =  _get  "blinkwait"       _i
+                blinkon         =  _get  "blinkon"         _i
+                blinkoff        =  _get  "blinkoff"        _i
+                attr_id         =  _get  "attr_id"         _i
+                attr_id_lm      =  _get  "attr_id_lm"      _i
              }
     | _ -> None
 
@@ -206,56 +205,35 @@ let private parse_grid_line (x: obj) =
 
 let private parse_redrawcmd (x: obj) =
     match x with
-    | C("option_set", P(parse_uioption)options)
-        -> SetOption options
-    | C("default_colors_set", P(parse_default_colors)dcolors ) 
-        -> dcolors |> Array.last
-    | C("set_title", String title)                                                                                      
-        -> SetTitle title
-    | C("set_icon", String icon)                                                                                        
-        -> SetIcon icon
-    | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])
-        -> trace "neovim" "parse_mode_info: %A" (x |> MessagePackSerializer.ToJson)
-           ModeInfoSet(csen, info)
-    | C1("mode_change", [| (String m); (Integer32 i) |])                                                         
-        -> ModeChange(m, i)
-    | C("mouse_on", _)                                                                                                  
-        -> Mouse(true)
-    | C("mouse_off", _)                                                                                                 
-        -> Mouse(false)
-    | C("busy_start", _)                                                                                                
-        -> Busy(true)
-    | C("busy_stop", _)                                                                                                 
-        -> Busy(false)
-    | C("bell", _)                                                                                                      
-        -> Bell
-    | C("visual_bell", _)                                                                                               
-        -> VisualBell
-    | C("flush", _)                                                                                                     
-        -> Flush
-    | C("hl_attr_define", P(parse_hi_attr) attrs)
-        -> HighlightAttrDefine attrs
-    | C1("grid_clear", [| (Integer32 id) |])                                                                                                     
-        -> GridClear id
-    | C1("grid_resize", [| (Integer32 id); (Integer32 w); (Integer32 h) |])                                                                                                     
-        -> GridResize(id, w, h)
-    | C1("grid_destroy", [| (Integer32 id) |])                                                                                                     
-        -> GridDestroy id
-    | C1("grid_cursor_goto", [| (Integer32 grid); (Integer32 row); (Integer32 col) |])                                                                                                     
-        -> GridCursorGoto(grid, row, col)
+    | C("option_set", P(parse_uioption)options)                                            -> SetOption options
+    | C("default_colors_set", P(parse_default_colors)dcolors )                             -> dcolors |> Array.last
+    | C("set_title", String title)                                                         -> SetTitle title
+    | C("set_icon", String icon)                                                           -> SetIcon icon
+    | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])                       -> trace "neovim" "parse_mode_info: %A" (x |> MessagePackSerializer.ToJson)
+                                                                                              ModeInfoSet(csen, info)
+    | C1("mode_change", [| (String m); (Integer32 i) |])                                   -> ModeChange(m, i)
+    | C("mouse_on", _)                                                                     -> Mouse(true)
+    | C("mouse_off", _)                                                                    -> Mouse(false)
+    | C("busy_start", _)                                                                   -> Busy(true)
+    | C("busy_stop", _)                                                                    -> Busy(false)
+    | C("bell", _)                                                                         -> Bell
+    | C("visual_bell", _)                                                                  -> VisualBell
+    | C("flush", _)                                                                        -> Flush
+    | C("hl_attr_define", P(parse_hi_attr) attrs)                                          -> HighlightAttrDefine attrs
+    | C1("grid_clear", [| (Integer32 id) |])                                               -> GridClear id
+    | C1("grid_resize", [| (Integer32 id); (Integer32 w); (Integer32 h) |])                -> GridResize(id, w, h)
+    | C1("grid_destroy", [| (Integer32 id) |])                                             -> GridDestroy id
+    | C1("grid_cursor_goto", [| (Integer32 grid); (Integer32 row); (Integer32 col) |])     -> GridCursorGoto(grid, row, col)
     | C1("grid_scroll", 
          [| (Integer32 grid)
             (Integer32 top); (Integer32 bot) 
             (Integer32 left); (Integer32 right) 
             (Integer32 rows); (Integer32 cols) 
-         |])
-        -> GridScroll(grid, top, bot, left, right, rows, cols)
-    | C("grid_line", P(parse_grid_line)lines)
-        -> GridLine lines
-    | _ -> 
-        UnknownCommand x
-    //| C("suspend", _) -> 
-    //| C("update_menu", _) -> 
+         |])                                                                               -> GridScroll(grid, top, bot, left, right, rows, cols)
+    | C("grid_line", P(parse_grid_line)lines)                                              -> GridLine lines
+    | _                                                                                    -> UnknownCommand x
+    //| C("suspend", _)                                                                    -> 
+    //| C("update_menu", _)                                                                -> 
 
 type Process(args: string[]) = 
     let m_id = Guid.NewGuid()
@@ -432,3 +410,9 @@ type Process(args: string[]) =
             }
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
+
+    member __.set_var (var: string) (value: obj) =
+        m_call { method = "nvim_set_var"; parameters = mkparams2 var value }
+
+    member __.command (cmd: string) =
+        m_call { method = "nvim_command"; parameters = mkparams1 cmd }

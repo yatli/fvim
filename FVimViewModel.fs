@@ -16,6 +16,8 @@ open FSharp.Control.Reactive
 
 #nowarn "0058"
 
+open FSharp.Control.Tasks.V2
+
 type FVimViewModel(args: string[]) =
     inherit ViewModelBase()
     let redraw = Event<RedrawCommand[]>()
@@ -249,6 +251,11 @@ type FVimViewModel(args: string[]) =
         nvim.subscribe 
             (AvaloniaSynchronizationContext.Current) 
             (msg_dispatch)
+        trace "ViewModel" "commencing early initialization..."
+        task {
+            let! _ = nvim.set_var "fvim_loaded" 1
+            ()
+        } |> ignore
 
     member this.OnGridReady(gridui: IGridUI) =
         // connect the redraw commands
@@ -264,7 +271,11 @@ type FVimViewModel(args: string[]) =
             trace "ViewModel" 
                   "attaching to nvim on first grid ready signal. size = %A %A" 
                   gridui.GridWidth gridui.GridHeight
-            ignore <| nvim.ui_attach gridui.GridWidth gridui.GridHeight
+            task {
+                let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
+                let! _ = nvim.command "runtime! ginit.vim"
+                ()
+            } |> ignore
         else
             failwithf "grid: unsupported: %A" gridui.Id
 
