@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
+    <DefineConstants>USE_FRAMEBUFFER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

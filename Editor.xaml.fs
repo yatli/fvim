@@ -14,6 +14,9 @@ open MessagePack
 open Avalonia.VisualTree
 open Avalonia.Media.Imaging
 open Avalonia.Threading
+open Avalonia.Platform
+open System.Text
+open Avalonia.Utilities
 
 [<Struct>]
 type private GridBufferCell =
@@ -54,8 +57,7 @@ type Editor() as this =
     let mutable hi_defs          = Array.zeroCreate<HighlightAttr>(256)
     let mutable mode_defs        = Array.empty<ModeInfo>
     let mutable font_family      = "Iosevka Slab"
-    //let mutable font_family      = "abcabc"
-    let mutable font_size        = 14.0
+    let mutable font_size        = 16.0
     let mutable glyph_size       = Size(1., 1.)
 
     let mutable typeface_normal  = null
@@ -63,6 +65,13 @@ type Editor() as this =
     let mutable typeface_bold    = null
 
     let mutable grid_size        = { rows = 100; cols=50 }
+    let mutable grid_scale       = 1.0
+    let mutable grid_linespace   = 1.0
+#if USE_FRAMEBUFFER
+    let mutable grid_fb: RenderTargetBitmap  = null
+    let mutable grid_dc: IDrawingContextImpl = null
+#endif
+    let mutable grid_flushed     = false
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = { row = 0; col = 0; height = 100; width = 50 }
 
@@ -78,15 +87,13 @@ type Editor() as this =
 
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
+    let mutable mouse_pos        = 0,0
 
     let mutable is_ready         = false
-    let mutable is_flushed       = false
     let mutable measured_size    = Size()
 
-    let mutable framebuffer: RenderTargetBitmap = null
-
     let resizeEvent = Event<IGridUI>()
-    let inputEvent = Event<InputEvent>()
+    let inputEvent  = Event<InputEvent>()
 
     //  converts grid position to UI Point
     let getPoint row col =
@@ -94,6 +101,71 @@ type Editor() as this =
 
     let getPos (p: Point) =
         int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
+
+    let getDrawAttrs hlid = 
+        let attrs = hi_defs.[hlid].rgb_attr
+        let typeface = 
+            if   attrs.italic then typeface_italic
+            elif attrs.bold   then typeface_bold
+            else                   typeface_normal
+
+        let fg = Option.defaultValue default_fg attrs.foreground
+        let bg = Option.defaultValue default_bg attrs.background
+        let sp = Option.defaultValue default_sp attrs.special
+
+        let bg_brush = SolidColorBrush(bg)
+        let fg_brush = SolidColorBrush(fg)
+        let sp_brush = SolidColorBrush(sp)
+
+        fg_brush, bg_brush, sp_brush, typeface, attrs
+
+    let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
+        let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
+
+        let text = FormattedText()
+        text.Text <- str |> String.Concat
+        text.Typeface <- typeface
+        text.TextAlignment <- TextAlignment.Left
+
+        let topLeft      = getPoint row col
+        let bottomRight  = topLeft + getPoint 1 (colend - col)
+        let fontPos      = topLeft 
+
+        // now, make sure the background snaps to the device pixels.
+        let rounding (x: float) =
+            Math.Truncate x
+        
+        // mind the linespace padding.
+        let topLeft      = topLeft * grid_scale
+        let topLeft      = Point(rounding topLeft.X, rounding topLeft.Y - grid_linespace) / grid_scale
+        let bottomRight  = bottomRight * grid_scale
+        let bottomRight  = Point(rounding bottomRight.X, rounding bottomRight.Y - grid_linespace) / grid_scale
+        let bg_region    = Rect(topLeft , bottomRight)
+
+        //printfn "drawText: %d %d -> %f %f" row col fontPos.Y fontPos.X
+        //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
+        ctx.FillRectangle(bg, bg_region)
+        ctx.DrawText(fg, fontPos, text.PlatformImpl)
+
+    // assembles text from grid and draw onto the context.
+    let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
+        let xN = min xN grid_size.cols
+        let x0 = max x0 0
+        let y  = min y  grid_size.rows
+        let mutable x'   = xN - 1
+        let mutable hlid = grid_buffer.[y, x'].hlid
+        let mutable str = []
+        //  in each line we do backward rendering.
+        //  the benefit is that the italic fonts won't be covered by later drawings
+        for x = xN - 1 downto x0 do
+            let myhlid = grid_buffer.[y,x].hlid 
+            if myhlid <> hlid then
+                drawBuffer ctx y (x + 1) (x' + 1) hlid str
+                hlid <- myhlid 
+                x' <- x
+                str <- []
+            str <- grid_buffer.[y,x].text :: str
+        drawBuffer ctx y x0 (x' + 1) hlid str
 
     let markDirty (region: GridRect) =
         if grid_dirty.height < 1 || grid_dirty.width < 1 
@@ -107,13 +179,23 @@ type Editor() as this =
             let bottom = max grid_dirty.row_end region.row_end
             let right = max grid_dirty.col_end region.col_end
             grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
+        #if USE_FRAMEBUFFER
+        if grid_dc <> null then
+            for y = region.row to region.row_end - 1 do
+                drawBufferLine grid_dc y region.col region.col_end
+        #endif
 
     let markAllDirty () =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
+        #if USE_FRAMEBUFFER
+        if grid_dc <> null then
+            for y = 0 to grid_size.rows - 1 do
+                drawBufferLine grid_dc y 0 grid_size.cols
+        #endif
 
     let flush() = 
         trace "redraw" "flush."
-        is_flushed <- true
+        grid_flushed <- true
         this.InvalidateVisual()
 
     let setFont name size =
@@ -128,7 +210,11 @@ type Editor() as this =
         txt.Text        <- "@"
         txt.Typeface    <- typeface_normal
         glyph_size      <- txt.Bounds.Size
+        glyph_size      <- glyph_size.WithHeight(glyph_size.Height + 2.0 * grid_linespace)
+        //glyph_size      <- Size(Math.Truncate glyph_size.Width, Math.Truncate glyph_size.Height)
+
         trace "setFont" "request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
+        printfn "setFont: request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
         resizeEvent.Trigger(this)
 
     let setHighlight x =
@@ -161,16 +247,20 @@ type Editor() as this =
         flush()
         
     let markClean () =
-        is_flushed <- false
+        grid_flushed <- false
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let clearBuffer () =
+        #if USE_FRAMEBUFFER
+        grid_scale  <- this.GetVisualRoot().RenderScaling
+        let size     = grid_scale * getPoint grid_size.rows grid_size.cols
+        let pxsize   = PixelSize(int size.X, int size.Y)
+        this.DestroyFramebuffer()
+        grid_fb  <- new RenderTargetBitmap(pxsize)
+        grid_dc  <- grid_fb.CreateDrawingContext(null)
+        #endif
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         markAllDirty()
-        //let scale    = this.GetVisualRoot().RenderScaling
-        //let size     = scale * getPoint grid_size.rows grid_size.cols
-        //let pxsize   = PixelSize(int size.X, int size.Y)
-        //framebuffer  <- new RenderTargetBitmap(pxsize)
 
     let initBuffer nrow ncol =
         grid_size    <- { rows = nrow; cols = ncol }
@@ -298,12 +388,10 @@ type Editor() as this =
         if rows > 0 then
             for i = top + rows to bot do
                 copy i (i-rows)
-            markAllDirty()
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
-            markAllDirty()
-        ()
+        markDirty {row = top; height = bot - top + 1; col = left; width = right - left }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
@@ -338,7 +426,7 @@ type Editor() as this =
         | GridClear id when id = this.GridId                                 -> clearBuffer()
         | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = this.GridId then putBuffer line) lines
         | GridCursorGoto(id, row, col) when id = this.GridId                 -> setCursor row col
-        | GridDestroy id when id = this.GridId                               -> this.Destroy()
+        | GridDestroy id when id = this.GridId                               -> this.DestroyFramebuffer()
         | GridScroll(id, top,bot,left,right,rows,cols) when id = this.GridId -> scrollBuffer top bot left right rows cols
         | Flush                                                              -> flush() 
         | Bell                                                               -> bell false
@@ -349,23 +437,6 @@ type Editor() as this =
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
         | _                                                                  -> ()
-
-    let getDrawAttrs hlid = 
-        let attrs = hi_defs.[hlid].rgb_attr
-        let typeface = 
-            if   attrs.italic then typeface_italic
-            elif attrs.bold   then typeface_bold
-            else                   typeface_normal
-
-        let fg = Option.defaultValue default_fg attrs.foreground
-        let bg = Option.defaultValue default_bg attrs.background
-        let sp = Option.defaultValue default_sp attrs.special
-
-        let bg_brush = SolidColorBrush(bg)
-        let fg_brush = SolidColorBrush(fg)
-        let sp_brush = SolidColorBrush(sp)
-
-        fg_brush, bg_brush, sp_brush, typeface, attrs
 
     do
         setFont font_family font_size
@@ -413,7 +484,9 @@ type Editor() as this =
         if mouse_en && mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition this |> getPos
             e.Handled <- true
-            inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
+            if (x,y) <> mouse_pos then
+                mouse_pos <- x,y
+                inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
 
     override this.OnPointerWheelChanged(e) =
         if mouse_en then
@@ -435,41 +508,19 @@ type Editor() as this =
 
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
-        use transform = ctx.PushPreTransform(Matrix.CreateScale(1.0, 1.0))
-            
-        let drawText row col colend hlid (str: string list) =
-            let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
-
-            let text = FormattedText()
-            text.Text <- str |> String.Concat
-            text.Typeface <- typeface
-            text.TextAlignment <- TextAlignment.Left
-
-            let topLeft      = getPoint row col
-            let bottomRight  = topLeft + getPoint 1 (colend - col) + Point(0.0, 0.8)
-            let bg_region    = Rect(topLeft, bottomRight)
-
-            //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
-            ctx.FillRectangle(bg, bg_region)
-            ctx.DrawText(fg, topLeft, text)
+        use transform = ctx.PushPreTransform(Matrix.CreateTranslation(0.0,0.0))
+        let ctx = ctx.PlatformImpl
+        let bounds = this.Bounds
 
         let doRenderBuffer() =
-            for y = grid_dirty.row to grid_dirty.row_end-1 do
-                let mutable x'   = grid_dirty.col_end - 1
-                let mutable hlid = grid_buffer.[y, x'].hlid
-                let mutable str = []
-                //  in each line we do backward rendering.
-                //  the benefit is that the italic fonts won't be covered by later drawings
-                for x = grid_dirty.col_end - 1 downto grid_dirty.col do
-                    let myhlid = grid_buffer.[y,x].hlid 
-                    if myhlid <> hlid then
-                        drawText y (x + 1) (x' + 1) hlid str
-                        hlid <- myhlid 
-                        x' <- x
-                        str <- []
-                    str <- grid_buffer.[y,x].text :: str
-                drawText y grid_dirty.col (x' + 1) hlid str
+            #if USE_FRAMEBUFFER
+            let fb_region = Rect(grid_fb.Size)
+            ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, fb_region)
             //markClean()
+            #else
+            for y = grid_dirty.row to grid_dirty.row_end-1 do
+                drawBufferLine ctx y grid_dirty.col grid_dirty.col_end
+            #endif
 
         let doRenderCursor() =
             let mode  = mode_defs.[cursor_modeidx]
@@ -484,7 +535,7 @@ type Editor() as this =
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
-                drawText cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
+                drawBuffer ctx cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
             | Some(CursorShape.Horizontal), Some p ->
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
                 ctx.FillRectangle(bg, region)
@@ -495,13 +546,19 @@ type Editor() as this =
 
 
         // do not actually draw the buffer unless there's a pending flush command
-        if is_flushed then doRenderBuffer()
+        if grid_flushed then doRenderBuffer()
         if cursor_en && cursor_show then doRenderCursor()
     
-    member this.Destroy() =
-        if framebuffer <> null then
-            framebuffer.Dispose()
-            framebuffer <- null
+    member this.DestroyFramebuffer() =
+        #if USE_FRAMEBUFFER
+        if grid_fb <> null then
+            grid_dc.Dispose()
+            grid_dc <- null
+            grid_fb.Dispose()
+            grid_fb <- null
+        #else
+        ()
+        #endif
 
     member val GridId: int = 0 with get, set
 
