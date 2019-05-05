@@ -1,4 +1,5 @@
-# FVim<img src="https://github.com/yatli/fvim/raw/master/Assets/fvim.png" width="40" height="40">
+# FVim<img src="https://github.com/yatli/fvim/raw/master/Assets/fvim.png" width="40" height="40"> [![Build status](https://ci.appveyor.com/api/projects/status/7uat5poa5bksqa89?svg=true)](https://ci.appveyor.com/project/yatli/fvim)
+
 
 Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Avalonia](http://avaloniaui.net/).
 
