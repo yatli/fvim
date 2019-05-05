@@ -13,6 +13,7 @@ open System
 open MessagePack
 open Avalonia.VisualTree
 open Avalonia.Media.Imaging
+open Avalonia.Threading
 
 [<Struct>]
 type private GridBufferCell =
@@ -68,8 +69,12 @@ type Editor() as this =
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
     let mutable cursor_en        = false
-    let mutable cursor_blinkshow = true
+    let mutable cursor_show      = false
+    let mutable cursor_blinkoff  = 0
+    let mutable cursor_blinkon   = 0
+    let mutable cursor_blinkwait = 0
     let mutable cursor_modeidx   = -1
+    let mutable cursor_timer: IDisposable = null
 
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
@@ -125,12 +130,6 @@ type Editor() as this =
         glyph_size      <- txt.Bounds.Size
         trace "setFont" "request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
         resizeEvent.Trigger(this)
-
-    let setCursor row col =
-        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
-        cursor_row <- row
-        cursor_col <- col
-        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
 
     let setHighlight x =
         if hi_defs.Length < x.id + 1 then
@@ -197,8 +196,48 @@ type Editor() as this =
         mode_defs <- info
         cursor_en <- cs_en
 
+    let showCursor(show) =
+        cursor_show <- show
+        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
+        this.InvalidateVisual()
+
+    let cursorTimerRun action time =
+        if cursor_timer <> null then
+            cursor_timer.Dispose()
+            cursor_timer <- null
+        if time > 0 then
+            cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time))
+
+    let rec blinkon() =
+        showCursor true
+        cursorTimerRun blinkoff cursor_blinkon
+    and blinkoff() = 
+        showCursor false
+        cursorTimerRun blinkon cursor_blinkoff
+
+    let setCursor row col =
+        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
+        cursor_row <- row
+        cursor_col <- col
+        showCursor true
+        cursorTimerRun blinkon cursor_blinkwait
+
+    let setBlink on off wait =
+
+        cursor_blinkon   <- on
+        cursor_blinkoff  <- off
+        cursor_blinkwait <- wait
+        cursor_show      <- true
+
+        trace "blink" "on=%d off=%d wait=%d" on off wait
+        setCursor cursor_row cursor_col
+
     let changeMode (name: string) (index: int) = 
         cursor_modeidx <- index
+        match mode_defs.[index] with
+        | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
+            when on > 0 && off > 0 && wait > 0 -> setBlink on off wait
+        | _ -> setBlink 0 0 0
         markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
 
     let bell (visual: bool) =
@@ -212,7 +251,6 @@ type Editor() as this =
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
         this.InvalidateVisual()
-        ()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -288,7 +326,6 @@ type Editor() as this =
     let hiattrDefine (hls: HighlightAttr[]) =
         Array.iter setHighlight hls
         flush()
-        
 
     let redraw(cmd: RedrawCommand) =
         match cmd with
@@ -301,7 +338,7 @@ type Editor() as this =
         | GridClear id when id = this.GridId                                 -> clearBuffer()
         | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = this.GridId then putBuffer line) lines
         | GridCursorGoto(id, row, col) when id = this.GridId                 -> setCursor row col
-        | GridDestroy id when id = this.GridId                               -> () // TODO
+        | GridDestroy id when id = this.GridId                               -> this.Destroy()
         | GridScroll(id, top,bot,left,right,rows,cols) when id = this.GridId -> scrollBuffer top bot left right rows cols
         | Flush                                                              -> flush() 
         | Bell                                                               -> bell false
@@ -409,7 +446,7 @@ type Editor() as this =
             text.TextAlignment <- TextAlignment.Left
 
             let topLeft      = getPoint row col
-            let bottomRight  = topLeft + getPoint 1 (colend - col) + Point(0.5, 0.8)
+            let bottomRight  = topLeft + getPoint 1 (colend - col) + Point(0.0, 0.8)
             let bg_region    = Rect(topLeft, bottomRight)
 
             //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
@@ -437,10 +474,9 @@ type Editor() as this =
         let doRenderCursor() =
             let mode  = mode_defs.[cursor_modeidx]
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
-            let hlid' = Option.defaultValue hlid mode.attr_id
+            let hlid  = Option.defaultValue hlid mode.attr_id
 
-            let hlid = if cursor_blinkshow then hlid' else hlid
-            let fg, bg, _, _, _ = getDrawAttrs hlid
+            let _, bg, _, _, _ = getDrawAttrs hlid
             let origin = getPoint cursor_row cursor_col
 
             let cellw p = min (double(p) / 100.0 * glyph_size.Width)  5.0
@@ -460,7 +496,12 @@ type Editor() as this =
 
         // do not actually draw the buffer unless there's a pending flush command
         if is_flushed then doRenderBuffer()
-        if cursor_en then doRenderCursor()
+        if cursor_en && cursor_show then doRenderCursor()
+    
+    member this.Destroy() =
+        if framebuffer <> null then
+            framebuffer.Dispose()
+            framebuffer <- null
 
     member val GridId: int = 0 with get, set
 
