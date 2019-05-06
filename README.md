@@ -15,12 +15,13 @@ Try these bindings:
     " Ctrl-ScrollWheel for zooming in/out
     nnoremap <silent> <C-ScrollWheelUp> :set guifont=+<CR>
     nnoremap <silent> <C-ScrollWheelDown> :set guifont=-<CR>
+    nnoremap <A-CR> :call rpcnotify(1, 'ToggleFullScreen', 1)<CR>
 ```
 
 ### Goals
 
-- High performance rendering, low latency
-- Multi-grid <=> Multi-window mapping
+- High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
+- Multi-grid <=> Multi-window mapping (multiple windows in the OS sense, not Vim "frames")
 - Extend with XAML -- UI widgets as NeoVim plugins
 
 ### Non-Goals
