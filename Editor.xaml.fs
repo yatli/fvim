@@ -17,6 +17,7 @@ open Avalonia.Threading
 open Avalonia.Platform
 open System.Text
 open Avalonia.Utilities
+open Avalonia.Skia
 open FSharp.Control.Reactive
 
 [<Struct>]
@@ -147,6 +148,7 @@ type Editor() as this =
         Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
+
         let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
 
         let topLeft      = getPoint row col |> rounding
