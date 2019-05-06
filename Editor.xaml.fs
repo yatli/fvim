@@ -351,12 +351,12 @@ type Editor() as this =
         grid_scale  <- this.GetVisualRoot().RenderScaling
         trace "redraw" "RenderScaling is %f" grid_scale
         #if USE_FRAMEBUFFER
-        let size     = grid_scale * getPoint grid_size.rows grid_size.cols
+        let size     = grid_scale * grid_scale * getPoint grid_size.rows grid_size.cols
         let scale_rt = sqrt grid_scale
         let pxsize   = PixelSize(int <| Math.Ceiling size.X, int <| Math.Ceiling size.Y)
         this.DestroyFramebuffer()
 
-        grid_fb  <- new RenderTargetBitmap(pxsize, Vector(96.0 * scale_rt, 96.0 * scale_rt))
+        grid_fb  <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
         grid_dc  <- grid_fb.CreateDrawingContext(null)
 
         #endif
