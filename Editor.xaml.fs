@@ -119,39 +119,56 @@ type Editor() as this =
 
         fg_brush, bg_brush, sp_brush, typeface, attrs
 
+    //-------------------------------------------------------------------------
+    //           = The rounding error of the rendering system: =
+    //
+    // Suppose our grid is arranged uniformly with the height of the font:
+    //
+    //   Y_line = row * H_font
+    //
+    // Here, row is an integer and H_font float. We then have line Y positions
+    // as a sequence of incrementing floats: [ 0 * H_font; 1 * H_font; ... ]
+    // Suppose the whole grid is rendered in one pass, the lines will be drawn
+    // with coordinates:
+    //
+    //   [ {0Hf, 1Hf}; {1Hf, 2Hf}; {2Hf, 3Hf} ... ]
+    //
+    // Clearly this is overlapping. In a pixel-based coordinate system we simply
+    // reduce the line height by one pixel. However now we are in a float co-
+    // ordinate system.. The overlapped rectangles are drawn differently -- not
+    // only that they don't overlap, they leave whitespace gaps in between!
+    // To compensate, we have to manually do the rounding to snap the pixels...
+    //-------------------------------------------------------------------------
+    // like this:
+    let rounding (pt: Point) =
+        let px = pt * grid_scale
+        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
+
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
         let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
 
-        let text = FormattedText()
-        text.Text <- str |> String.Concat
-        text.Typeface <- typeface
-        text.TextAlignment <- TextAlignment.Left
-
-        let topLeft      = getPoint row col
-        let bottomRight  = topLeft + getPoint 1 (colend - col)
-        let fontPos      = topLeft 
-
-        // now, make sure the background snaps to the device pixels.
-        //let rounding (x: float) =
-        //    Math.Truncate x
-        
-        // mind the linespace padding.
-        //let topLeft      = topLeft * grid_scale
-        //let topLeft      = Point(rounding topLeft.X, rounding topLeft.Y - grid_linespace) / grid_scale
-        //let bottomRight  = bottomRight * grid_scale
-        //let bottomRight  = Point(rounding bottomRight.X, rounding bottomRight.Y - grid_linespace) / grid_scale
+        let topLeft      = getPoint row col |> rounding
+        let bottomRight  = (topLeft + getPoint 1 (colend - col)) |> rounding
         let bg_region    = Rect(topLeft , bottomRight)
 
         //printfn "drawText: %d %d -> %f %f" row col fontPos.Y fontPos.X
         //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
         ctx.FillRectangle(bg, bg_region)
-        ctx.DrawText(fg, fontPos, text.PlatformImpl)
+
+        let text = FormattedText()
+        text.Typeface <- typeface
+        text.TextAlignment <- TextAlignment.Left
+        str |> List.iteri (fun i t ->
+            let fontPos = rounding(topLeft + getPoint 0 i)
+            text.Text <- t
+            ctx.DrawText(fg, fontPos, text.PlatformImpl)
+        )
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
         let xN = min xN grid_size.cols
         let x0 = max x0 0
-        let y  = (min y  grid_size.rows - 1 ) |> max 0
+        let y  = (min y  (grid_size.rows - 1) ) |> max 0
         let mutable x'   = xN - 1
         let mutable hlid = grid_buffer.[y, x'].hlid
         let mutable str = []
@@ -199,6 +216,7 @@ type Editor() as this =
         this.InvalidateVisual()
 
     let setFont name size =
+        let size = max size 1.0
         let ff = ui.FindFontFace name
         font_family     <- ff.Name
         font_size       <- size
@@ -207,14 +225,12 @@ type Editor() as this =
         typeface_bold   <- Typeface(ff, font_size, FontStyle.Normal, FontWeight.Bold)
 
         let txt = FormattedText()
-        txt.Text        <- "X"
+        txt.Text        <- "@"
         txt.Typeface    <- typeface_bold
         glyph_size      <- txt.Bounds.Size
-        glyph_size      <- glyph_size.WithHeight(glyph_size.Height + 2.0 * grid_linespace)
-        //glyph_size      <- Size(Math.Truncate glyph_size.Width, Math.Truncate glyph_size.Height)
+        glyph_size      <- glyph_size.WithHeight(glyph_size.Height + grid_linespace)
 
         trace "setFont" "request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
-        //printfn "setFont: request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
         resizeEvent.Trigger(this)
 
     let setHighlight x =
@@ -251,12 +267,12 @@ type Editor() as this =
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let clearBuffer () =
-        grid_scale  <- Math.Sqrt <| this.GetVisualRoot().RenderScaling
+        grid_scale  <- this.GetVisualRoot().RenderScaling
+        trace "redraw" "RenderScaling is %f" grid_scale
         #if USE_FRAMEBUFFER
         let size     = grid_scale * grid_scale * getPoint grid_size.rows grid_size.cols
         let pxsize   = PixelSize(int <| Math.Ceiling size.X, int <| Math.Ceiling size.Y)
         this.DestroyFramebuffer()
-        //grid_fb  <- new RenderTargetBitmap(pxsize)
         grid_fb  <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
         grid_dc  <- grid_fb.CreateDrawingContext(null)
         #endif
@@ -280,7 +296,7 @@ type Editor() as this =
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
-        trace "redraw" "putBuffer: writing to %A" dirty
+        //trace "redraw" "putBuffer: writing to %A" dirty
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
@@ -386,13 +402,11 @@ type Editor() as this =
         if rows > 0 then
             for i = top + rows to bot do
                 copy i (i-rows)
-            //markDirty {row = top; height = bot - top + 1 - rows; col = left; width = right - left }
-            markDirty {row = top; height = bot - top + 1 - rows; col = 0; width = grid_size.cols }
+                markDirty {row = i - rows; height = 1; col = left; width = right - left }
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
-            //markDirty {row = top - rows; height = bot - top + 1 + rows; col = left; width = right - left }
-            markDirty {row = top - rows; height = bot - top + 1 + rows; col = 0; width = grid_size.cols }
+                markDirty {row = i - rows; height = 1; col = left; width = right - left }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
@@ -510,19 +524,25 @@ type Editor() as this =
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
         let ctx = ctx.PlatformImpl
-        let bounds = this.Bounds
 
         let doRenderBuffer() =
             #if USE_FRAMEBUFFER
             if grid_fb <> null then
                 let fb_region = Rect(grid_fb.Size)
-                let bounds = this.Bounds
+                let screen_size = getPoint grid_size.rows grid_size.cols
+                let bounds = Rect(0.0, 0.0, screen_size.X, screen_size.Y)
                 ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, bounds)
-                //markClean()
             #else
             for y = grid_dirty.row to grid_dirty.row_end-1 do
                 drawBufferLine ctx y grid_dirty.col grid_dirty.col_end
             #endif
+            //markClean()
+
+        #if USE_FRAMEBUFFER
+        let ctx' = grid_dc
+        #else
+        let ctx' = ctx
+        #endif
 
         let doRenderCursor() =
             let mode  = mode_defs.[cursor_modeidx]
@@ -530,20 +550,20 @@ type Editor() as this =
             let hlid  = Option.defaultValue hlid mode.attr_id
 
             let _, bg, _, _, _ = getDrawAttrs hlid
-            let origin = getPoint cursor_row cursor_col
+            let origin = getPoint cursor_row cursor_col |> rounding
 
-            let cellw p = min (double(p) / 100.0 * glyph_size.Width)  5.0
-            let cellh p = min (double(p) / 100.0 * glyph_size.Height) 5.0
+            let cellw p = min (double(p) / 100.0 * glyph_size.Width)  1.0
+            let cellh p = min (double(p) / 100.0 * glyph_size.Height) 1.0
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
-                drawBuffer ctx cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
+                drawBuffer ctx' cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
             | Some(CursorShape.Horizontal), Some p ->
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
-                ctx.FillRectangle(bg, region)
+                ctx'.FillRectangle(bg, region)
             | Some(CursorShape.Vertical), Some p ->
                 let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, 0.0))
-                ctx.FillRectangle(bg, region)
+                ctx'.FillRectangle(bg, region)
             | _ -> ()
 
 
