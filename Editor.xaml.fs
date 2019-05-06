@@ -158,11 +158,34 @@ type Editor() as this =
         let text = FormattedText()
         text.Typeface <- typeface
         text.TextAlignment <- TextAlignment.Left
-        str |> List.iteri (fun i t ->
-            let fontPos = rounding(topLeft + getPoint 0 i)
-            text.Text <- t
-            ctx.DrawText(fg, fontPos, text.PlatformImpl)
+
+        let sb = StringBuilder()
+
+        let _space = Seq.forall Char.IsWhiteSpace
+        let _span  = Seq.forall Char.IsLetterOrDigit
+        let (|SPAN|DRAW|SKIP|) (x: string) =
+            if false then SPAN
+            elif _space x then SKIP
+            else DRAW
+
+        let mutable i0 = 0
+
+        let _draw () =
+            let str = sb.ToString()
+            ignore <| sb.Clear()
+            if str <> String.Empty then
+                let fontPos = rounding(topLeft + getPoint 0 i0)
+                text.Text <- str
+                ctx.DrawText(fg, fontPos, text.PlatformImpl)
+
+        str |> List.iteri (fun i s ->
+            match s with
+            | SPAN -> ignore <| sb.Append s
+            | DRAW -> _draw() ; i0 <- i; ignore <| sb.Append(s); _draw(); i0 <- i + 1
+            | SKIP -> _draw() ; i0 <- i + 1; 
         )
+        _draw()
+
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
