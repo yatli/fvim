@@ -361,6 +361,11 @@ type Editor() as this =
 
         #endif
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
+        // paint the whole framebuffer with default background color
+        let canvas = (grid_dc :?> DrawingContextImpl).Canvas
+        use paint = new SKPaint()
+        paint.Color <- default_bg.ToSKColor()
+        canvas.DrawRect(0.0f, 0.0f, single size.X, single size.Y, paint)
         markAllDirty()
 
     let initBuffer nrow ncol =
@@ -623,7 +628,7 @@ type Editor() as this =
         let gw', gh' = gridui.GridWidth, gridui.GridHeight
         if gw <> gw' || gh <> gh' then 
             resizeEvent.Trigger(this)
-        Size(double(gw') * glyph_size.Width, double(gh') * glyph_size.Height)
+        size
 
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
@@ -640,6 +645,13 @@ type Editor() as this =
             for y = grid_dirty.row to grid_dirty.row_end-1 do
                 drawBufferLine ctx y grid_dirty.col grid_dirty.col_end
             #endif
+            // draw the uncovered parts with default background
+            let x1, y1 = float grid_size.cols * glyph_size.Width, float grid_size.rows * glyph_size.Height
+            let x2, y2 = this.Bounds.Width, this.Bounds.Height
+            let bg = SolidColorBrush(default_bg)
+            ctx.FillRectangle(bg, Rect(0.0, y1, x2, y2))
+            ctx.FillRectangle(bg, Rect(x1, 0.0, x2, y2))
+
             //markClean()
 
         #if USE_FRAMEBUFFER
