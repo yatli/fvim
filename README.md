@@ -7,6 +7,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 
 - HiDPI support -- try dragging it across two screens with different DPIs ;)
 - Proper font rendering -- bold, italic etc.
+- Proper cursor rendering -- color, blink etc.
 
 Try these bindings:
 ```vimL
