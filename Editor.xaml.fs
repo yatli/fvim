@@ -17,6 +17,7 @@ open Avalonia.Threading
 open Avalonia.Platform
 open System.Text
 open Avalonia.Utilities
+open FSharp.Control.Reactive
 
 [<Struct>]
 type private GridBufferCell =
@@ -67,6 +68,7 @@ type Editor() as this =
     let mutable grid_size        = { rows = 100; cols=50 }
     let mutable grid_scale       = 1.0
     let mutable grid_linespace   = 0.0
+    let mutable grid_fullscreen  = false
 #if USE_FRAMEBUFFER
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_dc: IDrawingContextImpl = null
@@ -476,6 +478,20 @@ type Editor() as this =
         | Mouse en                                                           -> setMouse en
         | _                                                                  -> ()
 
+    let toggleFullScreen(gridid: int) =
+        if gridid = this.GridId then
+            let win = this.GetVisualRoot() :?> Window
+            if grid_fullscreen then
+                win.WindowState <- WindowState.Normal
+                win.HasSystemDecorations <- true
+                win.Topmost <- false
+                grid_fullscreen <- false
+            else
+                win.HasSystemDecorations <- false
+                win.WindowState <- WindowState.Maximized
+                win.Topmost <- true
+                grid_fullscreen <- true
+
     do
         setFont font_family font_size
         AvaloniaXamlLoader.Load(this)
@@ -484,7 +500,11 @@ type Editor() as this =
         member this.Id = this.GridId
         member this.GridHeight = int( measured_size.Height / glyph_size.Height )
         member this.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
-        member this.Connect cmds = cmds.Add (Array.iter redraw)
+        member this.Connect redraw_ev fullscreen_ev = 
+            redraw_ev.Add (Array.iter redraw)
+            fullscreen_ev
+            |> Observable.observeOnContext (AvaloniaSynchronizationContext.Current)
+            |> Observable.add toggleFullScreen
         member this.Resized = resizeEvent.Publish
         member this.Input = inputEvent.Publish
 

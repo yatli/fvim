@@ -31,24 +31,24 @@ let mkparams2 (t1: 'T1) (t2: 'T2)                      = [| box t1; box t2 |]
 let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)            = [| box t1; box t2; box t3 |]
 let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)  = [| box t1; box t2; box t3; box t4|]
 
-let private (|ObjArray|_|) (x:obj) =
+let (|ObjArray|_|) (x:obj) =
     match x with
     | :? (obj[]) as x    -> Some x
     | :? (obj list) as x -> Some(Array.ofList x)
     | :? (obj seq) as x  -> Some(Array.ofSeq x)
     | _                  -> None
 
-let private (|Bool|_|) (x:obj) =
+let (|Bool|_|) (x:obj) =
     match x with
     | :? bool as x       -> Some x
     | _ -> None
 
-let private (|String|_|) (x:obj) =
+let (|String|_|) (x:obj) =
     match x with
     | :? string as x     -> Some x
     | _ -> None
 
-let private (|Integer32|_|) (x:obj) =
+let (|Integer32|_|) (x:obj) =
     match x with
     | :? int32  as x     -> Some(int32 x)
     | :? int16  as x     -> Some(int32 x)
@@ -58,7 +58,7 @@ let private (|Integer32|_|) (x:obj) =
     | :? uint8  as x     -> Some(int32 x)
     | _ -> None
 
-let private (|C|_|) (x:obj) =
+let (|C|_|) (x:obj) =
     match x with
     | ObjArray x -> 
         match x.[0] with
@@ -66,19 +66,19 @@ let private (|C|_|) (x:obj) =
         | _ -> None
     | _ -> None
 
-let private (|C1|_|) (x:obj) =
+let (|C1|_|) (x:obj) =
     match x with
     | ObjArray [| (String cmd); ObjArray ps |] -> Some(cmd, ps)
     | _ -> None
 
-let private (|P|_|) (parser: obj -> 'a option) (xs:obj) =
+let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
     match xs with
     | :? (obj seq) as xs ->
         let result = Seq.choose parser xs |> Array.ofSeq
         Some result
     | _ -> None
 
-let private (|KV|_|) (k: string) (x: obj) =
+let (|KV|_|) (k: string) (x: obj) =
     match x with
     | ObjArray [| (String key); x |] when key = k -> Some x
     | _ -> None

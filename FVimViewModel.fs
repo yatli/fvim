@@ -20,7 +20,8 @@ open FSharp.Control.Tasks.V2
 
 type FVimViewModel(args: string[]) =
     inherit ViewModelBase()
-    let redraw = Event<RedrawCommand[]>()
+    let redraw     = Event<RedrawCommand[]>()
+    let fullscreen = Event<int>()
     let nvim = Process(args)
     let requestHandlers      = Dictionary<string, obj[] -> Response Async>()
     let notificationHandlers = Dictionary<string, obj[] -> unit Async>()
@@ -31,12 +32,18 @@ type FVimViewModel(args: string[]) =
     let msg_dispatch =
         function
         | Request(id, req, reply) -> 
-           Async.Start(async { 
-               let! rsp = requestHandlers.[req.method](req.parameters)
-               do! reply id rsp
-           })
+           match requestHandlers.TryGetValue req.method with
+           | true, method ->
+               Async.Start(async { 
+                   let! rsp = method(req.parameters)
+                   do! reply id rsp
+               })
+           | _ -> error "rpc" "request handler [%s] not found" req.method
+
         | Notification req -> 
-           Async.Start(notificationHandlers.[req.method](req.parameters))
+           match notificationHandlers.TryGetValue req.method with
+           | true, method -> Async.Start(method(req.parameters))
+           | _ -> error "rpc" "notification handler [%s] not found" req.method
         | Redraw cmd -> redraw.Trigger cmd
         | Exit -> Avalonia.Application.Current.Exit()
         | _ -> ()
@@ -251,6 +258,15 @@ type FVimViewModel(args: string[]) =
         nvim.subscribe 
             (AvaloniaSynchronizationContext.Current) 
             (msg_dispatch)
+        trace "ViewModel" "registering rpc handlers"
+        notify "ToggleFullScreen" (fun ps -> async {
+            match ps with
+            | [| Integer32(gridid) |] ->
+                trace "ViewModel" "ToggleFullScreen: %A" gridid
+                fullscreen.Trigger gridid
+            | _ -> ()
+        })
+
         trace "ViewModel" "commencing early initialization..."
         task {
             let! _ = nvim.set_var "fvim_loaded" 1
@@ -259,7 +275,7 @@ type FVimViewModel(args: string[]) =
 
     member this.OnGridReady(gridui: IGridUI) =
         // connect the redraw commands
-        gridui.Connect redraw.Publish
+        gridui.Connect redraw.Publish fullscreen.Publish
         gridui.Resized 
         |> Observable.throttle (TimeSpan.FromMilliseconds 20.0)
         |> Observable.add onGridResize
@@ -279,8 +295,8 @@ type FVimViewModel(args: string[]) =
         else
             failwithf "grid: unsupported: %A" gridui.Id
 
-    member val WindowWidth:  int         = 824 with get,set
-    member val WindowHeight: int         = 721 with get,set
+    member val WindowWidth:  int = 824 with get,set
+    member val WindowHeight: int = 721 with get,set
 
     member this.OnTerminated (args) =
         trace "ViewModel" "terminating nvim..."

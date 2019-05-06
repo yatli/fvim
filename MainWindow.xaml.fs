@@ -17,3 +17,4 @@ type MainWindow(datactx: FVimViewModel) as this =
 
         AvaloniaXamlLoader.Load this
         Avalonia.DevToolsExtensions.AttachDevTools(this);
+

@@ -27,7 +27,7 @@ type InputEvent =
 
 type IGridUI =
     abstract Id: int
-    abstract Connect: IEvent<RedrawCommand[]> -> unit
+    abstract Connect: IEvent<RedrawCommand[]> -> IEvent<int> -> unit
     abstract GridHeight: int
     abstract GridWidth: int
     abstract Resized: IEvent<IGridUI>
