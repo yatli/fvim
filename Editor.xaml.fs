@@ -19,6 +19,10 @@ open System.Text
 open Avalonia.Utilities
 open Avalonia.Skia
 open FSharp.Control.Reactive
+open Avalonia.Rendering
+open SkiaSharp
+open Avalonia.Native.Interop
+
 
 [<Struct>]
 type private GridBufferCell =
@@ -60,7 +64,7 @@ type Editor() as this =
     let mutable mode_defs        = Array.empty<ModeInfo>
     let mutable font_family      = "Iosevka Slab"
     let mutable font_size        = 16.0
-    let mutable glyph_size       = Size(1., 1.)
+    let mutable glyph_size       = Size(1.0, 1.0)
 
     let mutable typeface_normal  = null
     let mutable typeface_italic  = null
@@ -116,11 +120,23 @@ type Editor() as this =
         let bg = Option.defaultValue default_bg attrs.background
         let sp = Option.defaultValue default_sp attrs.special
 
-        let bg_brush = SolidColorBrush(bg)
-        let fg_brush = SolidColorBrush(fg)
-        let sp_brush = SolidColorBrush(sp)
+        let bg_brush = new SKPaint(Color = bg.ToSKColor())
+        let fg_brush = new SKPaint(Color = fg.ToSKColor())
+        let sp_brush = new SKPaint(Color = sp.ToSKColor())
 
-        fg_brush, bg_brush, sp_brush, typeface, attrs
+        fg_brush.Typeface <- typeface
+        fg_brush.TextSize <- single font_size
+        fg_brush.IsAntialias <- true
+        fg_brush.IsAutohinted <- true
+        fg_brush.IsLinearText <- false
+        fg_brush.HintingLevel <- SKPaintHinting.Full
+        fg_brush.LcdRenderText <- true
+        fg_brush.SubpixelText <- true
+        fg_brush.TextAlign <- SKTextAlign.Left
+        fg_brush.DeviceKerningEnabled <- false
+        fg_brush.TextEncoding <- SKTextEncoding.Utf16
+
+        fg_brush, bg_brush, sp_brush, attrs
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system: =
@@ -149,46 +165,63 @@ type Editor() as this =
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
-        let fg, bg, sp, typeface, attrs = getDrawAttrs hlid
+        let _fg, _bg, _sp, attrs = getDrawAttrs hlid
+        use fg = _fg
+        use bg = _bg
+        use sp = _sp
 
-        let topLeft      = getPoint row col |> rounding
+        let topLeft      = getPoint row col
         let bottomRight  = (topLeft + getPoint 1 (colend - col)) |> rounding
         let bg_region    = Rect(topLeft , bottomRight)
 
-        //printfn "drawText: %d %d -> %f %f" row col fontPos.Y fontPos.X
-        //trace "drawText: %d %d-%d hlid=%A" row col colend hlid
-        ctx.FillRectangle(bg, bg_region)
+        // DrawText accepts the coordinate of the baseline.
+        //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
+        let h = bottomRight.Y - topLeft.Y
+        //  total_padding = padding space 1 + padding space 2
+        let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
+        let baseline      = topLeft.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
+        let fontPos       = Point(topLeft.X, baseline)
 
-        let text = FormattedText()
-        text.Typeface <- typeface
-        text.TextAlignment <- TextAlignment.Left
+        let skia = ctx :?> DrawingContextImpl
 
-        let sb = StringBuilder()
+        skia.Canvas.DrawRect(bg_region.ToSKRect(), bg)
+        skia.Canvas.DrawText(String.Concat str, fontPos.ToSKPoint(), fg)
 
-        let _space = Seq.forall Char.IsWhiteSpace
-        let _span  = Seq.forall Char.IsLetterOrDigit
-        let (|SPAN|DRAW|SKIP|) (x: string) =
-            if false then SPAN
-            elif _space x then SKIP
-            else DRAW
+        // Text bounding box drawing:
+        // --------------------------------------------------
+        // let bounds = ref <| SKRect()
+        // ignore <| fg.MeasureText(String.Concat str, bounds)
+        // let mutable bounds = !bounds
+        // bounds.Left <- bounds.Left + single (fontPos.X)
+        // bounds.Top <- bounds.Top + single (fontPos.Y)
+        // bounds.Right <- bounds.Right + single (fontPos.X)
+        // bounds.Bottom <- bounds.Bottom + single (fontPos.Y)
+        // fg.Style <- SKPaintStyle.Stroke
+        // skia.Canvas.DrawRect(bounds, fg)
+        // --------------------------------------------------
 
-        let mutable i0 = 0
+        if attrs.underline then
+            let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
+            let p1 = fontPos + Point(0.0, float <| underline_pos)
+            let p2 = p1 + getPoint 0 (colend - col)
+            sp.Style <- SKPaintStyle.Stroke
+            skia.Canvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
 
-        let _draw () =
-            let str = sb.ToString()
-            ignore <| sb.Clear()
-            if str <> String.Empty then
-                let fontPos = rounding(topLeft + getPoint 0 i0)
-                text.Text <- str
-                ctx.DrawText(fg, fontPos, text.PlatformImpl)
-
-        str |> List.iteri (fun i s ->
-            match s with
-            | SPAN -> ignore <| sb.Append s
-            | DRAW -> _draw() ; i0 <- i; ignore <| sb.Append(s); _draw(); i0 <- i + 1
-            | SKIP -> _draw() ; i0 <- i + 1; 
-        )
-        _draw()
+        if attrs.undercurl then
+            let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
+            let p0 = fontPos + Point(0.0, float <| underline_pos)
+            let qf = single glyph_size.Width / 4.0F
+            let hf = qf * 2.0F
+            let q3f = qf * 3.0F
+            sp.Style <- SKPaintStyle.Stroke
+            use path = new SKPath()
+            for i = 0 to (colend - col) do
+                let p = p0 + getPoint 0 i
+                path.MoveTo(single p.X,      single p.Y)
+                path.MoveTo(single p.X + qf, single p.Y - 1.0f)
+                path.MoveTo(single p.X + hf, single p.Y)
+                path.MoveTo(single p.X + q3f, single p.Y + 1.0f)
+            skia.Canvas.DrawPath(path , sp)
 
 
     // assembles text from grid and draw onto the context.
@@ -242,22 +275,43 @@ type Editor() as this =
         grid_flushed <- true
         this.InvalidateVisual()
 
+
+    let measureText (str: string) =
+        use paint = new SKPaint()
+        paint.Typeface <- typeface_bold
+        paint.TextSize <- single font_size
+        paint.IsAntialias <- true
+        paint.IsAutohinted <- true
+        paint.IsLinearText <- false
+        paint.HintingLevel <- SKPaintHinting.Full
+        paint.LcdRenderText <- true
+        paint.SubpixelText <- true
+        paint.TextAlign <- SKTextAlign.Left
+        paint.DeviceKerningEnabled <- false
+        paint.TextEncoding <- SKTextEncoding.Utf16
+
+        let w = paint.MeasureText str
+        let h = paint.FontSpacing
+
+        w, h
+
+        
+
     let setFont name size =
         let size = max size 1.0
-        let ff = ui.FindFontFace name
-        font_family     <- ff.Name
+        font_family     <- name
         font_size       <- size
-        typeface_normal <- Typeface(ff, font_size, FontStyle.Normal, FontWeight.Regular)
-        typeface_italic <- Typeface(ff, font_size, FontStyle.Italic, FontWeight.Regular)
-        typeface_bold   <- Typeface(ff, font_size, FontStyle.Normal, FontWeight.Bold)
+        typeface_normal <- SKTypeface.FromFamilyName(name, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+        typeface_italic <- SKTypeface.FromFamilyName(name, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic)
+        typeface_bold   <- SKTypeface.FromFamilyName(name, SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
 
-        let txt = FormattedText()
-        txt.Text        <- "@"
-        txt.Typeface    <- typeface_bold
-        glyph_size      <- txt.Bounds.Size
-        glyph_size      <- glyph_size.WithHeight(glyph_size.Height + grid_linespace)
+        // It turns out the space " " advances farest...
+        // So we measure it as the width.
+        let w, h = measureText " "
 
-        trace "setFont" "request=%s actual=%s size=%A %A" name font_family glyph_size glyph_size
+        glyph_size <- Size(float w, float h)
+
+        trace "setFont" "request=%s actual=%s size=%A" name font_family glyph_size
         resizeEvent.Trigger(this)
 
     let setHighlight x =
@@ -297,11 +351,14 @@ type Editor() as this =
         grid_scale  <- this.GetVisualRoot().RenderScaling
         trace "redraw" "RenderScaling is %f" grid_scale
         #if USE_FRAMEBUFFER
-        let size     = grid_scale * grid_scale * getPoint grid_size.rows grid_size.cols
+        let size     = grid_scale * getPoint grid_size.rows grid_size.cols
+        let scale_rt = sqrt grid_scale
         let pxsize   = PixelSize(int <| Math.Ceiling size.X, int <| Math.Ceiling size.Y)
         this.DestroyFramebuffer()
-        grid_fb  <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
+
+        grid_fb  <- new RenderTargetBitmap(pxsize, Vector(96.0 * scale_rt, 96.0 * scale_rt))
         grid_dc  <- grid_fb.CreateDrawingContext(null)
+
         #endif
         grid_buffer  <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         markAllDirty()
@@ -430,10 +487,12 @@ type Editor() as this =
             for i = top + rows to bot do
                 copy i (i-rows)
                 markDirty {row = i - rows; height = 1; col = left; width = right - left }
+            //markDirty {row = top; height = bot - top - rows + 1; col = left; width = right - left }
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
                 markDirty {row = i - rows; height = 1; col = left; width = right - left }
+            //markDirty {row = top - rows; height = bot - top - rows + 1; col = left; width = right - left }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
@@ -584,7 +643,7 @@ type Editor() as this =
             //markClean()
 
         #if USE_FRAMEBUFFER
-        let ctx' = grid_dc
+        let ctx' = grid_dc :?> DrawingContextImpl
         #else
         let ctx' = ctx
         #endif
@@ -594,7 +653,7 @@ type Editor() as this =
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
             let hlid  = Option.defaultValue hlid mode.attr_id
 
-            let _, bg, _, _, _ = getDrawAttrs hlid
+            let _, bg, _, _ = getDrawAttrs hlid
             let origin = getPoint cursor_row cursor_col |> rounding
 
             let cellw p = min (double(p) / 100.0 * glyph_size.Width)  1.0
@@ -605,10 +664,10 @@ type Editor() as this =
                 drawBuffer ctx' cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
             | Some(CursorShape.Horizontal), Some p ->
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
-                ctx'.FillRectangle(bg, region)
+                ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
             | Some(CursorShape.Vertical), Some p ->
                 let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, 0.0))
-                ctx'.FillRectangle(bg, region)
+                ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
             | _ -> ()
 
 
