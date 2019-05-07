@@ -116,9 +116,18 @@ type Editor() as this =
             elif attrs.bold   then typeface_bold
             else                   typeface_normal
 
-        let fg = Option.defaultValue default_fg attrs.foreground
-        let bg = Option.defaultValue default_bg attrs.background
-        let sp = Option.defaultValue default_sp attrs.special
+        let mutable fg = Option.defaultValue default_fg attrs.foreground
+        let mutable bg = Option.defaultValue default_bg attrs.background
+        let mutable sp = Option.defaultValue default_sp attrs.special
+
+        let rev (c: Color) =
+            let inv = UInt32.MaxValue - c.ToUint32()
+            Color.FromUInt32(inv ||| 0xFF000000u)
+
+        if attrs.reverse then
+            fg <- rev fg
+            bg <- rev bg
+            sp <- rev sp
 
         let bg_brush = new SKPaint(Color = bg.ToSKColor())
         let fg_brush = new SKPaint(Color = fg.ToSKColor())
@@ -160,8 +169,8 @@ type Editor() as this =
     //-------------------------------------------------------------------------
     // like this:
     let rounding (pt: Point) =
-        let px = pt * grid_scale
-        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
+        let px = pt * grid_scale * grid_scale
+        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale / grid_scale
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
@@ -272,9 +281,15 @@ type Editor() as this =
 
     let flush() = 
         trace "redraw" "flush."
-        grid_flushed <- true
-        this.InvalidateVisual()
+        // FIXME align our position to dirty region
+        //let sz     = getPoint grid_dirty.height grid_dirty.width
+        //let origin = getPoint grid_dirty.row grid_dirty.col
+        //this.Height <- sz.Y
+        //this.Width <- sz.X
 
+        if not grid_flushed then
+            this.InvalidateVisual()
+        grid_flushed <- true
 
     let measureText (str: string) =
         use paint = new SKPaint()
@@ -296,7 +311,6 @@ type Editor() as this =
         w, h
 
         
-
     let setFont name size =
         let size = max size 1.0
         font_family     <- name
@@ -341,7 +355,6 @@ type Editor() as this =
                 undercurl = false
             }
         }
-        flush()
         
     let markClean () =
         grid_flushed <- false
@@ -352,7 +365,6 @@ type Editor() as this =
         trace "redraw" "RenderScaling is %f" grid_scale
         #if USE_FRAMEBUFFER
         let size     = grid_scale * grid_scale * getPoint grid_size.rows grid_size.cols
-        let scale_rt = sqrt grid_scale
         let pxsize   = PixelSize(int <| Math.Ceiling size.X, int <| Math.Ceiling size.Y)
         this.DestroyFramebuffer()
 
@@ -395,7 +407,7 @@ type Editor() as this =
     let showCursor(show) =
         cursor_show <- show
         markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
-        this.InvalidateVisual()
+        flush()
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -446,7 +458,7 @@ type Editor() as this =
         cursor_en <- not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
-        this.InvalidateVisual()
+        flush()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -519,7 +531,6 @@ type Editor() as this =
 
     let hiattrDefine (hls: HighlightAttr[]) =
         Array.iter setHighlight hls
-        flush()
 
     let redraw(cmd: RedrawCommand) =
         match cmd with
@@ -623,8 +634,8 @@ type Editor() as this =
         let gridui = this :> IGridUI
         let gw, gh = gridui.GridWidth, gridui.GridHeight
         measured_size <- size
-        flush()
         markAllDirty()
+        flush()
         let gw', gh' = gridui.GridWidth, gridui.GridHeight
         if gw <> gw' || gh <> gh' then 
             resizeEvent.Trigger(this)
@@ -637,10 +648,14 @@ type Editor() as this =
         let doRenderBuffer() =
             #if USE_FRAMEBUFFER
             if grid_fb <> null then
-                let fb_region = Rect(grid_fb.Size)
-                let screen_size = getPoint grid_size.rows grid_size.cols
-                let bounds = Rect(0.0, 0.0, screen_size.X, screen_size.Y)
-                ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, bounds)
+                let screen_size   = getPoint grid_dirty.height grid_dirty.width
+                let screen_origin = getPoint grid_dirty.row grid_dirty.col
+                let screen_region = Rect(screen_origin, screen_origin + screen_size)
+                let fb_size       = Point(screen_size.X * grid_scale, screen_size.Y * grid_scale)
+                let fb_origin     = Point(screen_origin.X * grid_scale, screen_origin.Y * grid_scale)
+                let fb_region     = Rect(fb_origin, fb_origin + fb_size)
+                
+                ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, screen_region)
             #else
             for y = grid_dirty.row to grid_dirty.row_end-1 do
                 drawBufferLine ctx y grid_dirty.col grid_dirty.col_end
@@ -652,6 +667,7 @@ type Editor() as this =
             ctx.FillRectangle(bg, Rect(0.0, y1, x2, y2))
             ctx.FillRectangle(bg, Rect(x1, 0.0, x2, y2))
 
+            grid_flushed <- false
             //markClean()
 
         #if USE_FRAMEBUFFER
@@ -681,7 +697,6 @@ type Editor() as this =
                 let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, 0.0))
                 ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
             | _ -> ()
-
 
         // do not actually draw the buffer unless there's a pending flush command
         if grid_flushed then doRenderBuffer()
