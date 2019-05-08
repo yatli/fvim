@@ -1,0 +1,3 @@
+{
+    "fsharp.project.define": ["USE_FRAMEBUFFER"]
+}
