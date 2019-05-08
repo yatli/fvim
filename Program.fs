@@ -26,5 +26,6 @@ module Program =
     [<EntryPoint>]
     [<CompiledName "Main">]
     let main(args: string[]) =
+        System.Console.OutputEncoding <- System.Text.Encoding.Unicode
         buildAvaloniaApp().Start(appMain, args)
         0

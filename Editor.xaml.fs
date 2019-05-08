@@ -572,6 +572,7 @@ type Editor() as this =
     do
         setFont font_family font_size
         AvaloniaXamlLoader.Load(this)
+        this.TextInput.Add(fun e -> inputEvent.Trigger <| TextInput e.Text)
 
     interface IGridUI with
         member this.Id = this.GridId
@@ -593,6 +594,10 @@ type Editor() as this =
         | :? FVimViewModel as ctx ->
             ctx.OnGridReady(this)
         | _ -> failwithf "%O" this.DataContext
+
+    (*override this.OnTextInput(e) =*)
+        (*e.Handled <- true*)
+        (*inputEvent.Trigger <| InputEvent.TextInput(e.Text)*)
 
     override this.OnKeyDown(e) =
         e.Handled <- true

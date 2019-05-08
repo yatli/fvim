@@ -24,6 +24,7 @@ type InputEvent =
 | MouseRelease of mods: InputModifiers * row: int * col: int * button: MouseButton
 | MouseDrag    of mods: InputModifiers * row: int * col: int * button: MouseButton
 | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: int * dy: int
+| TextInput    of text: string
 
 type IGridUI =
     abstract Id: int

@@ -108,6 +108,7 @@ type FVimViewModel(args: string[]) =
     //<M-...>		alt-key or meta-key		*META* *ALT* *<M-*
     //<A-...>		same as <M-...>			*<A-*
     //<D-...>		command-key or "super" key	*<D-*
+    
     let (|HasFlag|_|) (flag: InputModifiers) (x: InputModifiers) =
         if x.HasFlag flag then Some() else None
     let (|NoFlag|_|) (flag: InputModifiers) (x: InputModifiers) =
@@ -125,7 +126,7 @@ type FVimViewModel(args: string[]) =
         | _ -> ""
     let suffix (suf: string, r: int, c: int) =
         sprintf "%s><%d,%d" suf r c
-    let (|Special|Normal|Unrecognized|) (x: InputEvent) =
+    let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
         | Key(_, Key.Back) 
         | Key(HasFlag(InputModifiers.Control), Key.H)                 -> Special "BS"
@@ -195,12 +196,16 @@ type FVimViewModel(args: string[]) =
         |  Key(HasFlag(InputModifiers.Shift), Key.D8)                 -> Normal "*"
         |  Key(HasFlag(InputModifiers.Shift), Key.D9)                 -> Normal "("
         |  Key(HasFlag(InputModifiers.Shift), Key.D0)                 -> Normal ")"
+        |  Key(_, (
+           Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
+        |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
         |  Key(NoFlag(InputModifiers.Shift), x)                       -> Normal (x.ToString().ToLowerInvariant())
         |  Key(_, x)                                                  -> Normal (x.ToString())
         |  MousePress(_, r, c, but, cnt)                              -> Special(MB(but, cnt) + suffix("Mouse", c, r))
         |  MouseRelease(_, r, c, but)                                 -> Special(MB(but, 1) + suffix("Release", c, r))
         |  MouseDrag(_, r, c, but   )                                 -> Special(MB(but, 1) + suffix("Drag", c, r))
         |  MouseWheel(_, r, c, dx, dy)                                -> Special("ScrollWheel" + suffix(DIR(dx, dy), c, r))
+        |  TextInput txt                                              -> TextInput txt
         |  _                                                          -> Unrecognized
     //| Key.Oem
     let rec (|ModifiersPrefix|_|) (x: InputEvent) =
@@ -228,6 +233,9 @@ type FVimViewModel(args: string[]) =
             match (sprintf "%s%s%s%s" c a d s).TrimEnd('-') with
             | "" -> None
             | x -> Some x
+        | TextInput _ -> None
+
+    let mutable _imeArmed = false
 
     let onInput: (IEvent<InputEvent> -> unit) =
         // filter out pure modifiers
@@ -237,17 +245,25 @@ type FVimViewModel(args: string[]) =
                 -> false
             | _ -> true) >>
         // translate to nvim keycode
-        Observable.map (fun x ->
+        Observable.choose (fun x ->
+            trace "ViewModel" "OnInput: %A" x
+
             match x with
-            | (Special sp) & (ModifiersPrefix pref) -> sprintf "<%s-%s>" pref sp
-            | (Special sp) -> sprintf "<%s>" sp
-            | (Normal n) & (ModifiersPrefix pref) -> sprintf "<%s-%s>" pref n
-            | (Normal n) -> sprintf "%s" n
-            | x -> trace "input" "unrecognized input: %A" x; ""
+            | ImeEvent    -> _imeArmed <- true
+            | TextInput _ -> ()
+            | _           -> _imeArmed <- false
+
+            match x with
+            | (Special sp) & (ModifiersPrefix pref) -> Some <| sprintf "<%s-%s>" pref sp
+            | (Special sp)                          -> Some <| sprintf "<%s>" sp
+            | (Normal n) & (ModifiersPrefix pref)   -> Some <| sprintf "<%s-%s>" pref n
+            | (Normal n)                            -> Some <| n
+            | ImeEvent                              -> None
+            | TextInput txt when _imeArmed          -> Some txt
+            | x                                     -> trace "input" "unrecognized input: %A" x; None
         ) >>
         // hook up nvim_input
         Observable.add (fun key ->
-            trace "ViewModel" "OnInput: %A" key
             ignore <| nvim.input [|key|]
         )
 
