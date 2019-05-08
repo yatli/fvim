@@ -685,7 +685,7 @@ type Editor() as this =
             let origin = getPoint cursor_row cursor_col |> rounding
 
             let cellw p = min (double(p) / 100.0 * glyph_size.Width)  1.0
-            let cellh p = min (double(p) / 100.0 * glyph_size.Height) 1.0
+            let cellh p = min (double(p) / 100.0 * glyph_size.Height) 5.0
 
             match mode.cursor_shape, mode.cell_percentage with
             | Some(CursorShape.Block), _ ->
@@ -694,7 +694,9 @@ type Editor() as this =
                 let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
                 ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
             | Some(CursorShape.Vertical), Some p ->
-                let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, 0.0))
+                // FIXME Point(cellw p, -1.0) to avoid spanning to the next row. 
+                // rounding should be implemented
+                let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, -1.0))
                 ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
             | _ -> ()
 
