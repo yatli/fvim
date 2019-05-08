@@ -23,6 +23,7 @@ open FSharp.Control.Reactive
 open Avalonia.Rendering
 open SkiaSharp
 open Avalonia.Native.Interop
+open System.Reflection
 
 
 [<Struct>]
@@ -78,6 +79,8 @@ type Editor() as this =
     let mutable wtypeface_italic = null
     let mutable wtypeface_bold   = null
 
+    let nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
+
     let mutable grid_size        = { rows = 100; cols=50 }
     let mutable grid_scale       = 1.0
     let mutable grid_linespace   = 0.0
@@ -123,13 +126,14 @@ type Editor() as this =
         let w = wswidth txt
 
         let typeface = 
-            if w = 2
-            then
+            match w with
+            | CharType.Wide ->
                 (*printfn "wide: %A (%A)" txt (txt.ToCharArray() |> Array.map int)*)
                 if   attrs.italic then wtypeface_italic
                 elif attrs.bold   then wtypeface_bold
                 else                   wtypeface_normal
-            else
+            | CharType.Nerd ->         nerd_typeface
+            | _ ->
                 if   attrs.italic then typeface_italic
                 elif attrs.bold   then typeface_bold
                 else                   typeface_normal
@@ -197,8 +201,13 @@ type Editor() as this =
         use bg = _bg
         use sp = _sp
 
+        let nr_col = 
+            match wswidth grid_buffer.[row, colend - 1].text with
+            | CharType.Wide | CharType.Nerd | CharType.Emoji -> colend - col + 1
+            | _ -> colend - col
+
         let topLeft      = getPoint row col
-        let bottomRight  = (topLeft + getPoint 1 (colend - col)) |> rounding
+        let bottomRight  = (topLeft + getPoint 1 nr_col) |> rounding
         let bg_region    = Rect(topLeft , bottomRight)
 
         // DrawText accepts the coordinate of the baseline.

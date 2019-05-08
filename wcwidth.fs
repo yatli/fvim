@@ -4,6 +4,8 @@
 *)
 module FVim.wcwidth
 
+open System.Numerics
+
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
 // at commit 0d7de112202cc8b2ebe9232ff4a5c954f19d561a (2016-07-02):
 let ZeroWidth = [| 
@@ -441,27 +443,39 @@ let Powerline = [|
     (0xe0cc, 0xe0d4)  // Powerline Extra Symbols
 |]
 
+(* see: https://github.com/ryanoasis/nerd-fonts/issues/144
+
+    IEC Power Symbols           (23FB-23FE,2B58)
+    Powerline Extra Symbols     (E0A0-E0A3 E0B0-E0BF E0C0-E0C8 E0CC-E0CF E0D0-E0D2 E0D4)
+    Devicons                    (moved E600-E6C5 → E700-E7C5)
+    Font Awesome                (F000-F2E0 with holes)
+    Octicons                    (2665,26A1, moved F000-F105 with holes → F400-F4A8, moved F27C → F67C)
+    Pomicons                    (E000-E00A)
+    Font Linux                  (moved F100-F115 with holes → F300-F313)
+    Seti-UI + Custom            (E5FA-E62B)
+
+*)
 let NerdFont = [|
     (0x23fb, 0x23fe)  // Power Symbols
     (0x2665, 0x2665)  // Octicons
     (0x26a1, 0x26a1)  // Octicons
     (0x2b58, 0x2b58)  // Power Symbols
     (0xe000, 0xe00a)  // Pomicons
-    (0xe000, 0xe0a9)  // Font Awesome Extension
     (0xe0a0, 0xe0a2)  // Powerline Symbols
     (0xe0a3, 0xe0a3)  // Powerline Extra Symbols
     (0xe0b0, 0xe0b3)  // Powerline Symbols
     (0xe0b4, 0xe0c8)  // Powerline Extra Symbols
     (0xe0ca, 0xe0ca)  // Powerline Extra Symbols
     (0xe0cc, 0xe0d4)  // Powerline Extra Symbols
+    (0xe200, 0xe2a9)  // Font Awesome Extension
     (0xe4fa, 0xe52e)  // Seti-UI + Custom
-    (0xe600, 0xe6c5)  // Devicons
+    (0xe600, 0xe7c5)  // Devicons  # Note, the link claims that e600 -> e700 but I'm still getting E612 E609 etc.
     (0xf000, 0xf0eb)  // Weather Icons
-    (0xf000, 0xf105)  // Octicons
     (0xf000, 0xf2e0)  // Font Awesome
     (0xf001, 0xf847)  // Material
-    (0xf100, 0xf11c)  // Font Logos (Font Linux)
     (0xf27c, 0xf27c)  // Octicons
+    (0xf300, 0xf313)  // Font Logos (Font Linux)
+    (0xf400, 0xf4a8)  // Octicons
 |]
 
 let private intable (table: (int*int)[]) (ucs: int) =
@@ -475,6 +489,14 @@ let private intable (table: (int*int)[]) (ucs: int) =
         else intable_impl (mid+1) upper
     intable_impl 0 (table.Length - 1)
 
+type CharType =
+| Control     = -1
+| Invisible   = 0
+| Narrow      = 1
+| Wide        = 2
+| Nerd        = 3
+| Emoji       = 4
+
 let wcwidth(ucs: char) =
     let ucs = (int) ucs
     // NOTE: created by hand, there isn't anything identifiable other than
@@ -482,22 +504,22 @@ let wcwidth(ucs: char) =
     // category code are of non-zero width.
     if ucs = 0      || ucs = 0x034F || (0x200B <= ucs && ucs <= 0x200F) ||
        ucs = 0x2028 || ucs = 0x2029 || (0x202A <= ucs && ucs <= 0x202E) ||
-                                       (0x2060 <= ucs && ucs <= 0x2063)     then 0
+                                       (0x2060 <= ucs && ucs <= 0x2063)     then CharType.Invisible
     // C0/C1 control characters.
-    elif ucs < 32 || (0x07F <= ucs && ucs < 0x0A0)                          then -1
+    elif ucs < 32 || (0x07F <= ucs && ucs < 0x0A0)                          then CharType.Control
     // neovim uses these in drawing the UI
-    elif ucs = 0x2502 || ucs = 0x2630                                       then 1
+    elif ucs = 0x2502 || ucs = 0x2630 || ucs = 0x2026                       then CharType.Narrow
     // ASCII-7
-    elif ucs < 0x7F                                                         then 1
-    elif intable Powerline ucs                                              then 1
-    elif intable NerdFont ucs                                               then 2
-    elif intable WideEastAsian ucs                                          then 2
+    elif ucs < 0x7F                                                         then CharType.Narrow
+    elif intable Powerline ucs                                              then CharType.Narrow
+    elif intable NerdFont ucs                                               then CharType.Nerd
+    elif intable WideEastAsian ucs                                          then CharType.Wide
     // Combining characters with zero width.
-    elif intable ZeroWidth ucs                                              then 0
+    elif intable ZeroWidth ucs                                              then CharType.Invisible
     else                             
-        printfn "unknown codepoint: %d" ucs
-        1
+        printfn "unknown codepoint: %X" ucs
+        CharType.Narrow
 
 let wswidth(str: string) = 
-    if System.String.IsNullOrEmpty str then 0
-    else str |> Seq.map wcwidth |> Seq.max
+    if System.String.IsNullOrEmpty str then CharType.Invisible
+    else str |> Seq.map (int << wcwidth) |> Seq.max |> LanguagePrimitives.EnumOfValue

@@ -4,6 +4,7 @@ open Avalonia
 open Avalonia.Logging.Serilog
 
 module Program =
+    open System.Reflection
 
     // Avalonia configuration, don't remove; also used by visual designer.
     [<CompiledName "BuildAvaloniaApp">]
