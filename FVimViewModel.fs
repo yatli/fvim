@@ -252,6 +252,7 @@ type FVimViewModel(args: string[]) =
             | ImeEvent    -> _imeArmed <- true
             | TextInput _ -> ()
             | _           -> _imeArmed <- false
+            // TODO anything that cancels ime input state?
 
             match x with
             | (Special sp) & (ModifiersPrefix pref) -> Some <| sprintf "<%s-%s>" pref sp

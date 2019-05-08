@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ApplicationDefinition Include="fvim.config" />
+    <Compile Include="wcwidth.fs" />
     <Compile Include="log.fs" />
     <Compile Include="neovim.def.fs" />
     <Content Include="scratchpad.txt" />

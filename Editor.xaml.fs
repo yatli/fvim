@@ -3,6 +3,7 @@
 open FVim.neovim.def
 open FVim.log
 open FVim.ui
+open FVim.wcwidth
 
 open Avalonia
 open Avalonia.Controls
@@ -62,13 +63,20 @@ type Editor() as this =
 
     let mutable hi_defs          = Array.zeroCreate<HighlightAttr>(256)
     let mutable mode_defs        = Array.empty<ModeInfo>
-    let mutable font_family      = "Iosevka Slab"
+
+    let mutable _guifont         = "Iosevka Slab"
+    let mutable _guifontwide     = "Microsoft YaHei"
+
     let mutable font_size        = 16.0
     let mutable glyph_size       = Size(1.0, 1.0)
 
     let mutable typeface_normal  = null
     let mutable typeface_italic  = null
     let mutable typeface_bold    = null
+
+    let mutable wtypeface_normal = null
+    let mutable wtypeface_italic = null
+    let mutable wtypeface_bold   = null
 
     let mutable grid_size        = { rows = 100; cols=50 }
     let mutable grid_scale       = 1.0
@@ -109,12 +117,22 @@ type Editor() as this =
     let getPos (p: Point) =
         int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
-    let getDrawAttrs hlid = 
+    let getDrawAttrs hlid row col = 
         let attrs = hi_defs.[hlid].rgb_attr
+        let txt = grid_buffer.[row, col].text
+        let w = wswidth txt
+
         let typeface = 
-            if   attrs.italic then typeface_italic
-            elif attrs.bold   then typeface_bold
-            else                   typeface_normal
+            if w = 2
+            then
+                (*printfn "wide: %A (%A)" txt (txt.ToCharArray() |> Array.map int)*)
+                if   attrs.italic then wtypeface_italic
+                elif attrs.bold   then wtypeface_bold
+                else                   wtypeface_normal
+            else
+                if   attrs.italic then typeface_italic
+                elif attrs.bold   then typeface_bold
+                else                   typeface_normal
 
         let mutable fg = Option.defaultValue default_fg attrs.foreground
         let mutable bg = Option.defaultValue default_bg attrs.background
@@ -174,7 +192,7 @@ type Editor() as this =
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
-        let _fg, _bg, _sp, attrs = getDrawAttrs hlid
+        let _fg, _bg, _sp, attrs = getDrawAttrs hlid row col
         use fg = _fg
         use bg = _bg
         use sp = _sp
@@ -240,14 +258,17 @@ type Editor() as this =
         let y  = (min y  (grid_size.rows - 1) ) |> max 0
         let mutable x'   = xN - 1
         let mutable hlid = grid_buffer.[y, x'].hlid
-        let mutable str = []
+        let mutable str  = []
+        let mutable wc   = wswidth grid_buffer.[y,x'].text
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
         for x = xN - 1 downto x0 do
             let myhlid = grid_buffer.[y,x].hlid 
-            if myhlid <> hlid then
+            let mywc   = wswidth grid_buffer.[y,x].text
+            if myhlid <> hlid || mywc <> wc then
                 drawBuffer ctx y (x + 1) (x' + 1) hlid str
                 hlid <- myhlid 
+                wc <- mywc
                 x' <- x
                 str <- []
             str <- grid_buffer.[y,x].text :: str
@@ -311,13 +332,22 @@ type Editor() as this =
         w, h
 
         
-    let setFont name size =
-        let size = max size 1.0
-        font_family     <- name
-        font_size       <- size
-        typeface_normal <- SKTypeface.FromFamilyName(name, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-        typeface_italic <- SKTypeface.FromFamilyName(name, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic)
-        typeface_bold   <- SKTypeface.FromFamilyName(name, SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+    let fontConfig() =
+        font_size <- max font_size 1.0
+
+        typeface_normal <- SKTypeface.FromFamilyName(_guifont, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+        typeface_italic <- SKTypeface.FromFamilyName(_guifont, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic)
+        typeface_bold   <- SKTypeface.FromFamilyName(_guifont, SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+
+        if String.IsNullOrEmpty _guifontwide then
+            wtypeface_normal <- typeface_normal 
+            wtypeface_italic <- typeface_italic 
+            wtypeface_bold   <- typeface_bold   
+        else
+            wtypeface_normal <- SKTypeface.FromFamilyName(_guifontwide, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+            wtypeface_italic <- SKTypeface.FromFamilyName(_guifontwide, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic)
+            wtypeface_bold   <- SKTypeface.FromFamilyName(_guifontwide, SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+
 
         // It turns out the space " " advances farest...
         // So we measure it as the width.
@@ -325,7 +355,7 @@ type Editor() as this =
 
         glyph_size <- Size(float w, float h)
 
-        trace "setFont" "request=%s actual=%s size=%A" name font_family glyph_size
+        trace "fontConfig" "guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         resizeEvent.Trigger(this)
 
     let setHighlight x =
@@ -513,18 +543,24 @@ type Editor() as this =
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
+
+        let (|FN|_|) (x: string) =
+            // try to parse with 'font\ name:hNN'
+            match x.Split(':', StringSplitOptions.RemoveEmptyEntries) with
+            | [|name; size|] when size.Length > 0 && size.[0] = 'h' -> Some(name.Trim('\'', '"'), size.Substring(1).TrimEnd('\'','"') |> float)
+            | _ -> None
+
+        let mutable config_font = true
+
         match opt with
-        | Guifont font ->
-            // try to parse with font\ name:hNN
-            match font.Split(':', StringSplitOptions.RemoveEmptyEntries) with
-            | [|name; size|] when 
-                size.Length > 0 &&
-                size.[0] = 'h' -> 
-                setFont <| name.Trim('\'', '"') <| (size.Substring(1).TrimEnd('\'','"') |> float)
-            | [| "+" |] -> setFont font_family (font_size + 1.0)
-            | [| "-" |] -> setFont font_family (font_size - 1.0)
-            | _ -> ()
-        | _ -> ()
+        | Guifont(FN(name, sz))           -> _guifont     <- name; font_size <- sz
+        | GuifontWide(FN(name, sz))       -> _guifontwide <- name; font_size <- sz
+        | Guifont("+") | GuifontWide("+") -> font_size    <- font_size + 1.0
+        | Guifont("-") | GuifontWide("-") -> font_size    <- font_size - 1.0
+        | _                               -> config_font  <- false
+
+        if config_font then fontConfig()
+
 
     let setMouse (en:bool) =
         mouse_en <- en
@@ -570,7 +606,7 @@ type Editor() as this =
                 grid_fullscreen <- true
 
     do
-        setFont font_family font_size
+        fontConfig()
         AvaloniaXamlLoader.Load(this)
         this.TextInput.Add(fun e -> inputEvent.Trigger <| TextInput e.Text)
 
@@ -686,7 +722,7 @@ type Editor() as this =
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
             let hlid  = Option.defaultValue hlid mode.attr_id
 
-            let _, bg, _, _ = getDrawAttrs hlid
+            let _, bg, _, _ = getDrawAttrs hlid cursor_row cursor_col
             let origin = getPoint cursor_row cursor_col |> rounding
 
             let cellw p = min (double(p) / 100.0 * glyph_size.Width)  1.0
