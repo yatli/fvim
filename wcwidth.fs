@@ -405,35 +405,6 @@ let WideEastAsian = [|
     (0x30000, 0x3fffd)  // (nil)                   ..
 |]
 
-
-(*  Nerd Font Patchsets
-
-PATCH_SET = [
-    { 'Enabled': True,                      'Name': "Seti-UI + Custom", 'Filename': "original-source.otf",         'Exact': False,'SymStart': 0xE4FA, 'SymEnd': 0xE52E, 'SrcStart': 0xE5FA,'SrcEnd': 0xE62E,'ScaleGlyph': None,  'Attributes': SYM_ATTR_DEFAULT },
-    { 'Enabled': True,                      'Name': "Devicons", 'Filename': "devicons.ttf",                'Exact': False,'SymStart': 0xE600, 'SymEnd': 0xE6C5, 'SrcStart': 0xE700,'SrcEnd': 0xE7C5,'ScaleGlyph': DEVI_SCALE_LIST,'Attributes': SYM_ATTR_DEFAULT },
-    { 'Enabled': args.powerline,            'Name': "Powerline Symbols", 'Filename': "PowerlineSymbols.otf",        'Exact': True, 'SymStart': 0xE0A0, 'SymEnd': 0xE0A2, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_POWERLINE },
-    { 'Enabled': args.powerline,            'Name': "Powerline Symbols", 'Filename': "PowerlineSymbols.otf",        'Exact': True, 'SymStart': 0xE0B0, 'SymEnd': 0xE0B3, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_POWERLINE },
-    { 'Enabled': args.powerlineextra,       'Name': "Powerline Extra Symbols", 'Filename': "PowerlineExtraSymbols.otf",   'Exact': True, 'SymStart': 0xE0A3, 'SymEnd': 0xE0A3, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_POWERLINE },
-    { 'Enabled': args.powerlineextra,       'Name': "Powerline Extra Symbols", 'Filename': "PowerlineExtraSymbols.otf",   'Exact': True, 'SymStart': 0xE0B4, 'SymEnd': 0xE0C8, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_POWERLINE },
-    { 'Enabled': args.powerlineextra,       'Name': "Powerline Extra Symbols", 'Filename': "PowerlineExtraSymbols.otf",   'Exact': True, 'SymStart': 0xE0CA, 'SymEnd': 0xE0CA, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_POWERLINE },
-    { 'Enabled': args.powerlineextra,       'Name': "Powerline Extra Symbols", 'Filename': "PowerlineExtraSymbols.otf",   'Exact': True, 'SymStart': 0xE0CC, 'SymEnd': 0xE0D4, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_POWERLINE },
-    { 'Enabled': args.pomicons,             'Name': "Pomicons", 'Filename': "Pomicons.otf",                'Exact': True, 'SymStart': 0xE000, 'SymEnd': 0xE00A, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_DEFAULT  },
-    { 'Enabled': args.fontawesome,          'Name': "Font Awesome", 'Filename': "FontAwesome.otf",             'Exact': True, 'SymStart': 0xF000, 'SymEnd': 0xF2E0, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': FONTA_SCALE_LIST,'Attributes': SYM_ATTR_FONTA },
-    { 'Enabled': args.fontawesomeextension, 'Name': "Font Awesome Extension", 'Filename': "font-awesome-extension.ttf",  'Exact': False, 'SymStart': 0xE000, 'SymEnd': 0xE0A9, 'SrcStart': 0xE200,  'SrcEnd': 0xE2A9,  'ScaleGlyph': None, 'Attributes': SYM_ATTR_DEFAULT }, # Maximize
-    { 'Enabled': args.fontlinux,            'Name': "Font Logos (Font Linux)", 'Filename': "font-logos.ttf",              'Exact': fontlinuxExactEncodingPosition, 'SymStart': 0xF100, 'SymEnd': 0xF11C, 'SrcStart': 0xF300, 'SrcEnd': 0xF31C, 'ScaleGlyph': None, 'Attributes': SYM_ATTR_DEFAULT },
-    { 'Enabled': args.powersymbols,         'Name': "Power Symbols", 'Filename': "Unicode_IEC_symbol_font.otf", 'Exact': True, 'SymStart': 0x23FB, 'SymEnd': 0x23FE, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_DEFAULT  }, # Power, Power On/Off, Power On, Sleep
-    { 'Enabled': args.powersymbols,         'Name': "Power Symbols", 'Filename': "Unicode_IEC_symbol_font.otf", 'Exact': True, 'SymStart': 0x2B58, 'SymEnd': 0x2B58, 'SrcStart': None,  'SrcEnd': None,  'ScaleGlyph': None,  'Attributes': SYM_ATTR_DEFAULT  }, # Heavy Circle (aka Power Off)
-    { 'Enabled': args.octicons,             'Name': "Octicons", 'Filename': "octicons.ttf",                'Exact': octiconsExactEncodingPosition,  'SymStart': 0xF000, 'SymEnd': 0xF105, 'SrcStart': 0xF400, 'SrcEnd': 0xF505, 'ScaleGlyph': OCTI_SCALE_LIST, 'Attributes': SYM_ATTR_DEFAULT },  # Magnifying glass
-    { 'Enabled': args.octicons,             'Name': "Octicons", 'Filename': "octicons.ttf",                'Exact': octiconsExactEncodingPosition,  'SymStart': 0x2665, 'SymEnd': 0x2665, 'SrcStart': None, 'SrcEnd': None, 'ScaleGlyph': OCTI_SCALE_LIST, 'Attributes': SYM_ATTR_DEFAULT },  # Heart
-    { 'Enabled': args.octicons,             'Name': "Octicons", 'Filename': "octicons.ttf",                'Exact': octiconsExactEncodingPosition,  'SymStart': 0X26A1, 'SymEnd': 0X26A1, 'SrcStart': None, 'SrcEnd': None, 'ScaleGlyph': OCTI_SCALE_LIST, 'Attributes': SYM_ATTR_DEFAULT },  # Zap
-    { 'Enabled': args.octicons,             'Name': "Octicons", 'Filename': "octicons.ttf",                'Exact': octiconsExactEncodingPosition,  'SymStart': 0xF27C, 'SymEnd': 0xF27C, 'SrcStart': 0xF4A9, 'SrcEnd': 0xF4A9, 'ScaleGlyph': OCTI_SCALE_LIST, 'Attributes': SYM_ATTR_DEFAULT },  # Desktop
-    { 'Enabled': args.material,             'Name': "Material", 'Filename': "materialdesignicons-webfont.ttf",                'Exact': False,  'SymStart': 0xF001, 'SymEnd': 0xF847, 'SrcStart': 0xF500, 'SrcEnd': 0xFD46, 'ScaleGlyph': None, 'Attributes': SYM_ATTR_DEFAULT },
-    { 'Enabled': args.weather,             'Name': "Weather Icons", 'Filename': "weathericons-regular-webfont.ttf",                'Exact': False,  'SymStart': 0xF000, 'SymEnd': 0xF0EB, 'SrcStart': 0xE300, 'SrcEnd': 0xE3EB, 'ScaleGlyph': None, 'Attributes': SYM_ATTR_DEFAULT },
-    { 'Enabled': args.custom,               'Name': "Custom", 'Filename': args.custom,                   'Exact': True,  'SymStart': 0x0000, 'SymEnd': 0x0000, 'SrcStart': 0x0000, 'SrcEnd': 0x0000, 'ScaleGlyph': None, 'Attributes': CUSTOM_ATTR },
-]
-
-*)
-
 let Powerline = [|
     (0xe0a0, 0xe0a2)  // Powerline Symbols
     (0xe0a3, 0xe0a3)  // Powerline Extra Symbols
@@ -443,18 +414,7 @@ let Powerline = [|
     (0xe0cc, 0xe0d4)  // Powerline Extra Symbols
 |]
 
-(* see: https://github.com/ryanoasis/nerd-fonts/issues/144
-
-    IEC Power Symbols           (23FB-23FE,2B58)
-    Powerline Extra Symbols     (E0A0-E0A3 E0B0-E0BF E0C0-E0C8 E0CC-E0CF E0D0-E0D2 E0D4)
-    Devicons                    (moved E600-E6C5 → E700-E7C5)
-    Font Awesome                (F000-F2E0 with holes)
-    Octicons                    (2665,26A1, moved F000-F105 with holes → F400-F4A8, moved F27C → F67C)
-    Pomicons                    (E000-E00A)
-    Font Linux                  (moved F100-F115 with holes → F300-F313)
-    Seti-UI + Custom            (E5FA-E62B)
-
-*)
+// The complete set is recorded in nerdfont.txt
 let NerdFont = [|
     (0x23fb, 0x23fe)  // Power Symbols
     (0x2665, 0x2665)  // Octicons
@@ -468,14 +428,13 @@ let NerdFont = [|
     (0xe0ca, 0xe0ca)  // Powerline Extra Symbols
     (0xe0cc, 0xe0d4)  // Powerline Extra Symbols
     (0xe200, 0xe2a9)  // Font Awesome Extension
-    (0xe4fa, 0xe52e)  // Seti-UI + Custom
-    (0xe600, 0xe7c5)  // Devicons  # Note, the link claims that e600 -> e700 but I'm still getting E612 E609 etc.
-    (0xf000, 0xf0eb)  // Weather Icons
+    (0xe300, 0xe3e3)  // Weather
+    (0xe5fa, 0xe62e)  // Custom + Seti
+    (0xe700, 0xe7c5)  // Devicons
     (0xf000, 0xf2e0)  // Font Awesome
-    (0xf001, 0xf847)  // Material
-    (0xf27c, 0xf27c)  // Octicons
-    (0xf300, 0xf313)  // Font Logos (Font Linux)
+    (0xf300, 0xf31c)  // Font Logos (Font Linux)
     (0xf400, 0xf4a8)  // Octicons
+    (0xf500, 0xfd46)  // Material
 |]
 
 let private intable (table: (int*int)[]) (ucs: int) =
