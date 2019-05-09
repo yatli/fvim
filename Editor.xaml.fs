@@ -66,7 +66,7 @@ type Editor() as this =
     let mutable mode_defs        = Array.empty<ModeInfo>
 
     let mutable _guifont         = "Iosevka Slab"
-    let mutable _guifontwide     = "Microsoft YaHei"
+    let mutable _guifontwide     = "DengXian"
 
     let mutable font_size        = 16.0
     let mutable glyph_size       = Size(1.0, 1.0)
