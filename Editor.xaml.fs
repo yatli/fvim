@@ -251,12 +251,13 @@ type Editor() as this =
             let q3f = qf * 3.0F
             sp.Style <- SKPaintStyle.Stroke
             use path = new SKPath()
-            for i = 0 to (colend - col) do
+            path.MoveTo(single p0.X, single p0.Y)
+            for i = 0 to (colend - col - 1) do
                 let p = p0 + getPoint 0 i
-                path.MoveTo(single p.X,      single p.Y)
-                path.MoveTo(single p.X + qf, single p.Y - 1.0f)
-                path.MoveTo(single p.X + hf, single p.Y)
-                path.MoveTo(single p.X + q3f, single p.Y + 1.0f)
+                path.LineTo(single p.X,      single p.Y)
+                path.LineTo(single p.X + qf, single p.Y - 2.0f)
+                path.LineTo(single p.X + hf, single p.Y)
+                path.LineTo(single p.X + q3f, single p.Y + 2.0f)
             skia.Canvas.DrawPath(path , sp)
 
 
