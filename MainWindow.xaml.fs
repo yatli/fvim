@@ -12,9 +12,9 @@ type MainWindow(datactx: FVimViewModel) as this =
         this.DataContext <- datactx
         this.Closing.Add datactx.OnTerminating
         this.Closed.Add  datactx.OnTerminated
-        //this.Renderer.DrawDirtyRects <- true
+        this.Renderer.DrawDirtyRects <- true
         this.Renderer.DrawFps <- true
 
         AvaloniaXamlLoader.Load this
-        Avalonia.DevToolsExtensions.AttachDevTools(this);
+        Avalonia.DevToolsExtensions.AttachDevTools(this)
 

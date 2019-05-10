@@ -83,7 +83,6 @@ type Editor() as this =
 
     let mutable grid_size        = { rows = 100; cols=50 }
     let mutable grid_scale       = 1.0
-    let mutable grid_linespace   = 0.0
     let mutable grid_fullscreen  = false
 #if USE_FRAMEBUFFER
     let mutable grid_fb: RenderTargetBitmap  = null
@@ -719,7 +718,7 @@ type Editor() as this =
             ctx.FillRectangle(bg, Rect(x1, 0.0, x2, y2))
 
             grid_flushed <- false
-            //markClean()
+            (*markClean()*)
 
         #if USE_FRAMEBUFFER
         let ctx' = grid_dc :?> DrawingContextImpl
@@ -755,7 +754,7 @@ type Editor() as this =
         if grid_flushed then doRenderBuffer()
         if cursor_en && cursor_show then doRenderCursor()
     
-    member this.DestroyFramebuffer() =
+    member __.DestroyFramebuffer() =
         #if USE_FRAMEBUFFER
         if grid_fb <> null then
             grid_dc.Dispose()
