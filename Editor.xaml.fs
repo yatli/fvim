@@ -24,6 +24,7 @@ open Avalonia.Rendering
 open SkiaSharp
 open Avalonia.Native.Interop
 open System.Reflection
+open Avalonia.Data
 
 
 [<Struct>]
@@ -56,7 +57,7 @@ type private GridRect =
     member x.col_end = x.col + x.width
 
 type Editor() as this =
-    inherit Control()
+    inherit Canvas()
 
     let mutable default_fg       = Colors.Black
     let mutable default_bg       = Colors.Black
@@ -71,16 +72,6 @@ type Editor() as this =
     let mutable font_size        = 16.0
     let mutable glyph_size       = Size(1.0, 1.0)
 
-    let mutable typeface_normal  = null
-    let mutable typeface_italic  = null
-    let mutable typeface_bold    = null
-
-    let mutable wtypeface_normal = null
-    let mutable wtypeface_italic = null
-    let mutable wtypeface_bold   = null
-
-    let nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
-
     let mutable grid_size        = { rows = 100; cols=50 }
     let mutable grid_scale       = 1.0
     let mutable grid_fullscreen  = false
@@ -92,15 +83,10 @@ type Editor() as this =
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = { row = 0; col = 0; height = 100; width = 50 }
 
+    let mutable cursor_modeidx   = -1
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
-    let mutable cursor_en        = false
-    let mutable cursor_show      = false
-    let mutable cursor_blinkoff  = 0
-    let mutable cursor_blinkon   = 0
-    let mutable cursor_blinkwait = 0
-    let mutable cursor_modeidx   = -1
-    let mutable cursor_timer: IDisposable = null
+    let mutable cursor_info = CursorInfo.Default
 
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
@@ -122,20 +108,6 @@ type Editor() as this =
     let getDrawAttrs hlid row col = 
         let attrs = hi_defs.[hlid].rgb_attr
         let txt = grid_buffer.[row, col].text
-        let w = wswidth txt
-
-        let typeface = 
-            match w with
-            | CharType.Wide ->
-                (*printfn "wide: %A (%A)" txt (txt.ToCharArray() |> Array.map int)*)
-                if   attrs.italic then wtypeface_italic
-                elif attrs.bold   then wtypeface_bold
-                else                   wtypeface_normal
-            | CharType.Nerd ->         nerd_typeface
-            | _ ->
-                if   attrs.italic then typeface_italic
-                elif attrs.bold   then typeface_bold
-                else                   typeface_normal
 
         let mutable fg = Option.defaultValue default_fg attrs.foreground
         let mutable bg = Option.defaultValue default_bg attrs.background
@@ -150,23 +122,7 @@ type Editor() as this =
             bg <- rev bg
             sp <- rev sp
 
-        let bg_brush = new SKPaint(Color = bg.ToSKColor())
-        let fg_brush = new SKPaint(Color = fg.ToSKColor())
-        let sp_brush = new SKPaint(Color = sp.ToSKColor())
-
-        fg_brush.Typeface <- typeface
-        fg_brush.TextSize <- single font_size
-        fg_brush.IsAntialias <- true
-        fg_brush.IsAutohinted <- true
-        fg_brush.IsLinearText <- false
-        fg_brush.HintingLevel <- SKPaintHinting.Full
-        fg_brush.LcdRenderText <- true
-        fg_brush.SubpixelText <- true
-        fg_brush.TextAlign <- SKTextAlign.Left
-        fg_brush.DeviceKerningEnabled <- false
-        fg_brush.TextEncoding <- SKTextEncoding.Utf16
-
-        fg_brush, bg_brush, sp_brush, attrs
+        fg, bg, sp, attrs
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system: =
@@ -195,10 +151,13 @@ type Editor() as this =
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
+        let attrs = hi_defs.[hlid].rgb_attr
+        let typeface = GetTypeface(List.head str, attrs.italic, attrs.bold, _guifont, _guifontwide)
         let _fg, _bg, _sp, attrs = getDrawAttrs hlid row col
-        use fg = _fg
-        use bg = _bg
-        use sp = _sp
+
+        use fg = GetForegroundBrush(_fg, typeface, font_size)
+        use bg = new SKPaint(Color = _bg.ToSKColor())
+        use sp = new SKPaint(Color = _sp.ToSKColor())
 
         let nr_col = 
             match wswidth grid_buffer.[row, colend - 1].text with
@@ -209,56 +168,7 @@ type Editor() as this =
         let bottomRight  = (topLeft + getPoint 1 nr_col) |> rounding
         let bg_region    = Rect(topLeft , bottomRight)
 
-        // DrawText accepts the coordinate of the baseline.
-        //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
-        let h = bottomRight.Y - topLeft.Y
-        //  total_padding = padding space 1 + padding space 2
-        let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
-        let baseline      = topLeft.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
-        let fontPos       = Point(topLeft.X, baseline)
-
-        let skia = ctx :?> DrawingContextImpl
-
-        skia.Canvas.DrawRect(bg_region.ToSKRect(), bg)
-        skia.Canvas.DrawText(String.Concat str, fontPos.ToSKPoint(), fg)
-
-        // Text bounding box drawing:
-        // --------------------------------------------------
-        // let bounds = ref <| SKRect()
-        // ignore <| fg.MeasureText(String.Concat str, bounds)
-        // let mutable bounds = !bounds
-        // bounds.Left <- bounds.Left + single (fontPos.X)
-        // bounds.Top <- bounds.Top + single (fontPos.Y)
-        // bounds.Right <- bounds.Right + single (fontPos.X)
-        // bounds.Bottom <- bounds.Bottom + single (fontPos.Y)
-        // fg.Style <- SKPaintStyle.Stroke
-        // skia.Canvas.DrawRect(bounds, fg)
-        // --------------------------------------------------
-
-        if attrs.underline then
-            let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
-            let p1 = fontPos + Point(0.0, float <| underline_pos)
-            let p2 = p1 + getPoint 0 (colend - col)
-            sp.Style <- SKPaintStyle.Stroke
-            skia.Canvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
-
-        if attrs.undercurl then
-            let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
-            let p0 = fontPos + Point(0.0, float <| underline_pos)
-            let qf = single glyph_size.Width / 4.0F
-            let hf = qf * 2.0F
-            let q3f = qf * 3.0F
-            sp.Style <- SKPaintStyle.Stroke
-            use path = new SKPath()
-            path.MoveTo(single p0.X, single p0.Y)
-            for i = 0 to (colend - col - 1) do
-                let p = p0 + getPoint 0 i
-                path.LineTo(single p.X,      single p.Y)
-                path.LineTo(single p.X + qf, single p.Y - 2.0f)
-                path.LineTo(single p.X + hf, single p.Y)
-                path.LineTo(single p.X + q3f, single p.Y + 2.0f)
-            skia.Canvas.DrawPath(path , sp)
-
+        RenderText(ctx, bg_region, fg, bg, sp, attrs.underline, attrs.undercurl, String.Concat str)
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -323,7 +233,7 @@ type Editor() as this =
 
     let measureText (str: string) =
         use paint = new SKPaint()
-        paint.Typeface <- typeface_bold
+        paint.Typeface <- GetTypeface(str, false, true, _guifont, _guifontwide)
         paint.TextSize <- single font_size
         paint.IsAntialias <- true
         paint.IsAutohinted <- true
@@ -343,29 +253,14 @@ type Editor() as this =
         
     let fontConfig() =
         font_size <- max font_size 1.0
-
-        typeface_normal <- SKTypeface.FromFamilyName(_guifont, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-        typeface_italic <- SKTypeface.FromFamilyName(_guifont, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic)
-        typeface_bold   <- SKTypeface.FromFamilyName(_guifont, SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-
-        if String.IsNullOrEmpty _guifontwide then
-            wtypeface_normal <- typeface_normal 
-            wtypeface_italic <- typeface_italic 
-            wtypeface_bold   <- typeface_bold   
-        else
-            wtypeface_normal <- SKTypeface.FromFamilyName(_guifontwide, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-            wtypeface_italic <- SKTypeface.FromFamilyName(_guifontwide, SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic)
-            wtypeface_bold   <- SKTypeface.FromFamilyName(_guifontwide, SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-
-
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = measureText " "
-
         glyph_size <- Size(float w, float h)
-
         trace "fontConfig" "guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
-        resizeEvent.Trigger(this)
+        if is_ready then
+            this.cursorConfig()
+            resizeEvent.Trigger(this)
 
     let setHighlight x =
         if hi_defs.Length < x.id + 1 then
@@ -441,51 +336,16 @@ type Editor() as this =
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
         mode_defs <- info
-        cursor_en <- cs_en
+        this.setCursorEnabled cs_en
 
-    let showCursor(show) =
-        cursor_show <- show
-        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
-        flush()
-
-    let cursorTimerRun action time =
-        if cursor_timer <> null then
-            cursor_timer.Dispose()
-            cursor_timer <- null
-        if time > 0 then
-            cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time))
-
-    let rec blinkon() =
-        showCursor true
-        cursorTimerRun blinkoff cursor_blinkon
-    and blinkoff() = 
-        showCursor false
-        cursorTimerRun blinkon cursor_blinkoff
-
-    let setCursor row col =
-        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
+    let cursorGoto row col =
         cursor_row <- row
         cursor_col <- col
-        showCursor true
-        cursorTimerRun blinkon cursor_blinkwait
-
-    let setBlink on off wait =
-
-        cursor_blinkon   <- on
-        cursor_blinkoff  <- off
-        cursor_blinkwait <- wait
-        cursor_show      <- true
-
-        trace "blink" "on=%d off=%d wait=%d" on off wait
-        setCursor cursor_row cursor_col
+        this.cursorConfig()
 
     let changeMode (name: string) (index: int) = 
         cursor_modeidx <- index
-        match mode_defs.[index] with
-        | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
-            when on > 0 && off > 0 && wait > 0 -> setBlink on off wait
-        | _ -> setBlink 0 0 0
-        markDirty { row = cursor_row; col = cursor_col; height = 1; width = 1 }
+        this.cursorConfig()
 
     let bell (visual: bool) =
         // TODO
@@ -494,10 +354,10 @@ type Editor() as this =
 
     let setBusy (v: bool) =
         trace "neovim" "busy: %A" v
-        cursor_en <- not v
+        this.setCursorEnabled <| not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
-        flush()
+        //flush()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -587,7 +447,7 @@ type Editor() as this =
         | GridResize(id, w, h) when id = this.GridId                         -> initBuffer h w
         | GridClear id when id = this.GridId                                 -> clearBuffer()
         | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = this.GridId then putBuffer line) lines
-        | GridCursorGoto(id, row, col) when id = this.GridId                 -> setCursor row col
+        | GridCursorGoto(id, row, col) when id = this.GridId                 -> cursorGoto row col
         | GridDestroy id when id = this.GridId                               -> this.DestroyFramebuffer()
         | GridScroll(id, top,bot,left,right,rows,cols) when id = this.GridId -> scrollBuffer top bot left right rows cols
         | Flush                                                              -> flush() 
@@ -640,6 +500,7 @@ type Editor() as this =
             ctx.OnGridReady(this)
         | _ -> failwithf "%O" this.DataContext
 
+    //each event repeats 4 times... use the event instead
     (*override this.OnTextInput(e) =*)
         (*e.Handled <- true*)
         (*inputEvent.Trigger <| InputEvent.TextInput(e.Text)*)
@@ -694,31 +555,37 @@ type Editor() as this =
     override this.Render(ctx) =
         if (not is_ready) then this.OnReady()
         let ctx = ctx.PlatformImpl
+        let size = getPoint grid_size.rows grid_size.cols
 
         let doRenderBuffer() =
             #if USE_FRAMEBUFFER
             if grid_fb <> null then
-                let screen_size   = getPoint grid_dirty.height grid_dirty.width
-                let screen_origin = getPoint grid_dirty.row grid_dirty.col
-                let screen_region = Rect(screen_origin, screen_origin + screen_size)
-                let fb_size       = Point(screen_size.X * grid_scale, screen_size.Y * grid_scale)
-                let fb_origin     = Point(screen_origin.X * grid_scale, screen_origin.Y * grid_scale)
-                let fb_region     = Rect(fb_origin, fb_origin + fb_size)
+                // partial update:
+                //let screen_size   = getPoint grid_dirty.height grid_dirty.width
+                //let screen_origin = getPoint grid_dirty.row grid_dirty.col
+                //let screen_region = Rect(screen_origin, screen_origin + screen_size)
+                //let fb_size       = Point(screen_size.X * grid_scale, screen_size.Y * grid_scale)
+                //let fb_origin     = Point(screen_origin.X * grid_scale, screen_origin.Y * grid_scale)
+                //let fb_region     = Rect(fb_origin, fb_origin + fb_size)
+
+                // full update:
+                let screen_region = Rect(0.0, 0.0, size.X, size.Y)
+                let fb_region = Rect(grid_fb.Size)
                 
-                ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, screen_region)
+                ctx.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, fb_region, screen_region, Avalonia.Visuals.Media.Imaging.BitmapInterpolationMode.LowQuality)
             #else
             for y = grid_dirty.row to grid_dirty.row_end-1 do
                 drawBufferLine ctx y grid_dirty.col grid_dirty.col_end
             #endif
             // draw the uncovered parts with default background
-            let x1, y1 = float grid_size.cols * glyph_size.Width, float grid_size.rows * glyph_size.Height
+            let x1, y1 = size.X, size.Y
             let x2, y2 = this.Bounds.Width, this.Bounds.Height
             let bg = SolidColorBrush(default_bg)
             ctx.FillRectangle(bg, Rect(0.0, y1, x2, y2))
             ctx.FillRectangle(bg, Rect(x1, 0.0, x2, y2))
 
             grid_flushed <- false
-            (*markClean()*)
+            markClean()
 
         #if USE_FRAMEBUFFER
         let ctx' = grid_dc :?> DrawingContextImpl
@@ -726,33 +593,8 @@ type Editor() as this =
         let ctx' = ctx
         #endif
 
-        let doRenderCursor() =
-            let mode  = mode_defs.[cursor_modeidx]
-            let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
-            let hlid  = Option.defaultValue hlid mode.attr_id
-
-            let _, bg, _, _ = getDrawAttrs hlid cursor_row cursor_col
-            let origin = getPoint cursor_row cursor_col |> rounding
-
-            let cellw p = min (double(p) / 100.0 * glyph_size.Width)  1.0
-            let cellh p = min (double(p) / 100.0 * glyph_size.Height) 5.0
-
-            match mode.cursor_shape, mode.cell_percentage with
-            | Some(CursorShape.Block), _ ->
-                drawBuffer ctx' cursor_row cursor_col (cursor_col+1) hlid [grid_buffer.[cursor_row, cursor_col].text]
-            | Some(CursorShape.Horizontal), Some p ->
-                let region = Rect(origin + (getPoint 1 0), origin + (getPoint 1 1) - Point(0.0, cellh p))
-                ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
-            | Some(CursorShape.Vertical), Some p ->
-                // FIXME Point(cellw p, -1.0) to avoid spanning to the next row. 
-                // rounding should be implemented
-                let region = Rect(origin, origin + (getPoint 1 0) + Point(cellw p, -1.0))
-                ctx'.Canvas.DrawRect(region.ToSKRect(), bg)
-            | _ -> ()
-
         // do not actually draw the buffer unless there's a pending flush command
         if grid_flushed then doRenderBuffer()
-        if cursor_en && cursor_show then doRenderCursor()
     
     member __.DestroyFramebuffer() =
         #if USE_FRAMEBUFFER
@@ -772,3 +614,56 @@ type Editor() as this =
             "GridId", 
             (fun e -> e.GridId),
             (fun e v -> e.GridId <- v))
+
+    member this.setCursorEnabled v =
+        cursor_info <- {cursor_info with enabled = v}
+        this.cursorConfig()
+
+    member this.cursorConfig() =
+        async {
+            if not is_ready || mode_defs.Length = 0 || cursor_modeidx < 0 then return ()
+            else
+            let mode  = mode_defs.[cursor_modeidx]
+            let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
+            let hlid  = Option.defaultValue hlid mode.attr_id
+            let fg, bg, sp, attrs = getDrawAttrs hlid cursor_row cursor_col
+            let origin = getPoint cursor_row cursor_col |> rounding
+            let size = getPoint 1 1
+            let on, off, wait =
+                match mode with
+                | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
+                    when on > 0 && off > 0 && wait > 0 -> on, off, wait
+                | _ -> 0,0,0
+
+            let updated_ci = 
+                { 
+                    typeface  = _guifont
+                    wtypeface = _guifontwide
+                    fontSize  = font_size
+                    text      = grid_buffer.[cursor_row, cursor_col].text
+                    fg        = fg
+                    bg        = bg
+                    sp        = sp
+                    underline = attrs.underline
+                    undercurl = attrs.undercurl
+                    bold      = attrs.bold
+                    italic    = attrs.italic
+                    cellPercentage = Option.defaultValue 100 mode.cell_percentage
+                    w         = size.X
+                    h         = size.Y
+                    x         = origin.X
+                    y         = origin.Y
+                    blinkon   = on
+                    blinkoff  = off
+                    blinkwait = wait
+                    shape     = cursor_info.shape
+                    enabled   = cursor_info.enabled
+                }
+            ignore <| Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                fun () -> 
+                    printfn "set cursor info"
+                    this.SetValue(Editor.CursorInfoProperty, updated_ci)
+            )
+        } |> Async.RunSynchronously
+
+    static member CursorInfoProperty = AvaloniaProperty.Register<Editor, CursorInfo>("CursorInfo", CursorInfo.Default)
