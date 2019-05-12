@@ -1,6 +1,10 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="FVim.App">
+             x:Class="FVim.App"
+             xmlns:fvim="clr-namespace:FVim;assembly=FVim">
+    <Application.DataTemplates>
+        <fvim:ViewLocator/>
+    </Application.DataTemplates>
     <Application.Styles>
         <StyleInclude Source="avares://Avalonia.Themes.Default/DefaultTheme.xaml"/>
         <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseLight.xaml"/>

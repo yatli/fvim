@@ -235,7 +235,7 @@ let private parse_redrawcmd (x: obj) =
     //| C("suspend", _)                                                                    -> 
     //| C("update_menu", _)                                                                -> 
 
-type Process(args: string[]) = 
+type Process() = 
     let m_id = Guid.NewGuid()
     let mutable m_notify = default_notify
     let mutable m_call   = default_call
@@ -253,7 +253,7 @@ type Process(args: string[]) =
         | None -> failwith "process"
 
 
-    member __.start () =
+    member __.start (args: string[]) =
         match m_proc, m_events with
         | Some(_) , _
         | _, Some(_) -> failwith "neovim: already started"

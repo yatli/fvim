@@ -3,6 +3,6 @@
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          xmlns:fvim="clr-namespace:FVim;assembly=FVim"
-         Focusable="True"
-         x:Class="FVim.Editor">
+         Focusable="False"
+         x:Class="FVim.Cursor">
 </Control>
