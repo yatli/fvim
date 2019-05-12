@@ -13,8 +13,6 @@ module Program =
             .Configure<App>()
             .UsePlatformDetect()
             .UseReactiveUI()
-            .With(AvaloniaNativePlatformOptions( UseGpu = true ))
-            .With(Win32PlatformOptions ( UseDeferredRendering = true ))
             .LogToDebug()
 
     // Your application's entry point.

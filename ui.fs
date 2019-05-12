@@ -102,7 +102,7 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color,
     //  total_padding = padding space 1 + padding space 2
     let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
     let baseline      = region.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
-    let fontPos       = Point(region.X, baseline)
+    let fontPos       = Point(region.X, floor baseline)
 
     let skia = ctx :?> DrawingContextImpl
 
