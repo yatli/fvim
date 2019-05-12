@@ -8,34 +8,34 @@
 
   <ItemGroup>
     <Compile Include="ViewLocator.fs" />
-    <ApplicationDefinition Include="fvim.config" />
-    <Compile Include="wcwidth.fs" />
     <Compile Include="log.fs" />
+    <Compile Include="wcwidth.fs" />
     <Compile Include="neovim.def.fs" />
-    <Content Include="scratchpad.txt" />
     <Compile Include="neovim.rpc.fs" />
     <Compile Include="ui.fs" />
     <Compile Include="FVimModel.fs" />
-    <Compile Include="EditorViewModel.fs" />
-    <Compile Include="MainWindowViewModel.fs" />
-    <Compile Include="MainWindow.xaml.fs" />
-    <Compile Include="Editor.xaml.fs" />
-    <Compile Include="Cursor.xaml.fs" />
+    <Compile Include="ViewModels\CursorViewModel.fs" />
+    <Compile Include="ViewModels\EditorViewModel.fs" />
+    <Compile Include="ViewModels\MainWindowViewModel.fs" />
+    <Compile Include="Views\MainWindow.xaml.fs" />
+    <Compile Include="Views\Editor.xaml.fs" />
+    <Compile Include="Views\Cursor.xaml.fs" />
     <Compile Include="App.xaml.fs" />
     <Compile Include="Program.fs" />
+    <ApplicationDefinition Include="fvim.config" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Update="**\*.xaml.fs">
       <DependentUpon>%(Filename)</DependentUpon>
     </Compile>
+    <AvaloniaResource Include="Assets\*" />
     <AvaloniaResource Include="**\*.xaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
-    <AvaloniaResource Include="Assets\*" />
     <EmbeddedResource Include="nerd.ttf" />
-    <Content Include="Assets\*" />
     <Content Include="**\*.xaml" />
+    <Content Include="Assets\*" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,7 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="300"
         x:Class="FVim.MainWindow"
         CanResize="True"
-        Icon="Assets/fvim.png"
+        Icon="..\Assets\fvim.png"
         Title="fvim" 
         Height="{Binding WindowHight, Mode=TwoWay}"
         Width="{Binding WindowWidth, Mode=TwoWay}"

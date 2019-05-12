@@ -4,7 +4,6 @@ open wcwidth
 open FVim.neovim.def
 open Avalonia.Input
 open Avalonia.Media
-open System.Runtime.InteropServices
 open Avalonia.Platform
 open Avalonia
 open SkiaSharp
@@ -31,56 +30,6 @@ type IGridUI =
     abstract Resized: IEvent<IGridUI>
     abstract Input: IEvent<InputEvent>
 
-[<Struct>]
-type CursorInfo =
-    {
-        enabled: bool
-        typeface: string
-        wtypeface: string
-        fontSize: float
-        text: string
-        fg: Color
-        bg: Color
-        sp: Color
-        underline: bool
-        undercurl: bool
-        bold: bool
-        italic: bool
-        blinkon: int
-        blinkoff: int
-        blinkwait: int
-        cellPercentage: int
-        shape: CursorShape
-        h: float
-        w: float
-        x: float
-        y: float
-    }
-    with static member Default = 
-        { 
-            enabled = true
-            typeface = ""
-            wtypeface = ""
-            fontSize = 1.0
-            text = ""
-            fg = Colors.White
-            bg = Colors.Black
-            sp = Colors.Red
-            underline = false
-            undercurl = false
-            bold = false
-            italic = false
-            blinkon = 0
-            blinkoff = 0
-            blinkwait = 0
-            cellPercentage = 100
-            shape = CursorShape.Block
-            w = 1.0
-            h = 1.0
-            x = 0.0
-            y = 0.0
-        }
-
 let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
 let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
 
@@ -105,6 +54,31 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     | CharType.Nerd -> nerd_typeface
     | _             -> _get font
 
+let GetTypefaceA(txt, italic, bold, font, wfont, fontSize) =
+    let typeface = GetTypeface(txt, italic, bold, font, wfont)
+    let style = if italic then FontStyle.Italic else FontStyle.Normal
+    let weight = if bold then FontWeight.Bold else FontWeight.Normal
+    Typeface(typeface.FamilyName, fontSize, style, weight)
+
+let MeasureText (str: string, font: string, wfont: string, fontSize: float) =
+    use paint = new SKPaint()
+    paint.Typeface <- GetTypeface(str, false, true, font, wfont)
+    paint.TextSize <- single fontSize
+    paint.IsAntialias <- true
+    paint.IsAutohinted <- true
+    paint.IsLinearText <- false
+    paint.HintingLevel <- SKPaintHinting.Full
+    paint.LcdRenderText <- true
+    paint.SubpixelText <- true
+    paint.TextAlign <- SKTextAlign.Left
+    paint.DeviceKerningEnabled <- false
+    paint.TextEncoding <- SKTextEncoding.Utf16
+
+    let w = paint.MeasureText str
+    let h = paint.FontSpacing
+
+    w, h
+        
 
 let GetForegroundBrush(c: Color, fontFace: SKTypeface, fontSize: float) =
     let paint                   = new SKPaint(Color = c.ToSKColor())
@@ -121,7 +95,7 @@ let GetForegroundBrush(c: Color, fontFace: SKTypeface, fontSize: float) =
     paint.TextEncoding         <- SKTextEncoding.Utf16
     paint
 
-let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string) =
+let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color, _sp: Color, underline: bool, undercurl: bool, text: string) =
     //  DrawText accepts the coordinate of the baseline.
     //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
     let h = region.Bottom - region.Y
@@ -131,6 +105,9 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint
     let fontPos       = Point(region.X, baseline)
 
     let skia = ctx :?> DrawingContextImpl
+
+    use bg = new SKPaint(Color = _bg.ToSKColor())
+    use sp = new SKPaint(Color = _sp.ToSKColor())
 
     skia.Canvas.DrawRect(region.ToSKRect(), bg)
     skia.Canvas.DrawText(text, fontPos.ToSKPoint(), fg)

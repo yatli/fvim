@@ -6,25 +6,13 @@ open wcwidth
 open neovim.def
 
 open Avalonia
-open Avalonia
-open Avalonia.Controls
-open Avalonia.Data
 open Avalonia.Input
-open Avalonia.Markup.Xaml
 open Avalonia.Media
 open Avalonia.Media.Imaging
-open Avalonia.Native.Interop
 open Avalonia.Platform
-open Avalonia.Rendering
-open Avalonia.Skia
 open Avalonia.Threading
-open Avalonia.Utilities
 open FSharp.Control.Reactive
-open MessagePack
-open SkiaSharp
 open System
-open System.Reflection
-open System.Text
 open ReactiveUI
 
 [<Struct>]
@@ -86,7 +74,7 @@ type EditorViewModel(GridId: int) as this =
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
     let mutable cursor_en        = true
-    let mutable cursor_info = CursorInfo.Default
+    let mutable cursor_info = CursorViewModel()
 
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
@@ -154,11 +142,9 @@ type EditorViewModel(GridId: int) as this =
 
         let attrs = hi_defs.[hlid].rgb_attr
         let typeface = GetTypeface(List.head str, attrs.italic, attrs.bold, _guifont, _guifontwide)
-        let _fg, _bg, _sp, attrs = getDrawAttrs hlid row col
+        let _fg, bg, sp, attrs = getDrawAttrs hlid row col
 
         use fg = GetForegroundBrush(_fg, typeface, font_size)
-        use bg = new SKPaint(Color = _bg.ToSKColor())
-        use sp = new SKPaint(Color = _sp.ToSKColor())
 
         let nr_col = 
             match wswidth grid_buffer.[row, colend - 1].text with
@@ -224,30 +210,11 @@ type EditorViewModel(GridId: int) as this =
         this.RenderTick <- this.RenderTick + 1
         markClean()
 
-    let measureText (str: string) =
-        use paint = new SKPaint()
-        paint.Typeface <- GetTypeface(str, false, true, _guifont, _guifontwide)
-        paint.TextSize <- single font_size
-        paint.IsAntialias <- true
-        paint.IsAutohinted <- true
-        paint.IsLinearText <- false
-        paint.HintingLevel <- SKPaintHinting.Full
-        paint.LcdRenderText <- true
-        paint.SubpixelText <- true
-        paint.TextAlign <- SKTextAlign.Left
-        paint.DeviceKerningEnabled <- false
-        paint.TextEncoding <- SKTextEncoding.Utf16
-
-        let w = paint.MeasureText str
-        let h = paint.FontSpacing
-
-        w, h
-        
     let fontConfig() =
         font_size <- max font_size 1.0
         // It turns out the space " " advances farest...
         // So we measure it as the width.
-        let w, h = measureText " "
+        let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
         glyph_size <- Size(float w, float h)
         trace "fontConfig" "guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
@@ -296,10 +263,10 @@ type EditorViewModel(GridId: int) as this =
         this.RaisePropertyChanged("BufferWidth")
 
         // paint the whole framebuffer with default background color
-        let canvas = (grid_dc :?> DrawingContextImpl).Canvas
-        use paint = new SKPaint()
-        paint.Color <- default_bg.ToSKColor()
-        canvas.DrawRect(0.0f, 0.0f, single size.X, single size.Y, paint)
+        //let canvas = (grid_dc :?> DrawingContextImpl).Canvas
+        //use paint = new SKPaint()
+        //paint.Color <- default_bg.ToSKColor()
+        //canvas.DrawRect(0.0f, 0.0f, single size.X, single size.Y, paint)
         markAllDirty()
 
     let initBuffer nrow ncol =
@@ -489,47 +456,41 @@ type EditorViewModel(GridId: int) as this =
                     when on > 0 && off > 0 && wait > 0 -> on, off, wait
                 | _ -> 0,0,0
 
-            let updated_ci = 
-                { 
-                    typeface  = _guifont
-                    wtypeface = _guifontwide
-                    fontSize  = font_size
-                    text      = grid_buffer.[cursor_row, cursor_col].text
-                    fg        = fg
-                    bg        = bg
-                    sp        = sp
-                    underline = attrs.underline
-                    undercurl = attrs.undercurl
-                    bold      = attrs.bold
-                    italic    = attrs.italic
-                    cellPercentage = Option.defaultValue 100 mode.cell_percentage
-                    w         = size.X
-                    h         = size.Y
-                    x         = origin.X
-                    y         = origin.Y
-                    blinkon   = on
-                    blinkoff  = off
-                    blinkwait = wait
-                    shape     = Option.defaultValue CursorShape.Block mode.cursor_shape
-                    enabled   = cursor_en
-                }
+            cursor_info.typeface       <- _guifont
+            cursor_info.wtypeface      <- _guifontwide
+            cursor_info.fontSize       <- font_size
+            cursor_info.text           <- grid_buffer.[cursor_row, cursor_col].text
+            cursor_info.fg             <- fg
+            cursor_info.bg             <- bg
+            cursor_info.sp             <- sp
+            cursor_info.underline      <- attrs.underline
+            cursor_info.undercurl      <- attrs.undercurl
+            cursor_info.bold           <- attrs.bold
+            cursor_info.italic         <- attrs.italic
+            cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
+            cursor_info.w              <- size.X
+            cursor_info.h              <- size.Y
+            cursor_info.x              <- origin.X
+            cursor_info.y              <- origin.Y
+            cursor_info.blinkon        <- on
+            cursor_info.blinkoff       <- off
+            cursor_info.blinkwait      <- wait
+            cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
+            cursor_info.enabled        <- cursor_en
+            cursor_info.RenderTick     <- cursor_info.RenderTick + 1
             trace "editorvm" "set cursor info"
-            this.CursorInfo <- updated_ci
         } |> Async.RunSynchronously
 
     member this.setCursorEnabled v =
         cursor_en <- v
         this.cursorConfig()
 
+    (*******************   Exposed properties   ***********************)
+
     member this.FrameBuffer
         with get() : RenderTargetBitmap = grid_fb
         and set(v) =
             ignore <| this.RaiseAndSetIfChanged(&grid_fb, v)
-
-    member this.CursorInfo
-        with get() : CursorInfo = cursor_info
-        and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&cursor_info, v)
 
     member this.Fullscreen
         with get() : bool = grid_fullscreen
@@ -541,6 +502,11 @@ type EditorViewModel(GridId: int) as this =
         and set(v) =
             ignore <| this.RaiseAndSetIfChanged(&grid_rendertick, v)
 
+    member this.CursorInfo
+        with get() : CursorViewModel = cursor_info
+        and set(v) =
+            ignore <| this.RaiseAndSetIfChanged(&cursor_info, v)
+
     member this.RenderScale
         with get() : float = grid_scale
         and set(v) =
@@ -550,6 +516,7 @@ type EditorViewModel(GridId: int) as this =
         with get(): SolidColorBrush = SolidColorBrush(default_bg)
 
     member this.BufferHeight with get(): float = ceil (getPoint grid_size.rows 0).Y
+
     member this.BufferWidth  with get(): float = ceil (getPoint 0 grid_size.cols).X
 
     member this.MeasuredSize
@@ -562,6 +529,8 @@ type EditorViewModel(GridId: int) as this =
             let gw', gh' = gridui.GridWidth, gridui.GridHeight
             if gw <> gw' || gh <> gh' then 
                 resizeEvent.Trigger(this)
+
+    (*******************   Events   ***********************)
 
     member this.OnKey (e: KeyEventArgs) = 
         e.Handled <- true

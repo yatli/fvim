@@ -24,7 +24,6 @@ open Avalonia.Threading
 
 type Editor() as this =
     inherit Canvas()
-    let mutable m_size = Size(100.0, 100.0) 
 
     static let RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
     static let FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
@@ -48,7 +47,7 @@ type Editor() as this =
         | _ -> ()
 
     let redraw frameid =
-        printfn "render tick %d" frameid;
+        trace "editor" "render tick %d" frameid;
         ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
             let fb = this.FindControl<Image>("FrameBuffer")
             if fb <> null then fb.InvalidateVisual()
@@ -67,6 +66,7 @@ type Editor() as this =
         ) |> ignore
 
     //static member private MeasureProp = AvaloniaProperty.Register<Editor, Size>("ms")
+    //let mutable m_size = Size(100.0, 100.0) 
     override this.MeasureOverride(size) =
         // binding not working yet.
         // ignore <| this.SetAndRaise(Editor.MeasureProp, &m_size, size)
@@ -76,10 +76,8 @@ type Editor() as this =
         )
         size
 
-    ////each event repeats 4 times... use the event instead
-    //(*override this.OnTextInput(e) =*)
-    //    (*e.Handled <- true*)
-    //    (*inputEvent.Trigger <| InputEvent.TextInput(e.Text)*)
+    (*each event repeats 4 times... use the event instead *)
+    (*override this.OnTextInput(e) =*)
 
     override this.OnKeyDown(e) =
         doWithDataContext(fun vm -> vm.OnKey e)
