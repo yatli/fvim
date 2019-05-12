@@ -12,6 +12,7 @@ module Program =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
+            .UseReactiveUI()
             .With(AvaloniaNativePlatformOptions( UseGpu = true ))
             .With(Win32PlatformOptions ( UseDeferredRendering = true ))
             .LogToDebug()
@@ -19,7 +20,8 @@ module Program =
     // Your application's entry point.
     [<CompiledName "AppMain">]
     let appMain (app: Application) (args: string[]) =
-        app.Run(MainWindow(FVimViewModel(args)))
+        Model.Start(args)
+        app.Run(MainWindow(DataContext = MainWindowViewModel()))
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized

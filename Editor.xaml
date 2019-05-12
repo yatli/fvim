@@ -1,9 +1,21 @@
-﻿<Canvas xmlns="https://github.com/avaloniaui"
-         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-         xmlns:fvim="clr-namespace:FVim;assembly=FVim"
-         Focusable="True"
-         x:Class="FVim.Editor" >
-    <fvim:Cursor/>
+﻿<Canvas xmlns      = "https://github.com/avaloniaui"
+        xmlns:x    = "http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d    = "http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
+        Focusable  = "True"
+        x:Class    = "FVim.Editor"
+        Background = "{Binding BackgroundBrush, Mode=TwoWay}"
+        >
+    <Image Name                = "FrameBuffer"
+           Source              = "{Binding FrameBuffer,  Mode=TwoWay}"
+           Width               = "{Binding BufferWidth,  Mode=TwoWay}"
+           Height              = "{Binding BufferHeight, Mode=TwoWay}"
+           Stretch             = "Fill"
+           HorizontalAlignment = "Left"
+           VerticalAlignment   = "Top"
+    />
+        <!--Canvas.Right="{Binding BufferWidth, Mode=TwoWay}"
+        Canvas.Bottom="{Binding BufferHeight, Mode=TwoWay}"-->
+    <!--<fvim:Cursor IsEnabled="True" IsVisible="True"/>-->
 </Canvas>

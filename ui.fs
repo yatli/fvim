@@ -20,10 +20,13 @@ type InputEvent =
 | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: int * dy: int
 | TextInput    of text: string
 
+/// Represents a grid in neovim
 type IGridUI =
     abstract Id: int
     abstract Connect: IEvent<RedrawCommand[]> -> IEvent<int> -> unit
+    /// Number of rows
     abstract GridHeight: int
+    /// Number of columns
     abstract GridWidth: int
     abstract Resized: IEvent<IGridUI>
     abstract Input: IEvent<InputEvent>

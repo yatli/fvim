@@ -4,17 +4,17 @@ open log
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
 
-type MainWindow(datactx: FVimViewModel) as this =
+type MainWindow() as this =
     inherit Window()
 
     do
-        trace "Mainwindow" "initialize avalonia UI..."
-        this.DataContext <- datactx
-        this.Closing.Add datactx.OnTerminating
-        this.Closed.Add  datactx.OnTerminated
+        //this.Closing.Add datactx.OnTerminating
+        //this.Closed.Add  datactx.OnTerminated
         //this.Renderer.DrawDirtyRects <- true
         this.Renderer.DrawFps <- true
 
         AvaloniaXamlLoader.Load this
+        #if DEBUG
         Avalonia.DevToolsExtensions.AttachDevTools(this)
+        #endif
 

@@ -4,10 +4,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
-    <DefineConstants>USE_FRAMEBUFFER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="ViewLocator.fs" />
     <ApplicationDefinition Include="fvim.config" />
     <Compile Include="wcwidth.fs" />
     <Compile Include="log.fs" />
@@ -15,7 +15,9 @@
     <Content Include="scratchpad.txt" />
     <Compile Include="neovim.rpc.fs" />
     <Compile Include="ui.fs" />
-    <Compile Include="FVimViewModel.fs" />
+    <Compile Include="FVimModel.fs" />
+    <Compile Include="EditorViewModel.fs" />
+    <Compile Include="MainWindowViewModel.fs" />
     <Compile Include="MainWindow.xaml.fs" />
     <Compile Include="Editor.xaml.fs" />
     <Compile Include="Cursor.xaml.fs" />
@@ -40,6 +42,7 @@
     <PackageReference Include="Avalonia" Version="0.8.0" />
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2019013001" />
     <PackageReference Include="Avalonia.Desktop" Version="0.8.0" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.0" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
     <PackageReference Include="NSubsys" Version="1.0.0">

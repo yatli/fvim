@@ -47,13 +47,7 @@ type Cursor() as this =
 
         cursorTimerRun blinkon this.CursorInfo.blinkwait
 
-    override this.OnAttachedToVisualTree(_) =
-        let parent = this.Parent :?> Editor
-        parent.GetObservable(Editor.CursorInfoProperty).Subscribe(cursorConfig) |> ignore
-
     override this.Render(ctx) =
-        printfn "render cursor"
-
         let ctx' = ctx.PlatformImpl :?> DrawingContextImpl
 
         let cellw p = min (double(p) / 100.0 * this.CursorInfo.w) 1.0
