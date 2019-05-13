@@ -47,9 +47,9 @@ type private GridRect =
 
 type EditorViewModel(GridId: int) as this =
     inherit ViewModelBase()
-    let mutable default_fg       = Colors.Black
+    let mutable default_fg       = Colors.White
     let mutable default_bg       = Colors.Black
-    let mutable default_sp       = Colors.Black
+    let mutable default_sp       = Colors.Red
 
     let mutable hi_defs          = Array.create<HighlightAttr> 256 HighlightAttr.Default
     let mutable mode_defs        = Array.empty<ModeInfo>
@@ -135,8 +135,8 @@ type EditorViewModel(GridId: int) as this =
     //-------------------------------------------------------------------------
     // like this:
     let rounding (pt: Point) =
-        let px = pt * grid_scale * grid_scale
-        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale / grid_scale
+        let px = pt * grid_scale 
+        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale 
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
@@ -254,8 +254,7 @@ type EditorViewModel(GridId: int) as this =
 
         this.DestroyFramebuffer()
         let size          = getPoint grid_size.rows grid_size.cols
-        let pxsize        = PixelSize(int <| (size.X * grid_scale), int <| (size.Y * grid_scale))
-        this.FrameBuffer <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
+        this.FrameBuffer <- AllocateFramebuffer size.X size.Y grid_scale
         grid_dc          <- this.FrameBuffer.CreateDrawingContext(null)
         grid_buffer      <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         // notify buffer size change
@@ -442,6 +441,10 @@ type EditorViewModel(GridId: int) as this =
             let hlid  = Option.defaultValue hlid mode.attr_id
             let fg, bg, sp, attrs = getDrawAttrs hlid cursor_row cursor_col
             let origin = getPoint cursor_row cursor_col 
+            let text = grid_buffer.[cursor_row, cursor_col].text
+            let text_type = wswidth text
+            let width = float(CharTypeWidth text_type) * glyph_size.Width
+
             let on, off, wait =
                 match mode with
                 | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
@@ -451,7 +454,7 @@ type EditorViewModel(GridId: int) as this =
             cursor_info.typeface       <- _guifont
             cursor_info.wtypeface      <- _guifontwide
             cursor_info.fontSize       <- font_size
-            cursor_info.text           <- grid_buffer.[cursor_row, cursor_col].text
+            cursor_info.text           <- text
             cursor_info.fg             <- fg
             cursor_info.bg             <- bg
             cursor_info.sp             <- sp
@@ -460,7 +463,7 @@ type EditorViewModel(GridId: int) as this =
             cursor_info.bold           <- attrs.bold
             cursor_info.italic         <- attrs.italic
             cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-            cursor_info.w              <- glyph_size.Width
+            cursor_info.w              <- width
             cursor_info.h              <- glyph_size.Height
             cursor_info.x              <- origin.X
             cursor_info.y              <- origin.Y

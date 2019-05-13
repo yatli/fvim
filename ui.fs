@@ -4,6 +4,7 @@ open wcwidth
 open FVim.neovim.def
 open Avalonia.Input
 open Avalonia.Media
+open Avalonia.Media.Imaging
 open Avalonia.Platform
 open Avalonia
 open SkiaSharp
@@ -78,7 +79,11 @@ let MeasureText (str: string, font: string, wfont: string, fontSize: float) =
     let h = paint.FontSpacing
 
     w, h
-        
+     
+let AllocateFramebuffer w h scale =
+    let pxsize        = PixelSize(int <| (w * scale), int <| (h * scale))
+    new RenderTargetBitmap(pxsize, Vector(96.0 * scale, 96.0 * scale))
+
 
 let GetForegroundBrush(c: Color, fontFace: SKTypeface, fontSize: float) =
     let paint                   = new SKPaint(Color = c.ToSKColor())

@@ -481,3 +481,10 @@ let wswidth(str: string) =
     if System.String.IsNullOrEmpty str then CharType.Invisible
     else str |> Seq.map (int << wcwidth) |> Seq.max |> LanguagePrimitives.EnumOfValue
 
+let CharTypeWidth(x: CharType): int =
+    match x with
+    | CharType.Control | CharType.Invisible -> 0
+    | CharType.Narrow -> 1
+    | CharType.Wide | CharType.Nerd | CharType.Emoji -> 2
+    | _ -> 1
+
