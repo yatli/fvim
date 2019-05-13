@@ -8,8 +8,9 @@
         CanResize="True"
         Icon="..\Assets\fvim.png"
         Title="fvim" 
-        Height="{Binding WindowHight, Mode=TwoWay}"
+        Height="{Binding WindowHeight, Mode=TwoWay}"
         Width="{Binding WindowWidth, Mode=TwoWay}"
+        WindowState="{Binding WindowState, Mode=TwoWay}"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         Content="{Binding MainGrid}">

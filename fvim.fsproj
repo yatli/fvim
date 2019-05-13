@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="ViewLocator.fs" />
     <Compile Include="log.fs" />
+    <Compile Include="config.fs" />
     <Compile Include="wcwidth.fs" />
     <Compile Include="neovim.def.fs" />
     <Compile Include="neovim.rpc.fs" />
@@ -43,6 +44,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="0.8.0" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.0" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
+    <PackageReference Include="FSharp.Data" Version="3.1.1" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

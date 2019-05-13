@@ -44,8 +44,12 @@ type private GridRect =
     member x.row_end = x.row + x.height
     member x.col_end = x.col + x.width
 
+type GridWindowAnchor =
+| Floating of parent: EditorViewModel
+| Grid1 of startrow: int * startcol: int
+| External
 
-type EditorViewModel(GridId: int) as this =
+and EditorViewModel(GridId: int) as this =
     inherit ViewModelBase()
     let mutable default_fg       = Colors.White
     let mutable default_bg       = Colors.Black
@@ -427,10 +431,11 @@ type EditorViewModel(GridId: int) as this =
 
     member __.DestroyFramebuffer() =
         if grid_fb <> null then
+            let fb = grid_fb
+            this.FrameBuffer <- null
             grid_dc.Dispose()
             grid_dc <- null
-            grid_fb.Dispose()
-            grid_fb <- null
+            fb.Dispose()
 
     member this.cursorConfig() =
         async {

@@ -21,10 +21,10 @@ type EventParseException(data: obj) =
     override __.Message = sprintf "Could not parse the neovim message: %A" data
 
 let private default_notify (e: Request) =
-    failwith ""
+    failwithf "%A" e
 
 let private default_call (e: Request) =
-    failwith ""
+    failwithf "%A" e
 
 let mkparams1 (t1: 'T1)                                = [| box t1 |]
 let mkparams2 (t1: 'T1) (t2: 'T2)                      = [| box t1; box t2 |]
@@ -231,6 +231,9 @@ let private parse_redrawcmd (x: obj) =
             (Integer32 rows); (Integer32 cols) 
          |])                                                                               -> GridScroll(grid, top, bot, left, right, rows, cols)
     | C("grid_line", P(parse_grid_line)lines)                                              -> GridLine lines
+    | C1("win_pos", [| (Integer32 grid);      (Integer32 win); 
+                       (Integer32 start_row); (Integer32 start_col); 
+                       (Integer32 width);     (Integer32 height) |])                       -> WinPos(grid,win,start_row,start_col,width,height)
     | _                                                                                    -> UnknownCommand x
     //| C("suspend", _)                                                                    -> 
     //| C("update_menu", _)                                                                -> 

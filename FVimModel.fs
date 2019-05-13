@@ -20,16 +20,23 @@ open FSharp.Control.Tasks.V2
 
 let nvim = Process()
 
-let redraw     = Event<RedrawCommand[]>()
-let fullscreen = Event<int>()
+let ev_redraw     = Event<RedrawCommand[]>()
+let ev_fullscreen = Event<int>()
 
 let requestHandlers      = Dictionary<string, obj[] -> Response Async>()
 let notificationHandlers = Dictionary<string, obj[] -> unit Async>()
+let grids                = Dictionary<int, IGridUI>()
+
+let add_grid(grid: IGridUI) =
+    grids.[grid.Id] <- grid
 
 let request  name fn = requestHandlers.Add(name, fn)
 let notify   name fn = notificationHandlers.Add(name, fn)
 
-let msg_dispatch =
+let private redraw cmd = 
+    ev_redraw.Trigger cmd
+
+let private msg_dispatch =
     function
     | Request(id, req, reply) -> 
        match requestHandlers.TryGetValue req.method with
@@ -44,11 +51,11 @@ let msg_dispatch =
        match notificationHandlers.TryGetValue req.method with
        | true, method -> Async.Start(method(req.parameters))
        | _ -> error "rpc" "notification handler [%s] not found" req.method
-    | Redraw cmd -> redraw.Trigger cmd
+    | Redraw cmd -> redraw cmd 
     | Exit -> Avalonia.Application.Current.Exit()
     | _ -> ()
 
-let onGridResize(gridui: IGridUI) =
+let private onGridResize(gridui: IGridUI) =
     trace "Model" "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
     ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
@@ -109,22 +116,22 @@ let onGridResize(gridui: IGridUI) =
 //<A-...>		same as <M-...>			*<A-*
 //<D-...>		command-key or "super" key	*<D-*
 
-let (|HasFlag|_|) (flag: InputModifiers) (x: InputModifiers) =
+let private (|HasFlag|_|) (flag: InputModifiers) (x: InputModifiers) =
     if x.HasFlag flag then Some() else None
 let (|NoFlag|_|) (flag: InputModifiers) (x: InputModifiers) =
     if x.HasFlag flag then None else Some()
-let MB (x: MouseButton, c: int) = 
+let private MB (x: MouseButton, c: int) = 
     let name = x.ToString()
     if c = 1 then name
     else sprintf "%d-%s" c name
-let DIR (dx: int, dy: int) =
+let private DIR (dx: int, dy: int) =
     match sign dx, sign dy with
     | -1, _  -> "Right"
     | 1, _   -> "Left"
     | _, -1  -> "Down"
     | _, 1   -> "Up"
     | _ -> ""
-let suffix (suf: string, r: int, c: int) =
+let private suffix (suf: string, r: int, c: int) =
     sprintf "%s><%d,%d" suf r c
 let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
     match x with
@@ -238,7 +245,7 @@ let rec (|ModifiersPrefix|_|) (x: InputEvent) =
 
 let mutable _imeArmed = false
 
-let onInput: (IEvent<InputEvent> -> unit) =
+let private onInput: (IEvent<InputEvent> -> unit) =
     // filter out pure modifiers
     Observable.filter (fun x -> 
         match x with
@@ -283,7 +290,7 @@ let Start(args: string[]) =
         match ps with
         | [| Integer32(gridid) |] ->
             trace "Model" "ToggleFullScreen: %A" gridid
-            fullscreen.Trigger gridid
+            ev_fullscreen.Trigger gridid
         | _ -> ()
     })
 
@@ -302,15 +309,19 @@ let Start(args: string[]) =
 
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
-    gridui.Connect redraw.Publish fullscreen.Publish
+    gridui.Connect ev_redraw.Publish ev_fullscreen.Publish
     gridui.Resized 
     |> Observable.throttle (TimeSpan.FromMilliseconds 20.0)
     |> Observable.add onGridResize
 
+    add_grid gridui
+
     gridui.Input |> onInput
 
-    // the UI should be ready for events now. notify nvim about its presence
     if gridui.Id = 1 then
+        // Grid #1 is the main grid.
+        // When ready, the UI should be ready for events now. 
+        // Notify nvim about its presence
         trace "Model" 
               "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
@@ -319,8 +330,6 @@ let OnGridReady(gridui: IGridUI) =
             let! _ = nvim.command "runtime! ginit.vim"
             ()
         } |> ignore
-    else
-        failwithf "grid: unsupported: %A" gridui.Id
 
 let OnTerminated (args) =
     trace "Model" "terminating nvim..."
