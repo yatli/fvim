@@ -254,20 +254,13 @@ type EditorViewModel(GridId: int) as this =
 
         this.DestroyFramebuffer()
         let size          = getPoint grid_size.rows grid_size.cols
-        let pxsize        = PixelSize(int <| ceil (size.X * grid_scale), int <| ceil (size.Y * grid_scale))
+        let pxsize        = PixelSize(int <| (size.X * grid_scale), int <| (size.Y * grid_scale))
         this.FrameBuffer <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
         grid_dc          <- this.FrameBuffer.CreateDrawingContext(null)
         grid_buffer      <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         // notify buffer size change
         this.RaisePropertyChanged("BufferHeight")
         this.RaisePropertyChanged("BufferWidth")
-
-        // paint the whole framebuffer with default background color
-        //let canvas = (grid_dc :?> DrawingContextImpl).Canvas
-        //use paint = new SKPaint()
-        //paint.Color <- default_bg.ToSKColor()
-        //canvas.DrawRect(0.0f, 0.0f, single size.X, single size.Y, paint)
-        markAllDirty()
 
     let initBuffer nrow ncol =
         grid_size <- { rows = nrow; cols = ncol }
@@ -515,9 +508,8 @@ type EditorViewModel(GridId: int) as this =
     member this.BackgroundBrush
         with get(): SolidColorBrush = SolidColorBrush(default_bg)
 
-    member this.BufferHeight with get(): float = ceil (getPoint grid_size.rows 0).Y
-
-    member this.BufferWidth  with get(): float = ceil (getPoint 0 grid_size.cols).X
+    member this.BufferHeight with get(): float = grid_fb.Size.Height
+    member this.BufferWidth  with get(): float = grid_fb.Size.Width
 
     member this.MeasuredSize
         with get() : Size = measured_size

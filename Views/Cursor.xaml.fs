@@ -16,6 +16,9 @@ type Cursor() as this =
     static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
 
     let mutable cursor_timer: IDisposable = null
+    let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
+    let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
+    let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -35,8 +38,17 @@ type Cursor() as this =
         cursorTimerRun blinkon this.ViewModel.blinkoff
 
     let cursorConfig id =
-        if Object.Equals(this.ViewModel, null) then ()
+        if Object.Equals(this.ViewModel, null) 
+        then ()
         else
+            (* update the settings *)
+            if this.ViewModel.fg <> fgbrush.Color then
+                fgbrush <- SolidColorBrush(this.ViewModel.fg)
+            if this.ViewModel.bg <> bgbrush.Color then
+                bgbrush <- SolidColorBrush(this.ViewModel.bg)
+            if this.ViewModel.sp <> spbrush.Color then
+                spbrush <- SolidColorBrush(this.ViewModel.sp)
+            (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
             this.InvalidateVisual()
@@ -55,12 +67,12 @@ type Cursor() as this =
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), Rect(0.0, 0.0, this.Width, this.Height))
+            ctx.FillRectangle(bgbrush, Rect(this.Bounds.Size))
             let text = FormattedText(Text = this.ViewModel.text, Typeface = typeface)
-            ctx.DrawText(SolidColorBrush(this.ViewModel.fg), Point(0.0, 0.0), text)
+            ctx.DrawText(fgbrush, Point(0.0, 0.0), text)
         | CursorShape.Horizontal, p ->
             ()
-            let region = Rect(0.0, this.Height, this.Width, this.Height - (cellh p))
+            let region = Rect(0.0, this.Height - (cellh p), this.Width, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
         | CursorShape.Vertical, p ->
             ()

@@ -12,6 +12,7 @@ module Program =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions(UseDeferredRendering=false))
             .UseReactiveUI()
             .LogToDebug()
 
