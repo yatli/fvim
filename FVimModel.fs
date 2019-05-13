@@ -49,7 +49,7 @@ let msg_dispatch =
     | _ -> ()
 
 let onGridResize(gridui: IGridUI) =
-    trace "ViewModel" "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
+    trace "Model" "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
     ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
 //notation	meaning		    equivalent	decimal value(s)	~
@@ -234,6 +234,7 @@ let rec (|ModifiersPrefix|_|) (x: InputEvent) =
         | "" -> None
         | x -> Some x
     | TextInput _ -> None
+    | _ -> None
 
 let mutable _imeArmed = false
 
@@ -246,7 +247,7 @@ let onInput: (IEvent<InputEvent> -> unit) =
         | _ -> true) >>
     // translate to nvim keycode
     Observable.choose (fun x ->
-        trace "ViewModel" "OnInput: %A" x
+        trace "Model" "OnInput: %A" x
 
         match x with
         | ImeEvent    -> _imeArmed <- true
@@ -261,7 +262,7 @@ let onInput: (IEvent<InputEvent> -> unit) =
         | (Normal n)                            -> Some <| n
         | ImeEvent                              -> None
         | TextInput txt when _imeArmed          -> Some txt
-        | x                                     -> trace "input" "unrecognized input: %A" x; None
+        | x                                     -> trace "input" "rejected: %A" x; None
     ) >>
     // hook up nvim_input
     Observable.add (fun key ->
@@ -270,22 +271,30 @@ let onInput: (IEvent<InputEvent> -> unit) =
 
 let Start(args: string[]) =
 
-    trace "ViewModel" "starting neovim instance..."
+    trace "Model" "starting neovim instance..."
     nvim.start(args)
     ignore <|
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
         (msg_dispatch)
-    trace "ViewModel" "registering rpc handlers"
+    trace "Model" "registering rpc handlers"
+
     notify "ToggleFullScreen" (fun ps -> async {
         match ps with
         | [| Integer32(gridid) |] ->
-            trace "ViewModel" "ToggleFullScreen: %A" gridid
+            trace "Model" "ToggleFullScreen: %A" gridid
             fullscreen.Trigger gridid
         | _ -> ()
     })
 
-    trace "ViewModel" "commencing early initialization..."
+    notify "DrawFPS" (fun ps -> async {
+        match ps with
+        | [| Bool(v) |] ->
+            trace "Model" "DrawFPS: %A" v
+            Avalonia.Application.Current.MainWindow.Renderer.DrawFps <- v
+    })
+
+    trace "Model" "commencing early initialization..."
     task {
         let! _ = nvim.set_var "fvim_loaded" 1
         ()
@@ -302,7 +311,7 @@ let OnGridReady(gridui: IGridUI) =
 
     // the UI should be ready for events now. notify nvim about its presence
     if gridui.Id = 1 then
-        trace "ViewModel" 
+        trace "Model" 
               "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
         task {
@@ -314,7 +323,7 @@ let OnGridReady(gridui: IGridUI) =
         failwithf "grid: unsupported: %A" gridui.Id
 
 let OnTerminated (args) =
-    trace "ViewModel" "terminating nvim..."
+    trace "Model" "terminating nvim..."
     nvim.stop 1
 
 let OnTerminating(args) =

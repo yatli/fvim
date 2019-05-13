@@ -254,20 +254,13 @@ type EditorViewModel(GridId: int) as this =
 
         this.DestroyFramebuffer()
         let size          = getPoint grid_size.rows grid_size.cols
-        let pxsize        = PixelSize(int <| ceil (size.X * grid_scale), int <| ceil (size.Y * grid_scale))
+        let pxsize        = PixelSize(int <| (size.X * grid_scale), int <| (size.Y * grid_scale))
         this.FrameBuffer <- new RenderTargetBitmap(pxsize, Vector(96.0 * grid_scale, 96.0 * grid_scale))
         grid_dc          <- this.FrameBuffer.CreateDrawingContext(null)
         grid_buffer      <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         // notify buffer size change
         this.RaisePropertyChanged("BufferHeight")
         this.RaisePropertyChanged("BufferWidth")
-
-        // paint the whole framebuffer with default background color
-        //let canvas = (grid_dc :?> DrawingContextImpl).Canvas
-        //use paint = new SKPaint()
-        //paint.Color <- default_bg.ToSKColor()
-        //canvas.DrawRect(0.0f, 0.0f, single size.X, single size.Y, paint)
-        markAllDirty()
 
     let initBuffer nrow ncol =
         grid_size <- { rows = nrow; cols = ncol }
@@ -287,6 +280,9 @@ type EditorViewModel(GridId: int) as this =
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
+        // if the buffer under cursor is updated, also notify the cursor view model
+        if row = cursor_row && line.col_start <= cursor_col && cursor_col < col
+        then this.cursorConfig()
         //trace "redraw" "putBuffer: writing to %A" dirty
         markDirty dirty
 
@@ -354,17 +350,14 @@ type EditorViewModel(GridId: int) as this =
         let copy src dst =
             if src >= 0 && src < grid_size.rows && dst >= 0 && dst < grid_size.rows then
                 Array.Copy(grid_buffer, src * grid_size.cols + left, grid_buffer, dst * grid_size.cols + left, right - left)
+                markDirty {row = dst; height = 1; col = left; width = right - left }
 
         if rows > 0 then
             for i = top + rows to bot do
                 copy i (i-rows)
-                markDirty {row = i - rows; height = 1; col = left; width = right - left }
-            //markDirty {row = top; height = bot - top - rows + 1; col = left; width = right - left }
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
-                markDirty {row = i - rows; height = 1; col = left; width = right - left }
-            //markDirty {row = top - rows; height = bot - top - rows + 1; col = left; width = right - left }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
@@ -448,8 +441,7 @@ type EditorViewModel(GridId: int) as this =
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
             let hlid  = Option.defaultValue hlid mode.attr_id
             let fg, bg, sp, attrs = getDrawAttrs hlid cursor_row cursor_col
-            let origin = getPoint cursor_row cursor_col |> rounding
-            let size = getPoint 1 1
+            let origin = getPoint cursor_row cursor_col 
             let on, off, wait =
                 match mode with
                 | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
@@ -468,8 +460,8 @@ type EditorViewModel(GridId: int) as this =
             cursor_info.bold           <- attrs.bold
             cursor_info.italic         <- attrs.italic
             cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-            cursor_info.w              <- size.X
-            cursor_info.h              <- size.Y
+            cursor_info.w              <- glyph_size.Width
+            cursor_info.h              <- glyph_size.Height
             cursor_info.x              <- origin.X
             cursor_info.y              <- origin.Y
             cursor_info.blinkon        <- on
@@ -515,9 +507,8 @@ type EditorViewModel(GridId: int) as this =
     member this.BackgroundBrush
         with get(): SolidColorBrush = SolidColorBrush(default_bg)
 
-    member this.BufferHeight with get(): float = ceil (getPoint grid_size.rows 0).Y
-
-    member this.BufferWidth  with get(): float = ceil (getPoint 0 grid_size.cols).X
+    member this.BufferHeight with get(): float = grid_fb.Size.Height
+    member this.BufferWidth  with get(): float = grid_fb.Size.Width
 
     member this.MeasuredSize
         with get() : Size = measured_size

@@ -475,10 +475,9 @@ let wcwidth(ucs: char) =
     elif intable WideEastAsian ucs                                          then CharType.Wide
     // Combining characters with zero width.
     elif intable ZeroWidth ucs                                              then CharType.Invisible
-    else                             
-        printfn "unknown codepoint: %X" ucs
-        CharType.Narrow
+    else CharType.Narrow
 
 let wswidth(str: string) = 
     if System.String.IsNullOrEmpty str then CharType.Invisible
     else str |> Seq.map (int << wcwidth) |> Seq.max |> LanguagePrimitives.EnumOfValue
+

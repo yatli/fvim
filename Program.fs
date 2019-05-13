@@ -12,9 +12,11 @@ module Program =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions(UseDeferredRendering=false))
+            .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=false))
+            .With(new X11PlatformOptions(UseEGL=false, UseGpu=false))
+            .With(new MacOSPlatformOptions(ShowInDock=true))
             .UseReactiveUI()
-            .With(AvaloniaNativePlatformOptions( UseGpu = true ))
-            .With(Win32PlatformOptions ( UseDeferredRendering = true ))
             .LogToDebug()
 
     // Your application's entry point.
