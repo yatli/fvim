@@ -44,12 +44,12 @@ type private GridRect =
     member x.row_end = x.row + x.height
     member x.col_end = x.col + x.width
 
-type GridWindowAnchor =
+type GridWindowPlacement =
 | Floating of parent: EditorViewModel
-| Grid1 of startrow: int * startcol: int
+| Anchor of startrow: int * startcol: int * parent: EditorViewModel
 | External
 
-and EditorViewModel(GridId: int) as this =
+and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
     inherit ViewModelBase()
     let mutable default_fg       = Colors.White
     let mutable default_bg       = Colors.Black
@@ -64,7 +64,7 @@ and EditorViewModel(GridId: int) as this =
     let mutable font_size        = 16.0
     let mutable glyph_size       = Size(10.0, 10.0)
 
-    let mutable grid_size        = { rows = 10; cols=10 }
+    let mutable grid_size        = { rows = Option.defaultValue 10 w; cols= Option.defaultValue 10 h }
     let mutable grid_scale       = 1.0
     let mutable grid_fullscreen  = false
     let mutable grid_rendertick  = 0
@@ -410,6 +410,7 @@ and EditorViewModel(GridId: int) as this =
         | SetIcon icon                                                       -> trace "editorvm" "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
+        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> ignore <| EditorViewModel(grid)
         | _                                                                  -> ()
 
     do
