@@ -14,6 +14,9 @@ open Avalonia.Threading
 open FSharp.Control.Reactive
 open System
 open ReactiveUI
+open Avalonia.Skia
+open SkiaSharp
+open Avalonia.Utilities
 
 [<Struct>]
 type private GridBufferCell =
@@ -135,8 +138,18 @@ type EditorViewModel(GridId: int) as this =
     //-------------------------------------------------------------------------
     // like this:
     let rounding (pt: Point) =
-        let px = pt * grid_scale * grid_scale
-        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale / grid_scale
+        let px = pt * grid_scale 
+        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale 
+
+    let getFramebufferRegionR row col nr_row nr_col =
+        let topLeft      = getPoint row col 
+        let bottomRight  = (topLeft + getPoint nr_row nr_col) 
+        Rect(topLeft , bottomRight)
+
+    let getFramebufferRegion row col nr_row nr_col =
+        let topLeft      = getPoint row col
+        let bottomRight  = (topLeft + getPoint nr_row nr_col) |> rounding
+        Rect(topLeft , bottomRight)
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
@@ -151,11 +164,10 @@ type EditorViewModel(GridId: int) as this =
             | CharType.Wide | CharType.Nerd | CharType.Emoji -> colend - col + 1
             | _ -> colend - col
 
-        let topLeft      = getPoint row col
-        let bottomRight  = (topLeft + getPoint 1 nr_col) |> rounding
-        let bg_region    = Rect(topLeft , bottomRight)
+        let region = getFramebufferRegion row col 1 nr_col
 
-        RenderText(ctx, bg_region, fg, bg, sp, attrs.underline, attrs.undercurl, String.Concat str)
+        if ctx <> null 
+        then RenderText(ctx, region, fg, bg, sp, attrs.underline, attrs.undercurl, String.Concat str)
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -192,15 +204,14 @@ type EditorViewModel(GridId: int) as this =
             let bottom = max grid_dirty.row_end region.row_end
             let right = max grid_dirty.col_end region.col_end
             grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
-        if grid_dc <> null then
-            for y = region.row to region.row_end - 1 do
-                drawBufferLine grid_dc y region.col region.col_end
+
+        for y = region.row to region.row_end - 1 do
+            drawBufferLine grid_dc y region.col region.col_end
 
     let markAllDirty () =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
-        if grid_dc <> null then
-            for y = 0 to grid_size.rows - 1 do
-                drawBufferLine grid_dc y 0 grid_size.cols
+        for y = 0 to grid_size.rows - 1 do
+            drawBufferLine grid_dc y 0 grid_size.cols
 
     let markClean () =
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
@@ -286,31 +297,6 @@ type EditorViewModel(GridId: int) as this =
         //trace "redraw" "putBuffer: writing to %A" dirty
         markDirty dirty
 
-    let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
-        mode_defs <- info
-        this.setCursorEnabled cs_en
-
-    let cursorGoto row col =
-        cursor_row <- row
-        cursor_col <- col
-        this.cursorConfig()
-
-    let changeMode (name: string) (index: int) = 
-        cursor_modeidx <- index
-        this.cursorConfig()
-
-    let bell (visual: bool) =
-        // TODO
-        trace "neovim" "bell: %A" visual
-        ()
-
-    let setBusy (v: bool) =
-        trace "neovim" "busy: %A" v
-        this.setCursorEnabled <| not v
-        //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
-        //else this.Cursor <- Cursor(StandardCursorType.Arrow)
-        //flush()
-
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
         //        scrollBuffer first specifies the SR, and offsets SRC/DST according
@@ -350,7 +336,6 @@ type EditorViewModel(GridId: int) as this =
         let copy src dst =
             if src >= 0 && src < grid_size.rows && dst >= 0 && dst < grid_size.rows then
                 Array.Copy(grid_buffer, src * grid_size.cols + left, grid_buffer, dst * grid_size.cols + left, right - left)
-                markDirty {row = dst; height = 1; col = left; width = right - left }
 
         if rows > 0 then
             for i = top + rows to bot do
@@ -358,6 +343,44 @@ type EditorViewModel(GridId: int) as this =
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
+
+        if grid_dc <> null then
+            let src_top, src_bot =
+                if rows > 0 then (top + rows), bot
+                else top,(bot + rows - 1)
+
+            let src_region = getFramebufferRegion src_top left (src_bot-src_top+1) (right-left)
+            let dst_region = getFramebufferRegion (src_top-rows) left (src_bot-src_top+1) (right-left)
+            // calculate the pixel sizes
+            let src_region = Rect(src_region.X * grid_scale, src_region.Y * grid_scale, src_region.Width * grid_scale, src_region.Height * grid_scale)
+
+            grid_dc.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, src_region, dst_region)
+
+
+    let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
+        mode_defs <- info
+        this.setCursorEnabled cs_en
+
+    let cursorGoto row col =
+        cursor_row <- row
+        cursor_col <- col
+        this.cursorConfig()
+
+    let changeMode (name: string) (index: int) = 
+        cursor_modeidx <- index
+        this.cursorConfig()
+
+    let bell (visual: bool) =
+        // TODO
+        trace "neovim" "bell: %A" visual
+        ()
+
+    let setBusy (v: bool) =
+        trace "neovim" "busy: %A" v
+        this.setCursorEnabled <| not v
+        //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
+        //else this.Cursor <- Cursor(StandardCursorType.Arrow)
+        //flush()
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
