@@ -435,6 +435,7 @@ type EditorViewModel(GridId: int) as this =
     member this.cursorConfig() =
         async {
             if mode_defs.Length = 0 || cursor_modeidx < 0 then return ()
+            elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then return()
             else
             let mode  = mode_defs.[cursor_modeidx]
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid

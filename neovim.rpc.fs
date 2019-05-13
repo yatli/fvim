@@ -398,15 +398,15 @@ type Process() =
         let opts = 
             { 
                 rgb            = true 
-                //ext_cmdline    = false
-                //ext_hlstate    = false
+                ext_cmdline    = false
+                ext_hlstate    = false
                 ext_linegrid   = true
-                //ext_messages   = false
-                //ext_multigrid  = false
-                //ext_popupmenu  = false
-                //ext_tabline    = false
-                //ext_termcolors = false
-                //ext_wildmenu   = false
+                ext_messages   = false
+                ext_multigrid  = false
+                ext_popupmenu  = false
+                ext_tabline    = false
+                ext_termcolors = false
+                ext_wildmenu   = false
             }
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
