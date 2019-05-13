@@ -130,18 +130,21 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color,
     // skia.Canvas.DrawRect(bounds, fg)
     // --------------------------------------------------
 
+    let sp_thickness = fg.FontMetrics.UnderlineThickness.GetValueOrDefault(1.0F)
+
     if underline then
         let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
         let p1 = fontPos + Point(0.0, float <| underline_pos)
         let p2 = p1 + Point(region.Width, 0.0)
         sp.Style <- SKPaintStyle.Stroke
+        //sp.StrokeWidth <- sp_thickness
         skia.Canvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
 
     if undercurl then
         let underline_pos  = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
         let mutable px, py = single fontPos.X, single fontPos.Y 
         py <- py + underline_pos
-        let qf             = 0.5F
+        let qf             = 1.5F
         let hf             = qf * 2.0F
         let q3f            = qf * 3.0F
         let ff             = qf * 4.0F
@@ -149,6 +152,7 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color,
         let py1            = py - 2.0f
         let py2            = py + 2.0f
         sp.Style <- SKPaintStyle.Stroke
+        sp.StrokeWidth <- sp_thickness
         use path = new SKPath()
         path.MoveTo(px, py)
         while px < r do
