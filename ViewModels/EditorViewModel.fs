@@ -280,6 +280,9 @@ type EditorViewModel(GridId: int) as this =
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
+        // if the buffer under cursor is updated, also notify the cursor view model
+        if row = cursor_row && line.col_start <= cursor_col && cursor_col < col
+        then this.cursorConfig()
         //trace "redraw" "putBuffer: writing to %A" dirty
         markDirty dirty
 
@@ -347,17 +350,14 @@ type EditorViewModel(GridId: int) as this =
         let copy src dst =
             if src >= 0 && src < grid_size.rows && dst >= 0 && dst < grid_size.rows then
                 Array.Copy(grid_buffer, src * grid_size.cols + left, grid_buffer, dst * grid_size.cols + left, right - left)
+                markDirty {row = dst; height = 1; col = left; width = right - left }
 
         if rows > 0 then
             for i = top + rows to bot do
                 copy i (i-rows)
-                markDirty {row = i - rows; height = 1; col = left; width = right - left }
-            //markDirty {row = top; height = bot - top - rows + 1; col = left; width = right - left }
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
-                markDirty {row = i - rows; height = 1; col = left; width = right - left }
-            //markDirty {row = top - rows; height = bot - top - rows + 1; col = left; width = right - left }
 
     let setOption (opt: UiOption) = 
         trace "setOption" "%A" opt
@@ -441,8 +441,7 @@ type EditorViewModel(GridId: int) as this =
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
             let hlid  = Option.defaultValue hlid mode.attr_id
             let fg, bg, sp, attrs = getDrawAttrs hlid cursor_row cursor_col
-            let origin = getPoint cursor_row cursor_col |> rounding
-            let size = getPoint 1 1
+            let origin = getPoint cursor_row cursor_col 
             let on, off, wait =
                 match mode with
                 | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
@@ -461,8 +460,8 @@ type EditorViewModel(GridId: int) as this =
             cursor_info.bold           <- attrs.bold
             cursor_info.italic         <- attrs.italic
             cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-            cursor_info.w              <- size.X
-            cursor_info.h              <- size.Y
+            cursor_info.w              <- glyph_size.Width
+            cursor_info.h              <- glyph_size.Height
             cursor_info.x              <- origin.X
             cursor_info.y              <- origin.Y
             cursor_info.blinkon        <- on

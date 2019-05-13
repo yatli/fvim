@@ -262,7 +262,7 @@ let onInput: (IEvent<InputEvent> -> unit) =
         | (Normal n)                            -> Some <| n
         | ImeEvent                              -> None
         | TextInput txt when _imeArmed          -> Some txt
-        | x                                     -> trace "input" "unrecognized input: %A" x; None
+        | x                                     -> trace "input" "rejected: %A" x; None
     ) >>
     // hook up nvim_input
     Observable.add (fun key ->

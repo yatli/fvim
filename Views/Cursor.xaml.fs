@@ -38,6 +38,7 @@ type Cursor() as this =
         cursorTimerRun blinkon this.ViewModel.blinkoff
 
     let cursorConfig id =
+        trace "cursor" "render tick %A" id
         if Object.Equals(this.ViewModel, null) 
         then ()
         else
@@ -71,12 +72,9 @@ type Cursor() as this =
             let text = FormattedText(Text = this.ViewModel.text, Typeface = typeface)
             ctx.DrawText(fgbrush, Point(0.0, 0.0), text)
         | CursorShape.Horizontal, p ->
-            ()
-            let region = Rect(0.0, this.Height - (cellh p), this.Width, this.Height)
+            let h = (cellh p)
+            let region = Rect(0.0, this.Height - h, this.Width, h)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
         | CursorShape.Vertical, p ->
-            ()
-            // FIXME Point(cellw p, -1.0) to avoid spanning to the next row. 
-            // rounding should be implemented
-            let region = Rect(0.0, 0.0, cellw p, this.Height - 1.0)
+            let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
