@@ -3,6 +3,8 @@
 
 Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Avalonia](http://avaloniaui.net/).
 
+![Screenshot](https://github.com/yatli/fvim/raw/master/images/screenshot.png)
+
 ### Features
 
 - HiDPI support -- try dragging it across two screens with different DPIs ;)
