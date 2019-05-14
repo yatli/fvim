@@ -5,13 +5,13 @@
         xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
         Focusable  = "True"
         x:Class    = "FVim.Editor"
-        Background = "{Binding BackgroundBrush, Mode=TwoWay}"
+        Background = "{Binding BackgroundBrush, Mode=OneWay}"
         >
     <Image 
         Name                = "FrameBuffer"
-        Source              = "{Binding FrameBuffer,  Mode=TwoWay}"
-        Width               = "{Binding BufferWidth,  Mode=TwoWay}"
-        Height              = "{Binding BufferHeight, Mode=TwoWay}"
+        Source              = "{Binding FrameBuffer,  Mode=OneWay}"
+        Width               = "{Binding BufferWidth,  Mode=OneWay}"
+        Height              = "{Binding BufferHeight, Mode=OneWay}"
         Stretch             = "Fill"
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
@@ -24,7 +24,29 @@
         Width               = "{Binding w}"
         Canvas.Left         = "{Binding x}"
         Canvas.Top          = "{Binding y}"
-        RenderTick          = "{Binding RenderTick, Mode=TwoWay}"
+        RenderTick          = "{Binding RenderTick, Mode=OneWay}"
     />
+    <ItemsControl 
+        Items="{Binding ChildGrids}"
+        HorizontalAlignment = "Left"
+        VerticalAlignment   = "Top"
+        Width               = "{Binding BufferWidth,  Mode=OneWay}"
+        Height              = "{Binding BufferHeight, Mode=OneWay}"
+        >
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <fvim:EmbeddedEditor 
+                Canvas.Left = "{Binding X}"
+                Canvas.Top  = "{Binding Y}"
+                HorizontalAlignment = "Stretch"
+                VerticalAlignment   = "Stretch"
+                HorizontalContentAlignment = "Stretch"
+                VerticalContentAlignment   = "Stretch"
+                Width       = "{Binding W,  Mode=OneWay}"
+                Height      = "{Binding H,  Mode=OneWay}"
+            />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
 
 </Canvas>

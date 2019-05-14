@@ -31,11 +31,11 @@
       <DependentUpon>%(Filename)</DependentUpon>
     </Compile>
     <AvaloniaResource Include="Assets\*" />
+    <Content Include="**\*.xaml" />
     <AvaloniaResource Include="**\*.xaml">
       <SubType>Designer</SubType>
     </AvaloniaResource>
     <EmbeddedResource Include="nerd.ttf" />
-    <Content Include="**\*.xaml" />
     <Content Include="Assets\*" />
   </ItemGroup>
 

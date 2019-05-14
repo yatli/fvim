@@ -51,19 +51,25 @@ type private GridRect =
 module private helpers =
     let _d x = Option.defaultValue x
 
-type Anchor = 
-    { 
-        child: EditorViewModel 
-        X: float
-        Y: float
-    }
-    //interface IViewModelContainer with
-    //    member this.Target: obj = 
-    //        box this.child
+type EmbeddedEditorViewModel(child, X, Y, W, H) = 
+    inherit ViewModelBase()
+
+    let mutable m_x = X
+    let mutable m_y = Y
+    let mutable m_w = W
+    let mutable m_h = H
+
+    member this.child: EditorViewModel = child
+    member this.X with get(): float = m_x and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_x, v)
+    member this.Y with get(): float = m_y and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_y, v)
+    member this.W with get(): float = m_w and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_w, v)
+    member this.H with get(): float = m_h and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_h, v)
 
 and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
                     ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int) as this =
     inherit ViewModelBase()
+
+    let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
 
     let mutable grid_fb: RenderTargetBitmap  = null
@@ -104,7 +110,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
 
-    let child_grids = ObservableCollection<Anchor>()
+    let child_grids = ObservableCollection<EmbeddedEditorViewModel>()
     let resizeEvent = Event<IGridUI>()
     let inputEvent  = Event<InputEvent>()
 
@@ -230,7 +236,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let flush() = 
-        trace "editorvm" "flush."
+        trace "flush."
         this.RenderTick <- this.RenderTick + 1
         markClean()
 
@@ -240,7 +246,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
         glyph_size <- Size(float w, float h)
-        trace "fontConfig" "guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
+        trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
         resizeEvent.Trigger(this)
 
@@ -274,7 +280,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         }
         
     let clearBuffer () =
-        trace "editorvm" "RenderScaling is %f" grid_scale
+        trace "RenderScaling is %f" grid_scale
 
         this.DestroyFramebuffer()
         let size          = getPoint grid_size.rows grid_size.cols
@@ -320,11 +326,11 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let bell (visual: bool) =
         // TODO
-        trace "neovim" "bell: %A" visual
+        trace "neovim: bell: %A" visual
         ()
 
     let setBusy (v: bool) =
-        trace "neovim" "busy: %A" v
+        trace "neovim: busy: %A" v
         this.setCursorEnabled <| not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
@@ -364,7 +370,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         //    `cols` is always zero in this version of Nvim, and reserved for future
         //    use. 
 
-        trace "editor" "scroll: %A %A %A %A %A %A" top bot left right rows cols
+        trace "scroll: %A %A %A %A %A %A" top bot left right rows cols
 
         let copy src dst =
             if src >= 0 && src < grid_size.rows && dst >= 0 && dst < grid_size.rows then
@@ -379,7 +385,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 copy i (i-rows)
 
     let setOption (opt: UiOption) = 
-        trace "setOption" "%A" opt
+        trace "setOption: %A" opt
 
         let (|FN|_|) (x: string) =
             // try to parse with 'font\ name:hNN'
@@ -406,7 +412,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let redraw(cmd: RedrawCommand) =
         match cmd with
-        | UnknownCommand x                                                   -> trace "editorvm" "unknown command %A" x
+        | UnknownCommand x                                                   -> trace "unknown command %A" x
         | HighlightAttrDefine hls                                            -> hiattrDefine hls
         | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
@@ -422,23 +428,23 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | VisualBell                                                         -> bell true
         | Busy is_busy                                                       -> setBusy is_busy
         | SetTitle title                                                     -> Application.Current.MainWindow.Title <- title
-        | SetIcon icon                                                       -> trace "editorvm" "icon: %s" icon // TODO
+        | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> 
             let existing =  child_grids 
                          |> Seq.indexed
-                         |> Seq.tryPick (function | (i, {child=child}) when (child :> IGridUI).Id = grid  -> Some(i, child)
+                         |> Seq.tryPick (function | (i, a) when (a.child :> IGridUI).Id = grid  -> Some(i, a.child)
                                                   | _ -> None)
             let origin = getPoint startrow startcol
+            let child_size = getPoint h w
             match existing with
             | Some(i, child) -> 
                 (* manually resize the child grid as per neovim docs *)
                 child.initBuffer h w
-                child_grids.[i] <- {child=child;Y=origin.Y;X=origin.X}
+                child_grids.[i] <- EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
             | None -> 
-                let child_size = getPoint h w
-                let anchor = {child=EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y));Y=origin.Y;X=origin.X}
+                let anchor = EmbeddedEditorViewModel(EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y)), origin.X,origin.Y, child_size.X, child_size.Y)
                 child_grids.Add <| anchor
                 //let wnd = Window()
                 //wnd.Height  <- child_size.Y
@@ -453,7 +459,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     member private __.initBuffer nrow ncol =
         grid_size <- { rows = nrow; cols = ncol }
-        trace "editorvm" "buffer resize = %A" grid_size
+        trace "buffer resize = %A" grid_size
         clearBuffer()
 
     interface IGridUI with
@@ -518,7 +524,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
             cursor_info.enabled        <- cursor_en
             cursor_info.RenderTick     <- cursor_info.RenderTick + 1
-            trace "editorvm" "set cursor info"
+            trace "set cursor info"
         } |> Async.RunSynchronously
 
     member this.setCursorEnabled v =
@@ -555,14 +561,14 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     member __.BackgroundBrush
         with get(): SolidColorBrush = SolidColorBrush(default_bg)
 
-    member __.BufferHeight with get(): float = grid_fb.Size.Height
-    member __.BufferWidth  with get(): float = grid_fb.Size.Width
+    member __.BufferHeight with get(): float = if grid_fb <> null then grid_fb.Size.Height else 10.0
+    member __.BufferWidth  with get(): float = if grid_fb <> null then grid_fb.Size.Width else 10.0
     member __.TopLevel     with get(): bool  = parent.IsNone
 
     member this.MeasuredSize
         with get() : Size = measured_size
         and set(v) =
-            trace "editorvm" "set measured size: %A" v
+            trace "set measured size: %A" v
             let gridui = this :> IGridUI
             let gw, gh = gridui.GridWidth, gridui.GridHeight
             measured_size <- v

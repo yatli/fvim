@@ -25,7 +25,12 @@ open System.Collections.ObjectModel
 open System.Collections.Specialized
 open System.Collections.Generic
 
-type Editor() as this =
+type EmbeddedEditor() as this =
+    inherit UserControl()
+    do
+        AvaloniaXamlLoader.Load(this)
+
+and Editor() as this =
     inherit Canvas()
 
     let toggleFullscreen(v) =
@@ -33,11 +38,11 @@ type Editor() as this =
         if not v then
             win.WindowState <- WindowState.Normal
             win.HasSystemDecorations <- true
-            win.Topmost <- false
+            //win.Topmost <- false
         else
             win.HasSystemDecorations <- false
             win.WindowState <- WindowState.Maximized
-            win.Topmost <- true
+            //win.Topmost <- true
 
     let doWithDataContext fn =
         match this.DataContext with
@@ -56,34 +61,14 @@ type Editor() as this =
                 fb.InvalidateVisual()
         )
 
-    let children_editors = Dictionary<int, Editor>()
-
-    let children_change (e: NotifyCollectionChangedEventArgs) =
-        match e.Action with
-        | NotifyCollectionChangedAction.Reset ->
-            children_editors.Values |> Seq.iter (fun x -> ignore <| this.Children.Remove x)
-            children_editors.Clear()
-        | NotifyCollectionChangedAction.Add ->
-            for x in e.NewItems do
-                let anchor = x :?> Anchor
-                let editor = Editor(DataContext = anchor.child)
-                editor.SetValue(Canvas.LeftProperty, anchor.X)
-                editor.SetValue(Canvas.TopProperty, anchor.Y)
-                let gid = (anchor.child :> IGridUI).Id
-                children_editors.[gid] <- editor
-                this.Children.Add(editor)
-        ()
-
     do
         AvaloniaXamlLoader.Load(this)
         ignore <| this.Bind(Editor.RenderTickProp, Binding("RenderTick", BindingMode.TwoWay))
         ignore <| this.Bind(Editor.FullscreenProp, Binding("Fullscreen", BindingMode.TwoWay))
-        ignore <| this.Bind(Editor.ChildrenProp, Binding("ChildGrids"))
 
         this.WhenActivated(fun disposables -> 
             ignore <| this.GetObservable(Editor.FullscreenProp).Subscribe(toggleFullscreen).DisposeWith(disposables)
             ignore <| this.GetObservable(Editor.RenderTickProp).Subscribe(redraw).DisposeWith(disposables)
-            ignore <| this.GetObservable(Editor.ChildrenProp).Subscribe(fun (c: ObservableCollection<Anchor>) -> if c <> null then ignore <| c.CollectionChanged.Subscribe(children_change).DisposeWith(disposables)).DisposeWith(disposables)
             ignore <| this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e)).DisposeWith(disposables)
 
             this.Focus()
@@ -92,11 +77,11 @@ type Editor() as this =
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
     static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
     static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
-    static member ChildrenProp   = AvaloniaProperty.Register<Editor, ObservableCollection<Anchor>>("Children")
 
     override this.MeasureOverride(size) =
         doWithDataContext (fun vm ->
-            vm.MeasuredSize <- size
+            if vm.TopLevel then
+                vm.MeasuredSize <- size
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
         )
         size
@@ -129,3 +114,4 @@ type Editor() as this =
         member this.ViewModel
             with get (): obj = this.GetValue(Editor.ViewModelProp) :> obj
             and set (v: obj): unit = this.SetValue(Editor.ViewModelProp, v)
+
