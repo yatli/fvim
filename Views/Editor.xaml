@@ -26,4 +26,5 @@
         Canvas.Top          = "{Binding y}"
         RenderTick          = "{Binding RenderTick, Mode=TwoWay}"
     />
+
 </Canvas>

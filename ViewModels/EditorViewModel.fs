@@ -12,8 +12,11 @@ open Avalonia.Media.Imaging
 open Avalonia.Platform
 open Avalonia.Threading
 open FSharp.Control.Reactive
-open System
 open ReactiveUI
+
+open System
+open System.Collections.ObjectModel
+open Avalonia.Controls
 
 [<Struct>]
 type private GridBufferCell =
@@ -24,7 +27,7 @@ type private GridBufferCell =
     with static member empty = { text  = " "; hlid = 0 }
 
 [<Struct>]
-type private GridSize =
+type GridSize =
     {
         rows: int32
         cols: int32
@@ -44,46 +47,64 @@ type private GridRect =
     member x.row_end = x.row + x.height
     member x.col_end = x.col + x.width
 
-type GridWindowPlacement =
-| Floating of parent: EditorViewModel
-| Anchor of startrow: int * startcol: int * parent: EditorViewModel
-| External
+[<AutoOpen>]
+module private helpers =
+    let _d x = Option.defaultValue x
 
-and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
+type Anchor = 
+    { 
+        child: EditorViewModel 
+        X: float
+        Y: float
+    }
+    //interface IViewModelContainer with
+    //    member this.Target: obj = 
+    //        box this.child
+
+and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
+                    ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int) as this =
     inherit ViewModelBase()
-    let mutable default_fg       = Colors.White
-    let mutable default_bg       = Colors.Black
-    let mutable default_sp       = Colors.Red
 
-    let mutable hi_defs          = Array.create<HighlightAttr> 256 HighlightAttr.Default
-    let mutable mode_defs        = Array.empty<ModeInfo>
 
-    let mutable _guifont         = "Iosevka Slab"
-    let mutable _guifontwide     = "DengXian"
-
-    let mutable font_size        = 16.0
-    let mutable glyph_size       = Size(10.0, 10.0)
-
-    let mutable grid_size        = { rows = Option.defaultValue 10 w; cols= Option.defaultValue 10 h }
-    let mutable grid_scale       = 1.0
-    let mutable grid_fullscreen  = false
-    let mutable grid_rendertick  = 0
-    let mutable measured_size    = Size(100.0, 100.0)
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_dc: IDrawingContextImpl = null
-    let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
-    let mutable grid_dirty       = { row = 0; col = 0; height = 10; width = 10 }
-
-    let mutable cursor_modeidx   = -1
+    let mutable cursor_info = CursorViewModel()
+    let mutable cursor_modeidx   = _d -1 _cursormode
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
     let mutable cursor_en        = true
-    let mutable cursor_info = CursorViewModel()
+    let mutable cursor_ingrid    = true
 
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
     let mutable mouse_pos        = 0,0
 
+    let mutable default_fg       = Colors.White
+    let mutable default_bg       = Colors.Black
+    let mutable default_sp       = Colors.Red
+
+    let mutable hi_defs          = match _hldefs with 
+                                   | None -> Array.create<HighlightAttr> 256 HighlightAttr.Default
+                                   | Some arr -> arr.Clone() :?> HighlightAttr[]
+    let mutable mode_defs        = match _modedefs with
+                                   | None -> Array.empty<ModeInfo>
+                                   | Some arr -> arr.Clone() :?> ModeInfo[]
+
+    let mutable _guifont         = _d "Iosevka Slab" _guifont
+    let mutable _guifontwide     = _d "DengXian" _guifontwide
+
+    let mutable font_size        = _d 16.0 _fontsize
+    let mutable glyph_size       = _d (Size(10.0, 10.0)) _glyphsize
+
+    let mutable grid_size        = _d { rows = 10; cols= 10 } _gridsize
+    let mutable grid_scale       = _d 1.0 _gridscale
+    let mutable grid_fullscreen  = false
+    let mutable grid_rendertick  = 0
+    let mutable measured_size    = _d (Size(100.0, 100.0)) _measuredsize
+    let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
+    let mutable grid_dirty       = { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
+
+    let child_grids = ObservableCollection<Anchor>()
     let resizeEvent = Event<IGridUI>()
     let inputEvent  = Event<InputEvent>()
 
@@ -98,9 +119,8 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
     let getPos (p: Point) =
         int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
-    let getDrawAttrs hlid row col = 
+    let getDrawAttrs hlid = 
         let attrs = hi_defs.[hlid].rgb_attr
-        let txt = grid_buffer.[row, col].text
 
         let mutable fg = Option.defaultValue default_fg attrs.foreground
         let mutable bg = Option.defaultValue default_bg attrs.background
@@ -146,7 +166,7 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
 
         let attrs = hi_defs.[hlid].rgb_attr
         let typeface = GetTypeface(List.head str, attrs.italic, attrs.bold, _guifont, _guifontwide)
-        let _fg, bg, sp, attrs = getDrawAttrs hlid row col
+        let _fg, bg, sp, attrs = getDrawAttrs hlid 
 
         use fg = GetForegroundBrush(_fg, typeface, font_size)
 
@@ -265,11 +285,6 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
         this.RaisePropertyChanged("BufferHeight")
         this.RaisePropertyChanged("BufferWidth")
 
-    let initBuffer nrow ncol =
-        grid_size <- { rows = nrow; cols = ncol }
-        trace "editorvm" "buffer resize = %A" grid_size
-        clearBuffer()
-
     let putBuffer (line: GridLine) =
         let         row  = line.row
         let mutable col  = line.col_start
@@ -293,7 +308,8 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
         mode_defs <- info
         this.setCursorEnabled cs_en
 
-    let cursorGoto row col =
+    let cursorGoto id row col =
+        cursor_ingrid <- (id = GridId)
         cursor_row <- row
         cursor_col <- col
         this.cursorConfig()
@@ -382,7 +398,6 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
 
         if config_font then fontConfig()
 
-
     let setMouse (en:bool) =
         mouse_en <- en
 
@@ -396,10 +411,10 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
         | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
         | ModeChange(name, index)                                            -> changeMode name index
-        | GridResize(id, w, h) when id = GridId                              -> initBuffer h w
+        | GridResize(id, w, h) when id = GridId                              -> this.initBuffer h w
         | GridClear id when id = GridId                                      -> clearBuffer()
         | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = GridId then putBuffer line) lines
-        | GridCursorGoto(id, row, col) when id = GridId                      -> cursorGoto row col
+        | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
         | GridDestroy id when id = GridId                                    -> this.DestroyFramebuffer()
         | GridScroll(id, top,bot,left,right,rows,cols) when id = GridId      -> scrollBuffer top bot left right rows cols
         | Flush                                                              -> flush() 
@@ -410,25 +425,48 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
         | SetIcon icon                                                       -> trace "editorvm" "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
-        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> ignore <| EditorViewModel(grid)
-        | _                                                                  -> ()
+        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> 
+            let existing =  child_grids 
+                         |> Seq.indexed
+                         |> Seq.tryPick (function | (i, {child=child}) when (child :> IGridUI).Id = grid  -> Some(i, child)
+                                                  | _ -> None)
+            let origin = getPoint startrow startcol
+            match existing with
+            | Some(i, child) -> 
+                (* manually resize the child grid as per neovim docs *)
+                child.initBuffer h w
+                child_grids.[i] <- {child=child;Y=origin.Y;X=origin.X}
+            | None -> 
+                let child_size = getPoint h w
+                let anchor = {child=EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y));Y=origin.Y;X=origin.X}
+                child_grids.Add <| anchor
+                //let wnd = Window()
+                //wnd.Height  <- child_size.Y
+                //wnd.Width   <- child_size.X
+                //wnd.Content <- anchor.child
+                //wnd.Show()
+        | _ -> ()
 
     do
         fontConfig()
         Model.OnGridReady(this)
 
+    member private __.initBuffer nrow ncol =
+        grid_size <- { rows = nrow; cols = ncol }
+        trace "editorvm" "buffer resize = %A" grid_size
+        clearBuffer()
+
     interface IGridUI with
-        member this.Id = GridId
-        member this.GridHeight = int( measured_size.Height / glyph_size.Height )
-        member this.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
-        member this.Connect redraw_ev fullscreen_ev = 
+        member __.Id = GridId
+        member __.GridHeight = int( measured_size.Height / glyph_size.Height )
+        member __.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
+        member __.Connect redraw_ev fullscreen_ev = 
             redraw_ev.Add (Array.iter redraw)
             fullscreen_ev
             |> Observable.observeOnContext (AvaloniaSynchronizationContext.Current)
             |> Observable.add toggleFullScreen
-        member this.Resized = resizeEvent.Publish
-        member this.Input = inputEvent.Publish
-
+        member __.Resized = resizeEvent.Publish
+        member __.Input = inputEvent.Publish
 
     member __.DestroyFramebuffer() =
         if grid_fb <> null then
@@ -438,7 +476,7 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
             grid_dc <- null
             fb.Dispose()
 
-    member this.cursorConfig() =
+    member __.cursorConfig() =
         async {
             if mode_defs.Length = 0 || cursor_modeidx < 0 then return ()
             elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then return()
@@ -446,7 +484,7 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
             let mode  = mode_defs.[cursor_modeidx]
             let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
             let hlid  = Option.defaultValue hlid mode.attr_id
-            let fg, bg, sp, attrs = getDrawAttrs hlid cursor_row cursor_col
+            let fg, bg, sp, attrs = getDrawAttrs hlid 
             let origin = getPoint cursor_row cursor_col 
             let text = grid_buffer.[cursor_row, cursor_col].text
             let text_type = wswidth text
@@ -509,16 +547,17 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
         and set(v) =
             ignore <| this.RaiseAndSetIfChanged(&cursor_info, v)
 
-    member this.RenderScale
+    member __.RenderScale
         with get() : float = grid_scale
         and set(v) =
             grid_scale <- v
 
-    member this.BackgroundBrush
+    member __.BackgroundBrush
         with get(): SolidColorBrush = SolidColorBrush(default_bg)
 
-    member this.BufferHeight with get(): float = grid_fb.Size.Height
-    member this.BufferWidth  with get(): float = grid_fb.Size.Width
+    member __.BufferHeight with get(): float = grid_fb.Size.Height
+    member __.BufferWidth  with get(): float = grid_fb.Size.Width
+    member __.TopLevel     with get(): bool  = parent.IsNone
 
     member this.MeasuredSize
         with get() : Size = measured_size
@@ -531,27 +570,29 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
             if gw <> gw' || gh <> gh' then 
                 resizeEvent.Trigger(this)
 
+    member __.ChildGrids = child_grids
+
     (*******************   Events   ***********************)
 
-    member this.OnKey (e: KeyEventArgs) = 
+    member __.OnKey (e: KeyEventArgs) = 
         e.Handled <- true
         inputEvent.Trigger <| InputEvent.Key(e.Modifiers, e.Key)
 
-    member this.OnMouseDown (e: PointerPressedEventArgs) (view: Visual) = 
+    member __.OnMouseDown (e: PointerPressedEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             mouse_pressed <- e.MouseButton
             inputEvent.Trigger <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
 
-    member this.OnMouseUp (e: PointerReleasedEventArgs) (view: Visual) = 
+    member __.OnMouseUp (e: PointerReleasedEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             mouse_pressed <- MouseButton.None
             inputEvent.Trigger <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
 
-    member this.OnMouseMove (e: PointerEventArgs) (view: Visual) = 
+    member __.OnMouseMove (e: PointerEventArgs) (view: Visual) = 
         if mouse_en && mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
@@ -559,13 +600,13 @@ and EditorViewModel(GridId: int, ?w: int, ?h: int) as this =
                 mouse_pos <- x,y
                 inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
 
-    member this.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
+    member __.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
             let col, row = int(e.Delta.X), int(e.Delta.Y)
             e.Handled <- true
             inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, col, row)
 
-    member this.OnTextInput (e: TextInputEventArgs) = 
+    member __.OnTextInput (e: TextInputEventArgs) = 
         inputEvent.Trigger <| InputEvent.TextInput(e.Text)
 
