@@ -51,7 +51,7 @@ and Editor() as this =
         | _ -> ()
 
     let redraw frameid =
-        trace "editor" "render tick %d" frameid;
+        //trace "editor" "render tick %d" frameid;
         ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
             let fb = this.FindControl<Image>("FrameBuffer")
             if fb <> null 

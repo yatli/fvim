@@ -25,6 +25,7 @@ module Program =
     // Your application's entry point.
     [<CompiledName "AppMain">]
     let appMain (app: Application) (args: string[]) =
+        System.Console.OutputEncoding <- System.Text.Encoding.Unicode
         Model.Start(args)
         let cfg = config.load()
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
@@ -39,6 +40,5 @@ module Program =
     [<EntryPoint>]
     [<CompiledName "Main">]
     let main(args: string[]) =
-        System.Console.OutputEncoding <- System.Text.Encoding.Unicode
         buildAvaloniaApp().Start(appMain, args)
         0

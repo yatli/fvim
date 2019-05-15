@@ -7,6 +7,22 @@
         x:Class    = "FVim.Editor"
         Background = "{Binding BackgroundBrush, Mode=OneWay}"
         >
+
+    <Canvas.Styles>
+      <Style Selector="ItemsControl > ContentPresenter">
+        <Setter Property="Canvas.Left" Value="{Binding X, Mode=OneWay}"/>
+        <Setter Property="Canvas.Top" Value="{Binding Y, Mode=OneWay}"/>
+        <Setter Property="ZIndex" Value="10" />
+        <!--<Setter Property="ZIndex" Value="{Binding Converter={x:Static infrastructure:ZIndexConverter.Instance }}" />-->
+        
+        <!--<Setter Property="Transitions">                            
+          <Transitions>
+            <DoubleTransition  Property="Opacity" Duration="0:0:0:0.5"/>
+          </Transitions>
+        </Setter>-->
+      </Style>
+    </Canvas.Styles>
+  
     <Image 
         Name                = "FrameBuffer"
         Source              = "{Binding FrameBuffer,  Mode=OneWay}"
@@ -27,26 +43,32 @@
         RenderTick          = "{Binding RenderTick, Mode=OneWay}"
     />
     <ItemsControl 
-        Items="{Binding ChildGrids}"
+        Items               = "{Binding ChildGrids}"
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
         Width               = "{Binding BufferWidth,  Mode=OneWay}"
         Height              = "{Binding BufferHeight, Mode=OneWay}"
         >
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <Canvas 
+                Width       = "{Binding $parent[1].Width,   Mode=OneWay}"
+                Height      = "{Binding $parent[1].Height,  Mode=OneWay}"
+            />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+
       <ItemsControl.ItemTemplate>
         <DataTemplate>
             <fvim:EmbeddedEditor 
-                Canvas.Left = "{Binding X}"
-                Canvas.Top  = "{Binding Y}"
-                HorizontalAlignment = "Stretch"
-                VerticalAlignment   = "Stretch"
+                HorizontalAlignment        = "Stretch"
+                VerticalAlignment          = "Stretch"
                 HorizontalContentAlignment = "Stretch"
                 VerticalContentAlignment   = "Stretch"
-                Width       = "{Binding W,  Mode=OneWay}"
-                Height      = "{Binding H,  Mode=OneWay}"
+                Width                      = "{Binding W,  Mode=OneWay}"
+                Height                     = "{Binding H,  Mode=OneWay}"
             />
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-
 </Canvas>

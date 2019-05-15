@@ -6,9 +6,11 @@ open System.IO
 open Avalonia
 open System
 open Avalonia.Controls
+open System.Diagnostics
 
 [<Literal>]
 let sample_config = """
+[
 {
     "workspace": [
         {
@@ -21,11 +23,17 @@ let sample_config = """
                 "state": "Normal"
             }
         }
-    ]
-}
+    ],
+    "Logging": {
+        "EchoOnConsole": false,
+        "LogToFile": ""
+    }
+},
+{}
+]
 """
 
-type ConfigObject = JsonProvider<sample_config>
+type ConfigObject = JsonProvider<sample_config, SampleIsList=true>
 
 let homedir = if RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
               then Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%");
@@ -43,7 +51,9 @@ try ignore <| Directory.CreateDirectory(configdir)
 with _ -> ()
 
 let load() = 
-    try ConfigObject.Load configfile
+    try 
+        let cfg = ConfigObject.Load configfile
+        cfg
     with _ -> ConfigObject.Parse("{}")
 
 let save (cfg: ConfigObject.Root) (x: int) (y: int) (w: float) (h: float) (state: WindowState) = 
@@ -51,6 +61,6 @@ let save (cfg: ConfigObject.Root) (x: int) (y: int) (w: float) (h: float) (state
     let cwd  = Environment.CurrentDirectory |> Path.GetFullPath
     let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, int w, int h, state.ToString()))
     let dict = dict.Add(cwd, ws)
-    let cfg  = ConfigObject.Root(dict |> Map.toArray |> Array.map snd)
+    let cfg  = ConfigObject.Root(dict |> Map.toArray |> Array.map snd, cfg.Logging)
     try File.WriteAllText(configfile, cfg.ToString())
     with _ -> ()

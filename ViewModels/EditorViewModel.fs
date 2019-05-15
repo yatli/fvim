@@ -410,6 +410,30 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let hiattrDefine (hls: HighlightAttr[]) =
         Array.iter setHighlight hls
 
+    let setWinPos grid win startrow startcol w h =
+        trace "setWinPos: grid = %A, win = %A, startrow = %A, startcol = %A, w = %A, h = %A" grid win startrow startcol w h
+        let existing =  child_grids 
+                     |> Seq.indexed
+                     |> Seq.tryPick (function | (i, a) when (a.child :> IGridUI).Id = grid  -> Some(i, a.child)
+                                              | _ -> None)
+        let origin = getPoint startrow startcol
+        let child_size = getPoint h w
+        trace "setWinPos: child will be positioned at %A" origin
+        match existing with
+        | Some(i, child) -> 
+            (* manually resize the child grid as per neovim docs *)
+            child.initBuffer h w
+            child_grids.[i] <- EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
+        | None -> 
+            let child = EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx)
+            let anchor = EmbeddedEditorViewModel(child, origin.X,origin.Y, child_size.X, child_size.Y)
+            child_grids.Add <| anchor
+            //let wnd = Window()
+            //wnd.Height  <- child_size.Y
+            //wnd.Width   <- child_size.X
+            //wnd.Content <- anchor.child
+            //wnd.Show()
+
     let redraw(cmd: RedrawCommand) =
         match cmd with
         | UnknownCommand x                                                   -> trace "unknown command %A" x
@@ -431,29 +455,14 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
-        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> 
-            let existing =  child_grids 
-                         |> Seq.indexed
-                         |> Seq.tryPick (function | (i, a) when (a.child :> IGridUI).Id = grid  -> Some(i, a.child)
-                                                  | _ -> None)
-            let origin = getPoint startrow startcol
-            let child_size = getPoint h w
-            match existing with
-            | Some(i, child) -> 
-                (* manually resize the child grid as per neovim docs *)
-                child.initBuffer h w
-                child_grids.[i] <- EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
-            | None -> 
-                let anchor = EmbeddedEditorViewModel(EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y)), origin.X,origin.Y, child_size.X, child_size.Y)
-                child_grids.Add <| anchor
-                //let wnd = Window()
-                //wnd.Height  <- child_size.Y
-                //wnd.Width   <- child_size.X
-                //wnd.Content <- anchor.child
-                //wnd.Show()
+        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
         | _ -> ()
 
     do
+        let fg,bg,sp,attr = getDrawAttrs 0
+        default_bg <- bg
+        default_fg <- fg
+        default_sp <- sp
         fontConfig()
         Model.OnGridReady(this)
 
@@ -523,6 +532,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             cursor_info.blinkwait      <- wait
             cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
             cursor_info.enabled        <- cursor_en
+            cursor_info.ingrid         <- cursor_ingrid
             cursor_info.RenderTick     <- cursor_info.RenderTick + 1
             trace "set cursor info"
         } |> Async.RunSynchronously

@@ -32,7 +32,7 @@ type Cursor() as this =
             cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time))
 
     let showCursor (v: bool) =
-        this.IsVisible <- v && this.ViewModel.enabled
+        this.IsVisible <- v && this.ViewModel.enabled && this.ViewModel.ingrid
 
     let rec blinkon() =
         showCursor true
@@ -49,8 +49,8 @@ type Cursor() as this =
             fbs.[(w,h)] <- fb
         fb
 
-    let cursorConfig id =
-        trace "cursor" "render tick %A" id
+    let cursorConfig tick =
+        //trace "cursor" "render tick %A" id
         if Object.Equals(this.ViewModel, null) 
         then ()
         else
