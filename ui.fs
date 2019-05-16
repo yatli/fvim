@@ -116,6 +116,9 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color,
     use bg = new SKPaint(Color = _bg.ToSKColor())
     use sp = new SKPaint(Color = _sp.ToSKColor())
 
+    //lol wat??
+    //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
+
     skia.Canvas.DrawRect(region.ToSKRect(), bg)
     skia.Canvas.DrawText(text, fontPos.ToSKPoint(), fg)
 
