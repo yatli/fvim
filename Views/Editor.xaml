@@ -34,20 +34,20 @@
     />
     <fvim:Cursor
         DataContext         = "{Binding CursorInfo}"
+        Height              = "{Binding h, Mode=OneWay}"
+        Width               = "{Binding w, Mode=OneWay}"
+        Canvas.Left         = "{Binding x, Mode=OneWay}"
+        Canvas.Top          = "{Binding y, Mode=OneWay}"
+        RenderTick          = "{Binding RenderTick, Mode=OneWay}"
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
-        Height              = "{Binding h}"
-        Width               = "{Binding w}"
-        Canvas.Left         = "{Binding x}"
-        Canvas.Top          = "{Binding y}"
-        RenderTick          = "{Binding RenderTick, Mode=OneWay}"
     />
     <ItemsControl 
-        Items               = "{Binding ChildGrids}"
-        HorizontalAlignment = "Left"
-        VerticalAlignment   = "Top"
+        Items               = "{Binding ChildGrids, Mode=OneWay}"
         Width               = "{Binding BufferWidth,  Mode=OneWay}"
         Height              = "{Binding BufferHeight, Mode=OneWay}"
+        HorizontalAlignment = "Left"
+        VerticalAlignment   = "Top"
         >
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>

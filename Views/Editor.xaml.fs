@@ -51,7 +51,7 @@ and Editor() as this =
         | _ -> ()
 
     let redraw frameid =
-        //trace "editor" "render tick %d" frameid;
+        trace "editor" "render tick %d" frameid;
         ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
             let fb = this.FindControl<Image>("FrameBuffer")
             if fb <> null 
@@ -61,15 +61,31 @@ and Editor() as this =
                 fb.InvalidateVisual()
         )
 
+    let rxchange (e: IReactivePropertyChangedEventArgs<IReactiveObject>) =
+        match e.PropertyName with
+        | "RenderTick" -> redraw -1
+        | "Fullscreen" -> toggleFullscreen (e.Sender :?> EditorViewModel).Fullscreen
+        | _ -> ()
+        //| "Fullscreen" -> toggleFullscree
+        //printfn "%s" e.PropertyName
+
     do
         AvaloniaXamlLoader.Load(this)
-        ignore <| this.Bind(Editor.RenderTickProp, Binding("RenderTick", BindingMode.TwoWay))
-        ignore <| this.Bind(Editor.FullscreenProp, Binding("Fullscreen", BindingMode.TwoWay))
 
         this.WhenActivated(fun disposables -> 
-            ignore <| this.GetObservable(Editor.FullscreenProp).Subscribe(toggleFullscreen).DisposeWith(disposables)
-            ignore <| this.GetObservable(Editor.RenderTickProp).Subscribe(redraw).DisposeWith(disposables)
-            ignore <| this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e)).DisposeWith(disposables)
+            // bindings stopped working...
+            //ignore <| this.Bind(Editor.RenderTickProp, Binding("RenderTick", BindingMode.OneWay))
+            //ignore <| this.Bind(Editor.FullscreenProp, Binding("Fullscreen", BindingMode.OneWay))
+            //ignore <| this.GetObservable(Editor.FullscreenProp).Subscribe(toggleFullscreen).DisposeWith(disposables)
+            //ignore <| this.GetObservable(Editor.RenderTickProp).Subscribe(redraw).DisposeWith(disposables)
+
+            ignore <| this.GetObservable(Editor.DataContextProperty)
+                          .OfType<ReactiveObject>()
+                          .Subscribe(fun vm -> ignore <| vm.Changed.Subscribe(rxchange).DisposeWith(disposables))
+                          .DisposeWith(disposables)
+            ignore <| this.TextInput
+                          .Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
+                          .DisposeWith(disposables)
 
             this.Focus()
         ) |> ignore

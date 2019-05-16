@@ -15,6 +15,7 @@ module Program =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
+            .UseSkia()
             .With(new Win32PlatformOptions(UseDeferredRendering=false))
             .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=false))
             .With(new X11PlatformOptions(UseEGL=false, UseGpu=false))
