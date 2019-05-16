@@ -12,11 +12,19 @@ open ui
 open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
+open Avalonia.Animation
+open Avalonia.Markup.Xaml
+open ReactiveUI
+open System.Reactive.Linq
+open System.Reactive.Disposables
 
 type Cursor() as this =
     inherit Control()
 
     static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
+    static let PosXProp = AvaloniaProperty.Register<Cursor, float>("PosX")
+    static let PosYProp = AvaloniaProperty.Register<Cursor, float>("PosY")
+    static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
 
     let mutable cursor_timer: IDisposable = null
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
@@ -32,8 +40,12 @@ type Cursor() as this =
             cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time))
 
     let showCursor (v: bool) =
-        this.IsVisible <- v && this.ViewModel.enabled && this.ViewModel.ingrid
-
+        let opacity = 
+            if v && this.ViewModel.enabled && this.ViewModel.ingrid
+            then 1.0
+            else 0.0
+        this.Opacity <- opacity
+        
     let rec blinkon() =
         showCursor true
         cursorTimerRun blinkoff this.ViewModel.blinkon
@@ -66,6 +78,13 @@ type Cursor() as this =
             cursorTimerRun blinkon this.ViewModel.blinkwait
             this.InvalidateVisual()
 
+    do
+        AvaloniaXamlLoader.Load(this)
+        this.WhenActivated(fun disposables -> 
+            ignore <| this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x)).DisposeWith(disposables)
+            ignore <| this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y)).DisposeWith(disposables)
+        ) |> ignore
+
     override this.OnDataContextChanged _ =
         ignore <| this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
 
@@ -93,3 +112,12 @@ type Cursor() as this =
         | CursorShape.Vertical, p ->
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
+
+    interface IViewFor<CursorViewModel> with
+        member this.ViewModel
+            with get (): CursorViewModel = this.GetValue(ViewModelProp)
+            and set (v: CursorViewModel): unit = this.SetValue(ViewModelProp, v)
+        member this.ViewModel
+            with get (): obj = this.GetValue(ViewModelProp) :> obj
+            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
+

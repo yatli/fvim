@@ -5,4 +5,7 @@
          xmlns:fvim="clr-namespace:FVim;assembly=FVim"
          Focusable="False"
          x:Class="FVim.Cursor">
+  <Control.Transitions>
+    <DoubleTransition Property="Opacity" Duration="0:0:0:0.15"/>
+  </Control.Transitions>
 </Control>
