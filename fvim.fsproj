@@ -6,8 +6,16 @@
     <AssemblyName>FVim</AssemblyName>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
+  
+  <PropertyGroup>
+    <AssemblyVersion>$(GitTag)</AssemblyVersion>
+    <Version>$(GitTag)</Version>
+    <ApplicationVersion>$(GitTag)</ApplicationVersion>
+    <Authors>Yatao Li</Authors>
+  </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="getopt.fs" />
     <Compile Include="ViewLocator.fs" />
     <Compile Include="log.fs" />
     <Compile Include="config.fs" />
@@ -46,12 +54,15 @@
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.0" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
+    <PackageReference Include="GitInfo" Version="2.0.20">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="System.Diagnostics.Tracing" Version="4.3.0" />
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
     <PackageReference Update="FSharp.Core" Version="4.6.2" />
   </ItemGroup>

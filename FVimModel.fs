@@ -279,6 +279,7 @@ let private onInput: (IEvent<InputEvent> -> unit) =
 let Start(args: string[]) =
 
     trace "Model" "starting neovim instance..."
+    trace "Model" "args = %A" args
     nvim.start(args)
     ignore <|
     nvim.subscribe 
