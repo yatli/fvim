@@ -32,6 +32,7 @@ type IGridUI =
     abstract Input: IEvent<InputEvent>
 
 let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
+let private emoji_typeface = SKTypeface.FromFamilyName("Segoe UI Emoji")
 let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
 
 let GetTypeface(txt, italic, bold, font, wfont) =
@@ -51,9 +52,10 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     let wfont = if String.IsNullOrEmpty wfont then font else wfont
 
     match w with
-    | CharType.Wide -> _get wfont
-    | CharType.Nerd -> nerd_typeface
-    | _             -> _get font
+    | CharType.Wide  -> _get wfont
+    | CharType.Nerd  -> nerd_typeface
+    | CharType.Emoji -> emoji_typeface
+    | _              -> _get font
 
 let GetTypefaceA(txt, italic, bold, font, wfont, fontSize) =
     let typeface = GetTypeface(txt, italic, bold, font, wfont)
