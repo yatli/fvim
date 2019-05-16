@@ -4,6 +4,7 @@
 *)
 module FVim.wcwidth
 
+open log
 open System.Numerics
 
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
@@ -538,8 +539,7 @@ type CharType =
 | Nerd        = 3
 | Emoji       = 4
 
-let wcwidth(ucs: char) =
-    let ucs = (int) ucs
+let wcwidth(ucs: int) =
     // NOTE: created by hand, there isn't anything identifiable other than
     // general Cf category code to identify these, and some characters in Cf
     // category code are of non-zero width.
@@ -558,11 +558,25 @@ let wcwidth(ucs: char) =
     elif intable WideEastAsian ucs                                          then CharType.Wide
     // Combining characters with zero width.
     elif intable ZeroWidth ucs                                              then CharType.Invisible
-    else CharType.Narrow
+    else 
+        trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)
+        CharType.Narrow
 
 let wswidth(str: string) = 
     if System.String.IsNullOrEmpty str then CharType.Invisible
-    else str |> Seq.map (int << wcwidth) |> Seq.max |> LanguagePrimitives.EnumOfValue
+    // prepend a low surrogate
+    else (string(char 0xDC00) + str)
+         |> Seq.map int
+         |> Seq.pairwise 
+         |> Seq.choose (fun (a,b) -> 
+                        if System.Char.IsSurrogatePair(char a, char b) 
+                        then Some(0x10000 + (a - 0xD800) * 0x400 + (b - 0xDC00))
+                        elif not <| System.Char.IsSurrogate(char b)
+                        then Some(b)
+                        else None) 
+         |> Seq.map (wcwidth >> int)
+         |> Seq.max 
+         |> LanguagePrimitives.EnumOfValue
 
 let CharTypeWidth(x: CharType): int =
     match x with
