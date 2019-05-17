@@ -309,6 +309,18 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         if row = cursor_row && line.col_start <= cursor_col && cursor_col < col
         then this.cursorConfig()
         //trace "redraw" "putBuffer: writing to %A" dirty
+        // italic font artifacts I: remainders after scrolling and redrawing the dirty part
+        // workaround: extend the dirty region one cell further towards the end
+
+        // italic font artifacts II: when inserting on an italic line, later glyphs cover earlier with the background.
+        // potential workaround 1: redraw the whole line...
+        // potential workaround 2: do not draw the background for the latest glyph
+
+        // italic font artifacts III: block cursor may not have italic style. 
+        // how to fix this? curious about how the original GVim handles this situation.
+
+        // apply workaround I:
+        let dirty = {dirty with width = min (dirty.width + 1) grid_size.cols}
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
