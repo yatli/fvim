@@ -4,6 +4,7 @@ open log
 open ui
 open wcwidth
 open neovim.def
+open neovim.rpc
 
 open Avalonia
 open Avalonia.Input
@@ -116,6 +117,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let toggleFullScreen(gridid: int) =
         if gridid = GridId then
+            trace "ToggleFullScreen"
             this.Fullscreen <- not this.Fullscreen
 
     //  converts grid position to UI Point
@@ -478,6 +480,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         default_sp <- sp
         fontConfig()
         Model.OnGridReady(this)
+        Model.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid ) |> ignore
 
     member private __.initBuffer nrow ncol =
         grid_size <- { rows = nrow; cols = ncol }
@@ -488,11 +491,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         member __.Id = GridId
         member __.GridHeight = int( measured_size.Height / glyph_size.Height )
         member __.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
-        member __.Connect redraw_ev fullscreen_ev = 
-            redraw_ev.Add (Array.iter redraw)
-            fullscreen_ev
-            |> Observable.observeOnContext (AvaloniaSynchronizationContext.Current)
-            |> Observable.add toggleFullScreen
+        member __.Connect redraw_ev = redraw_ev.Add (Array.iter redraw)
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
 
