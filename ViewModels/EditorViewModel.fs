@@ -284,10 +284,11 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
         this.DestroyFramebuffer()
         let size          = getPoint grid_size.rows grid_size.cols
-        this.FrameBuffer <- AllocateFramebuffer size.X size.Y grid_scale
-        grid_dc          <- this.FrameBuffer.CreateDrawingContext(null)
+        grid_fb          <- AllocateFramebuffer size.X size.Y grid_scale
+        grid_dc          <- grid_fb.CreateDrawingContext(null)
         grid_buffer      <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
-        // notify buffer size change
+        // notify buffer update and size change
+        this.RaisePropertyChanged("FrameBuffer")
         this.RaisePropertyChanged("BufferHeight")
         this.RaisePropertyChanged("BufferWidth")
 
@@ -485,11 +486,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     member __.DestroyFramebuffer() =
         if grid_fb <> null then
-            let fb = grid_fb
-            this.FrameBuffer <- null
             grid_dc.Dispose()
             grid_dc <- null
-            fb.Dispose()
+            grid_fb.Dispose()
+            grid_fb <- null
 
     member __.cursorConfig() =
         async {
