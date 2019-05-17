@@ -411,7 +411,7 @@ type Process() =
             { 
                 rgb            = true 
                 ext_linegrid   = true
-                ext_multigrid  = false
+                (*ext_multigrid  = false*)
                 (*ext_cmdline    = false*)
                 (*ext_hlstate    = false*)
                 (*ext_messages   = false*)

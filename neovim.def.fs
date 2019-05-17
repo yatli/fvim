@@ -179,7 +179,7 @@ type UiOptions =
     {
         rgb            : bool
         ext_linegrid   : bool
-        ext_multigrid  : bool
+        (*ext_multigrid  : bool*)
         (*ext_popupmenu  : bool*)
         (*ext_tabline    : bool*)
         (*ext_cmdline    : bool*)
