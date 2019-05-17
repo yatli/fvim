@@ -23,7 +23,7 @@ type InputEvent =
 /// Represents a grid in neovim
 type IGridUI =
     abstract Id: int
-    abstract Connect: IEvent<RedrawCommand[]> -> IEvent<int> -> unit
+    abstract Connect: IEvent<RedrawCommand[]> -> unit
     /// Number of rows
     abstract GridHeight: int
     /// Number of columns

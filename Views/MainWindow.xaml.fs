@@ -1,5 +1,8 @@
 ﻿namespace FVim
 
+open neovim.rpc
+open log
+
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
 open ReactiveUI
@@ -29,6 +32,11 @@ type MainWindow() as this =
         this.PositionChanged.Add (fun p ->
             this.SetValue(XProp, p.Point.X)
             this.SetValue(YProp, p.Point.Y))
+
+        Model.Notify "DrawFPS" (fun [| Bool(v) |] -> 
+            trace "Model" "DrawFPS: %A" v
+            Avalonia.Application.Current.MainWindow.Renderer.DrawFps <- v
+        ) |> ignore
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> MainWindowViewModel
