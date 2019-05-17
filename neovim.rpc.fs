@@ -15,6 +15,8 @@ open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
 open Avalonia.Media
 
+let private trace fmt = trace "neovim" fmt
+
 type EventParseException(data: obj) =
     inherit exn()
     member __.Input = data
@@ -209,7 +211,7 @@ let private parse_redrawcmd (x: obj) =
     | C("default_colors_set", P(parse_default_colors)dcolors )                             -> dcolors |> Array.last
     | C("set_title", String title)                                                         -> SetTitle title
     | C("set_icon", String icon)                                                           -> SetIcon icon
-    | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])                       -> trace "neovim" "parse_mode_info: %A" (x |> MessagePackSerializer.ToJson)
+    | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])                       -> trace "parse_mode_info: %A" (x |> MessagePackSerializer.ToJson)
                                                                                               ModeInfoSet(csen, info)
     | C1("mode_change", [| (String m); (Integer32 i) |])                                   -> ModeChange(m, i)
     | C("mouse_on", _)                                                                     -> Mouse(true)
@@ -280,11 +282,12 @@ type Process() =
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () -> 
-                 trace "neovim" "READ!"
+                 trace "READ!"
                  while not proc.HasExited && not cancel.IsCancellationRequested do
                      let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
+                     (*trace "stdout message: %A" data*)
                      ob.OnNext(data)
-                 trace "neovim" "READ COMPLETE!"
+                 trace "READ COMPLETE!"
                  ob.OnCompleted()
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
@@ -327,7 +330,7 @@ type Process() =
             match ex with
             | :? InvalidOperationException -> Observable.single Exit
             | _ ->
-                trace "neovim" "exhandler: %A" ex
+                trace "exhandler: %A" ex
                 System.Reactive.Linq.Observable.Create(read)
                 |> Observable.map       parse
                 |> Observable.catchWith exhandler
@@ -359,10 +362,16 @@ type Process() =
             then failwith "call: cannot create call request"
 
             let payload = mkparams4 0 myid ev.method ev.parameters
-            MessagePackSerializer.ToJson(payload) |> trace "neovim" "call: %s"
+            MessagePackSerializer.ToJson(payload) |> trace "call: %s"
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
-            return! src.Task
+            let! response = src.Task
+
+            match response.result with
+            | Choice2Of2 err -> trace "call #%d(%s) failed with: %A" myid ev.method err
+            | _ -> ()
+
+            return response
         }
 
         proc.BeginErrorReadLine()
@@ -401,15 +410,15 @@ type Process() =
         let opts = 
             { 
                 rgb            = true 
-                ext_cmdline    = false
-                ext_hlstate    = false
                 ext_linegrid   = true
-                ext_messages   = false
                 ext_multigrid  = false
-                ext_popupmenu  = false
-                ext_tabline    = false
-                ext_termcolors = false
-                ext_wildmenu   = false
+                (*ext_cmdline    = false*)
+                (*ext_hlstate    = false*)
+                (*ext_messages   = false*)
+                (*ext_popupmenu  = false*)
+                (*ext_tabline    = false*)
+                (*ext_termcolors = false*)
+                (*ext_wildmenu   = false*)
             }
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }

@@ -178,14 +178,14 @@ type Event =
 type UiOptions =
     {
         rgb            : bool
-        ext_popupmenu  : bool
-        ext_tabline    : bool
-        ext_cmdline    : bool
-        ext_wildmenu   : bool
-        ext_messages   : bool
         ext_linegrid   : bool
         ext_multigrid  : bool
-        ext_hlstate    : bool
-        ext_termcolors : bool
+        (*ext_popupmenu  : bool*)
+        (*ext_tabline    : bool*)
+        (*ext_cmdline    : bool*)
+        (*ext_wildmenu   : bool*)
+        (*ext_messages   : bool*)
+        (*ext_hlstate    : bool*)
+        (*ext_termcolors : bool*)
     }
 
