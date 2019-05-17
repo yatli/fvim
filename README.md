@@ -12,6 +12,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Proper cursor rendering -- color, blink etc.
 - Built-in support for Nerd font -- no need to patch your fonts!
 - East asia wide glyph display with font fallback options
+- Emojis!
 
 Try these bindings:
 ```vimL
@@ -23,6 +24,14 @@ Try these bindings:
     nnoremap <A-CR> :call rpcnotify(1, 'ToggleFullScreen', 1)<CR>
 ```
 
+Some work-in-progress fancy cursor effects:
+```vimL
+    " 1st param = blink animation
+    " 2nd param = move animation
+    call rpcnotify(1, 'SetCursorAnimation', v:true, v:true)
+```
+![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
+
 ### Goals
 
 - High performance rendering, low latency (60FPS on 4K display with reasonable font size!) (wip)
@@ -30,7 +39,6 @@ Try these bindings:
 - Input method support built from scratch (wip)
 - Multi-grid <=> Multi-window mapping (multiple windows in the OS sense, not Vim "frames")
 - Extend with XAML -- UI widgets as NeoVim plugins
-- Emojis!
 
 
 ### Non-Goals
