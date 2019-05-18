@@ -209,8 +209,8 @@ let private parse_redrawcmd (x: obj) =
     match x with
     | C("option_set", P(parse_uioption)options)                                            -> SetOption options
     | C("default_colors_set", P(parse_default_colors)dcolors )                             -> dcolors |> Array.last
-    | C("set_title", String title)                                                         -> SetTitle title
-    | C("set_icon", String icon)                                                           -> SetIcon icon
+    | C1("set_title", [|String title|])                                                    -> SetTitle title
+    | C("set_icon", [|String icon|])                                                       -> SetIcon icon
     | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])                       -> trace "parse_mode_info: %A" (x |> MessagePackSerializer.ToJson)
                                                                                               ModeInfoSet(csen, info)
     | C1("mode_change", [| (String m); (Integer32 i) |])                                   -> ModeChange(m, i)
