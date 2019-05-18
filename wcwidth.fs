@@ -535,9 +535,10 @@ type CharType =
 | Control     = -1
 | Invisible   = 0
 | Narrow      = 1
-| Wide        = 2
-| Nerd        = 3
-| Emoji       = 4
+| Powerline   = 2
+| Wide        = 3
+| Nerd        = 4
+| Emoji       = 5
 
 let wcwidth(ucs: int) =
     // NOTE: created by hand, there isn't anything identifiable other than
@@ -553,7 +554,7 @@ let wcwidth(ucs: int) =
     // ASCII-7
     elif ucs < 0x7F                                                         then CharType.Narrow
     elif intable Emoji ucs                                                  then CharType.Emoji
-    elif intable Powerline ucs                                              then CharType.Narrow
+    elif intable Powerline ucs                                              then CharType.Powerline
     elif intable NerdFont ucs                                               then CharType.Nerd
     elif intable WideEastAsian ucs                                          then CharType.Wide
     // Combining characters with zero width.
@@ -581,7 +582,7 @@ let wswidth(str: string) =
 let CharTypeWidth(x: CharType): int =
     match x with
     | CharType.Control | CharType.Invisible -> 0
-    | CharType.Narrow -> 1
+    | CharType.Narrow  | CharType.Powerline -> 1
     | CharType.Wide | CharType.Nerd | CharType.Emoji -> 2
     | _ -> 1
 

@@ -55,6 +55,7 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     | CharType.Wide  -> _get wfont
     | CharType.Nerd  -> nerd_typeface
     | CharType.Emoji -> emoji_typeface
+    | CharType.Powerline -> nerd_typeface
     | _              -> _get font
 
 let GetTypefaceA(txt, italic, bold, font, wfont, fontSize) =
