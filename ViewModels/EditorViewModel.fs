@@ -259,7 +259,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        let _s = rounding <| Point(float w, float h)
+        //let _s = rounding <| Point(float w, float h)
+        let _s = Point(float w, (ceil (grid_scale * float h)) / grid_scale)
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
@@ -416,10 +417,22 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 if rows > 0 then (top + rows), bot
                 else top,(bot + rows - 1)
 
-            let src_region = getFramebufferRegion src_top left (src_bot-src_top+1) (right-left)
-            let dst_region = getFramebufferRegion (src_top-rows) left (src_bot-src_top+1) (right-left)
+            let src_region = getFramebufferRegionR src_top left (src_bot-src_top+1) (right-left)
+            let dst_region = getFramebufferRegionR (src_top-rows) left (src_bot-src_top+1) (right-left)
+
             // calculate the pixel sizes
-            let src_region = Rect(src_region.X * grid_scale, src_region.Y * grid_scale, src_region.Width * grid_scale, src_region.Height * grid_scale)
+
+            let sx1 = floor(src_region.X * grid_scale)
+            let sy1 = floor(src_region.Y * grid_scale)
+            let sx2 = floor(sx1 + src_region.Width  * grid_scale)
+            let sy2 = floor(sy1 + src_region.Height * grid_scale)
+            let src_region = Rect(sx1, sy1, sx2 - sx1, sy2 - sy1)
+
+            let dx1 = floor(dst_region.X * grid_scale)
+            let dy1 = floor(dst_region.Y * grid_scale)
+            let dx2 = floor(dx1 + dst_region.Width  * grid_scale)
+            let dy2 = floor(dy1 + dst_region.Height * grid_scale)
+            let dst_region = Rect(dx1 / grid_scale, dy1 / grid_scale, (dx2 - dx1) / grid_scale, (dy2 - dy1) / grid_scale)
 
             grid_dc.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, src_region, dst_region)
 
