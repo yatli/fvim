@@ -479,7 +479,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         default_fg <- fg
         default_sp <- sp
         fontConfig()
-        Model.OnGridReady(this)
         Model.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid ) |> ignore
 
     member private __.initBuffer nrow ncol =

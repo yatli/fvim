@@ -18,6 +18,7 @@ open Avalonia.Markup.Xaml
 open ReactiveUI
 open System.Reactive.Linq
 open System.Reactive.Disposables
+open Avalonia.Data
 
 type Cursor() as this =
     inherit Control()
@@ -41,7 +42,7 @@ type Cursor() as this =
             cursor_timer.Dispose()
             cursor_timer <- null
         if time > 0 then
-            cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time))
+            cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time), DispatcherPriority.Render)
 
     let showCursor (v: bool) =
         let opacity = 
@@ -94,18 +95,17 @@ type Cursor() as this =
         if move_en then
             let x_transition = DoubleTransition()
             x_transition.Property <- PosXProp
-            x_transition.Duration <- TimeSpan.FromMilliseconds(100.0)
+            x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             x_transition.Easing   <- Easings.CubicEaseOut()
             let y_transition = DoubleTransition()
             y_transition.Property <- PosYProp
-            y_transition.Duration <- TimeSpan.FromMilliseconds(100.0)
+            y_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
             transitions.Add(y_transition)
         this.SetValue(Cursor.TransitionsProperty, transitions)
 
     do
-        AvaloniaXamlLoader.Load(this)
         [
             Model.Notify "SetCursorAnimation" 
                 (function 
@@ -114,11 +114,12 @@ type Cursor() as this =
                  | _ -> setCursorAnimation false false) 
 
             this.WhenActivated(fun disposables -> 
-                ignore <| this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x)).DisposeWith(disposables)
-                ignore <| this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y)).DisposeWith(disposables)
+                ignore <| this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style)).DisposeWith(disposables)
+                ignore <| this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style)).DisposeWith(disposables)
                 ignore <| this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
             )
         ] |> List.iter ignore
+        AvaloniaXamlLoader.Load(this)
 
     member this.ViewModel: CursorViewModel = this.DataContext :?> CursorViewModel
 

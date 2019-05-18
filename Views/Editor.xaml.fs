@@ -62,12 +62,15 @@ and Editor() as this =
         )
 
     let onViewModelConnected (disposables: CompositeDisposable) (vm:EditorViewModel) =
-        ignore <| vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun _ -> redraw vm).DisposeWith(disposables)
-        ignore <| vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue()).DisposeWith(disposables)
-
+        [
+            vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun _ -> redraw vm).DisposeWith(disposables)
+            vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue()).DisposeWith(disposables)
+            Observable.Interval(TimeSpan.FromMilliseconds(100.0))
+                      .FirstAsync(fun _ -> this.IsInitialized)
+                      .Subscribe(fun _ -> Model.OnGridReady(vm :> IGridUI))
+        ] |> List.iter ignore
+        
     do
-        AvaloniaXamlLoader.Load(this)
-
         this.WhenActivated(fun disposables -> 
             // bindings stopped working...
             //ignore <| this.Bind(Editor.RenderTickProp, Binding("RenderTick", BindingMode.OneWay))
@@ -86,6 +89,7 @@ and Editor() as this =
 
             this.Focus()
         ) |> ignore
+        AvaloniaXamlLoader.Load(this)
 
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
     static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
