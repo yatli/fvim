@@ -248,7 +248,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        glyph_size <- Size(float w, float h)
+        let _s = rounding <| Point(float w, float h)
+        glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
         resizeEvent.Trigger(this)
