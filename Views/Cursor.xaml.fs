@@ -22,16 +22,19 @@ open System.Reactive.Disposables
 type Cursor() as this =
     inherit Control()
 
-    static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
+    // workaround: binding directly to Canvas.Left/Top won't work.
+    // so we introduce a proxy DP for x and y.
     static let PosXProp = AvaloniaProperty.Register<Cursor, float>("PosX")
     static let PosYProp = AvaloniaProperty.Register<Cursor, float>("PosY")
+    static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
     static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
 
     let mutable cursor_timer: IDisposable = null
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
     let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
-    let fbs = Dictionary<(float*float), RenderTargetBitmap> ()
+    //                    w     h     dpi
+    let fbs = Dictionary<(float*float*float), RenderTargetBitmap> ()
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -56,10 +59,11 @@ type Cursor() as this =
 
     let getfb w h =
         let mutable fb = Unchecked.defaultof<RenderTargetBitmap>
-        if not <| fbs.TryGetValue((w,h), &fb)
+        let s = this.GetVisualRoot().RenderScaling
+        if not <| fbs.TryGetValue((w,h,s), &fb)
         then 
-            fb <- AllocateFramebuffer w h (this.GetVisualRoot().RenderScaling)
-            fbs.[(w,h)] <- fb
+            fb <- AllocateFramebuffer w h s
+            fbs.[(w,h,s)] <- fb
         fb
 
     let cursorConfig tick =
@@ -112,11 +116,9 @@ type Cursor() as this =
             this.WhenActivated(fun disposables -> 
                 ignore <| this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x)).DisposeWith(disposables)
                 ignore <| this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y)).DisposeWith(disposables)
+                ignore <| this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
             )
         ] |> List.iter ignore
-
-    override this.OnDataContextChanged _ =
-        ignore <| this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
 
     member this.ViewModel: CursorViewModel = this.DataContext :?> CursorViewModel
 
