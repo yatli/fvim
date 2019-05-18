@@ -1,21 +1,23 @@
 ﻿module FVim.log
 
+open getopt
 open System.Diagnostics
 
+let mutable private _writelog = (fun (str: string) -> ())
+
+let _addLogger logger =
+    let _current = _writelog
+    _writelog <- (fun str -> _current str; logger str)
+
 let trace cat fmt =
-    #if DEBUG
-    Printf.kprintf (fun s -> printfn "%s: %s" cat s) fmt
-    //Printf.kprintf (fun s -> Trace.WriteLine(s, cat)) fmt
-    (*Printf.kprintf (fun s -> Trace.TraceInformation(sprintf "%s: %s" cat s)) fmt*)
-    #else
-    Printf.kprintf (fun s -> ()) fmt
-    #endif
+    Printf.kprintf (fun s -> _writelog(sprintf "%s: %s" cat s)) fmt
 
 let error cat fmt =
+    Printf.kprintf (fun s -> _writelog(sprintf "error: %s: %s" cat s)) fmt
+
+let init (logToStdout: bool) (logToFile: string option) =
     #if DEBUG
-    Printf.kprintf (fun s -> printfn "%s: %s" cat s) fmt
-    //Printf.kprintf (fun s -> Trace.TraceInformation(sprintf "%s: %s" cat s)) fmt
-    (*Printf.kprintf (fun s -> Trace.TraceError(sprintf "%s: %s" cat s)) fmt*)
-    #else
-    Printf.kprintf (fun s -> ()) fmt
+    let logToStdout = true
     #endif
+    if logToStdout then _addLogger(fun str -> printfn "%s" str)
+    if logToFile.IsSome then _addLogger(fun str -> System.IO.File.AppendAllText(logToFile.Value, str + "\n"))

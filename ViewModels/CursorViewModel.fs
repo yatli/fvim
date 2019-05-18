@@ -7,6 +7,7 @@ open FVim.neovim.def
 type CursorViewModel() =
     inherit ViewModelBase()
     let mutable m_enabled: bool       = true              
+    let mutable m_ingrid: bool        = true              
     let mutable m_typeface: string    = ""                
     let mutable m_wtypeface: string   = ""                
     let mutable m_fontSize: float     = 8.0               
@@ -32,6 +33,9 @@ type CursorViewModel() =
     member this.enabled 
         with get(): bool = m_enabled 
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_enabled, v)
+    member this.ingrid 
+        with get(): bool = m_ingrid 
+        and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_ingrid, v)
     member this.typeface 
         with get(): string = m_typeface 
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_typeface, v)

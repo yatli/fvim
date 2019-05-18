@@ -4,6 +4,7 @@
 *)
 module FVim.wcwidth
 
+open log
 open System.Numerics
 
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
@@ -294,44 +295,169 @@ let ZeroWidth = [|
     (0xe0100, 0xe01ef)  // Variation Select||-17   ..Variation Select||-256
 |]
 
+// from: http://www.unicode.org/emoji/charts-12.0/emoji-list.html
+// see emoji.tsv, the processed table ordered by codepoint
+// ref: https://unicode.org/reports/tr51/
+
+let Emoji = [|
+    (0x23, 0x23)  // keycap: #               ..keycap: #               
+    (0x2A, 0x2A)  // keycap: *               ..keycap: *               
+    (0x30, 0x39)  // keycap: 0               ..keycap: 9               
+    (0xA9, 0xA9)  // copyright               ..copyright               
+    (0xAE, 0xAE)  // registered              ..registered              
+    (0x203C, 0x203C)  // double exclamation mark ..double exclamation mark 
+    (0x2049, 0x2049)  // exclamation question mark..exclamation question mark
+    (0x2122, 0x2122)  // trade mark              ..trade mark              
+    (0x2139, 0x2139)  // information             ..information             
+    (0x2194, 0x2199)  // left-right arrow        ..down-left arrow         
+    (0x21A9, 0x21AA)  // right arrow curving left..left arrow curving right
+    (0x231A, 0x231B)  // watch                   ..hourglass done          
+    (0x2328, 0x2328)  // keyboard                ..keyboard                
+    (0x23CF, 0x23CF)  // eject button            ..eject button            
+    (0x23E9, 0x23F3)  // fast-forward button     ..hourglass not done      
+    (0x23F8, 0x23FA)  // pause button            ..record button           
+    (0x24C2, 0x24C2)  // circled M               ..circled M               
+    (0x25AA, 0x25AB)  // black small square      ..white small square      
+    (0x25B6, 0x25B6)  // play button             ..play button             
+    (0x25C0, 0x25C0)  // reverse button          ..reverse button          
+    (0x25FB, 0x25FE)  // white medium square     ..black medium-small square
+    (0x2600, 0x2604)  // sun                     ..comet                   
+    (0x260E, 0x260E)  // telephone               ..telephone               
+    (0x2611, 0x2611)  // check box with check    ..check box with check    
+    (0x2614, 0x2615)  // umbrella with rain drops..hot beverage            
+    (0x2618, 0x2618)  // shamrock                ..shamrock                
+    (0x261D, 0x261D)  // index pointing up       ..index pointing up       
+    (0x2620, 0x2620)  // skull and crossbones    ..skull and crossbones    
+    (0x2622, 0x2623)  // radioactive             ..biohazard               
+    (0x2626, 0x2626)  // orthodox cross          ..orthodox cross          
+    (0x262A, 0x262A)  // star and crescent       ..star and crescent       
+    (0x262E, 0x262F)  // peace symbol            ..yin yang                
+    (0x2638, 0x263A)  // wheel of dharma         ..smiling face            
+    (0x2640, 0x2640)  // female sign             ..female sign             
+    (0x2642, 0x2642)  // male sign               ..male sign               
+    (0x2648, 0x2653)  // Aries                   ..Pisces                  
+    (0x265F, 0x2660)  // chess pawn              ..spade suit              
+    (0x2663, 0x2663)  // club suit               ..club suit               
+    (0x2665, 0x2666)  // heart suit              ..diamond suit            
+    (0x2668, 0x2668)  // hot springs             ..hot springs             
+    (0x267B, 0x267B)  // recycling symbol        ..recycling symbol        
+    (0x267E, 0x267F)  // infinity                ..wheelchair symbol       
+    (0x2692, 0x2697)  // hammer and pick         ..alembic                 
+    (0x2699, 0x2699)  // gear                    ..gear                    
+    (0x269B, 0x269C)  // atom symbol             ..fleur-de-lis            
+    (0x26A0, 0x26A1)  // warning                 ..high voltage            
+    (0x26AA, 0x26AB)  // white circle            ..black circle            
+    (0x26B0, 0x26B1)  // coffin                  ..funeral urn             
+    (0x26BD, 0x26BE)  // soccer ball             ..baseball                
+    (0x26C4, 0x26C5)  // snowman without snow    ..sun behind cloud        
+    (0x26C8, 0x26C8)  // cloud with lightning and rain..cloud with lightning and rain
+    (0x26CE, 0x26CF)  // Ophiuchus               ..pick                    
+    (0x26D1, 0x26D1)  // rescue worker’s helmet  ..rescue worker’s helmet  
+    (0x26D3, 0x26D4)  // chains                  ..no entry                
+    (0x26E9, 0x26EA)  // shinto shrine           ..church                  
+    (0x26F0, 0x26F5)  // mountain                ..sailboat                
+    (0x26F7, 0x26FA)  // skier                   ..tent                    
+    (0x26FD, 0x26FD)  // fuel pump               ..fuel pump               
+    (0x2702, 0x2702)  // scissors                ..scissors                
+    (0x2705, 0x2705)  // check mark button       ..check mark button       
+    (0x2708, 0x270D)  // airplane                ..writing hand            
+    (0x270F, 0x270F)  // pencil                  ..pencil                  
+    (0x2712, 0x2712)  // black nib               ..black nib               
+    (0x2714, 0x2714)  // check mark              ..check mark              
+    (0x2716, 0x2716)  // multiplication sign     ..multiplication sign     
+    (0x271D, 0x271D)  // latin cross             ..latin cross             
+    (0x2721, 0x2721)  // star of David           ..star of David           
+    (0x2728, 0x2728)  // sparkles                ..sparkles                
+    (0x2733, 0x2734)  // eight-spoked asterisk   ..eight-pointed star      
+    (0x2744, 0x2744)  // snowflake               ..snowflake               
+    (0x2747, 0x2747)  // sparkle                 ..sparkle                 
+    (0x274C, 0x274C)  // cross mark              ..cross mark              
+    (0x274E, 0x274E)  // cross mark button       ..cross mark button       
+    (0x2753, 0x2755)  // question mark           ..white exclamation mark  
+    (0x2757, 0x2757)  // exclamation mark        ..exclamation mark        
+    (0x2763, 0x2764)  // heart exclamation       ..red heart               
+    (0x2795, 0x2797)  // plus sign               ..division sign           
+    (0x27A1, 0x27A1)  // right arrow             ..right arrow             
+    (0x27B0, 0x27B0)  // curly loop              ..curly loop              
+    (0x27BF, 0x27BF)  // double curly loop       ..double curly loop       
+    (0x2934, 0x2935)  // right arrow curving up  ..right arrow curving down
+    (0x2B05, 0x2B07)  // left arrow              ..down arrow              
+    (0x2B1B, 0x2B1C)  // black large square      ..white large square      
+    (0x2B50, 0x2B50)  // star                    ..star                    
+    (0x2B55, 0x2B55)  // hollow red circle       ..hollow red circle       
+    (0x3030, 0x3030)  // wavy dash               ..wavy dash               
+    (0x303D, 0x303D)  // part alternation mark   ..part alternation mark   
+    (0x3297, 0x3297)  // Japanese “congratulations” button..Japanese “congratulations” button
+    (0x3299, 0x3299)  // Japanese “secret” button..Japanese “secret” button
+    (0x1F004, 0x1F004)  // mahjong red dragon      ..mahjong red dragon      
+    (0x1F0CF, 0x1F0CF)  // joker                   ..joker                   
+    (0x1F170, 0x1F171)  // A button (blood type)   ..B button (blood type)   
+    (0x1F17E, 0x1F17F)  // O button (blood type)   ..P button                
+    (0x1F18E, 0x1F18E)  // AB button (blood type)  ..AB button (blood type)  
+    (0x1F191, 0x1F19A)  // CL button               ..VS button               
+    (0x1F1E6, 0x1F1FF)  // flag: Ascension Island  ..flag: Zimbabwe          
+    (0x1F201, 0x1F202)  // Japanese “here” button  ..Japanese “service charge” button
+    (0x1F21A, 0x1F21A)  // Japanese “free of charge” button..Japanese “free of charge” button
+    (0x1F22F, 0x1F22F)  // Japanese “reserved” button..Japanese “reserved” button
+    (0x1F232, 0x1F23A)  // Japanese “prohibited” button..Japanese “open for business” button
+    (0x1F250, 0x1F251)  // Japanese “bargain” button..Japanese “acceptable” button
+    (0x1F300, 0x1F321)  // cyclone                 ..thermometer             
+    (0x1F324, 0x1F393)  // sun behind small cloud  ..graduation cap          
+    (0x1F396, 0x1F397)  // military medal          ..reminder ribbon         
+    (0x1F399, 0x1F39B)  // studio microphone       ..control knobs           
+    (0x1F39E, 0x1F3F0)  // film frames             ..castle                  
+    (0x1F3F3, 0x1F3F5)  // white flag              ..rosette                 
+    (0x1F3F7, 0x1F3FA)  // label                   ..amphora                 
+    (0x1F400, 0x1F4FD)  // rat                     ..film projector          
+    (0x1F4FF, 0x1F53D)  // prayer beads            ..downwards button        
+    (0x1F549, 0x1F54E)  // om                      ..menorah                 
+    (0x1F550, 0x1F567)  // one o’clock             ..twelve-thirty           
+    (0x1F56F, 0x1F570)  // candle                  ..mantelpiece clock       
+    (0x1F573, 0x1F57A)  // hole                    ..man dancing             
+    (0x1F587, 0x1F587)  // linked paperclips       ..linked paperclips       
+    (0x1F58A, 0x1F58D)  // pen                     ..crayon                  
+    (0x1F590, 0x1F590)  // hand with fingers splayed..hand with fingers splayed
+    (0x1F595, 0x1F596)  // middle finger           ..vulcan salute           
+    (0x1F5A4, 0x1F5A5)  // black heart             ..desktop computer        
+    (0x1F5A8, 0x1F5A8)  // printer                 ..printer                 
+    (0x1F5B1, 0x1F5B2)  // computer mouse          ..trackball               
+    (0x1F5BC, 0x1F5BC)  // framed picture          ..framed picture          
+    (0x1F5C2, 0x1F5C4)  // card index dividers     ..file cabinet            
+    (0x1F5D1, 0x1F5D3)  // wastebasket             ..spiral calendar         
+    (0x1F5DC, 0x1F5DE)  // clamp                   ..rolled-up newspaper     
+    (0x1F5E1, 0x1F5E1)  // dagger                  ..dagger                  
+    (0x1F5E3, 0x1F5E3)  // speaking head           ..speaking head           
+    (0x1F5E8, 0x1F5E8)  // left speech bubble      ..left speech bubble      
+    (0x1F5EF, 0x1F5EF)  // right anger bubble      ..right anger bubble      
+    (0x1F5F3, 0x1F5F3)  // ballot box with ballot  ..ballot box with ballot  
+    (0x1F5FA, 0x1F64F)  // world map               ..folded hands            
+    (0x1F680, 0x1F6C5)  // rocket                  ..left luggage            
+    (0x1F6CB, 0x1F6D2)  // couch and lamp          ..shopping cart           
+    (0x1F6D5, 0x1F6D5)  // ⊛ hindu temple          ..⊛ hindu temple          
+    (0x1F6E0, 0x1F6E5)  // hammer and wrench       ..motor boat              
+    (0x1F6E9, 0x1F6E9)  // small airplane          ..small airplane          
+    (0x1F6EB, 0x1F6EC)  // airplane departure      ..airplane arrival        
+    (0x1F6F0, 0x1F6F0)  // satellite               ..satellite               
+    (0x1F6F3, 0x1F6FA)  // passenger ship          ..⊛ auto rickshaw         
+    (0x1F7E0, 0x1F7EB)  // ⊛ orange circle         ..⊛ brown square          
+    (0x1F90D, 0x1F93A)  // ⊛ white heart           ..person fencing          
+    (0x1F93C, 0x1F945)  // people wrestling        ..goal net                
+    (0x1F947, 0x1F971)  // 1st place medal         ..⊛ yawning face          
+    (0x1F973, 0x1F976)  // partying face           ..cold face               
+    (0x1F97A, 0x1F9A2)  // pleading face           ..swan                    
+    (0x1F9A5, 0x1F9AA)  // ⊛ sloth                 ..⊛ oyster                
+    (0x1F9AE, 0x1F9CA)  // ⊛ guide dog             ..⊛ ice                   
+    (0x1F9CD, 0x1F9FF)  // ⊛ person standing       ..nazar amulet            
+    (0x1FA70, 0x1FA73)  // ⊛ ballet shoes          ..⊛ shorts                
+    (0x1FA78, 0x1FA7A)  // ⊛ drop of blood         ..⊛ stethoscope           
+    (0x1FA80, 0x1FA82)  // ⊛ yo-yo                 ..⊛ parachute      
+|]
+
 // https://github.com/jquast/wcwidth/blob/master/wcwidth/table_wide.py
 // at commit 0d7de112202cc8b2ebe9232ff4a5c954f19d561a (2016-07-02):
 let WideEastAsian = [|
     (0x1100, 0x115f)  // Hangul Choseong Kiyeok  ..Hangul Choseong Filler
-    (0x231a, 0x231b)  // Watch                   ..Hourglass
     (0x2329, 0x232a)  // Left-pointing Angle Brac..Right-pointing Angle Bra
-    (0x23e9, 0x23ec)  // Black Right-pointing Dou..Black Down-pointing Doub
-    (0x23f0, 0x23f0)  // Alarm Clock             ..Alarm Clock
-    (0x23f3, 0x23f3)  // Hourglass With Flowing S..Hourglass With Flowing S
-    (0x25fd, 0x25fe)  // White Medium Small Squar..Black Medium Small Squar
-    (0x2614, 0x2615)  // Umbrella With Rain Drops..Hot Beverage
-    (0x2648, 0x2653)  // Aries                   ..Pisces
-    (0x267f, 0x267f)  // Wheelchair Symbol       ..Wheelchair Symbol
-    (0x2693, 0x2693)  // Anch||                  ..Anch||
-    (0x26a1, 0x26a1)  // High Voltage Sign       ..High Voltage Sign
-    (0x26aa, 0x26ab)  // Medium White Circle     ..Medium Black Circle
-    (0x26bd, 0x26be)  // Soccer Ball             ..Baseball
-    (0x26c4, 0x26c5)  // Snowman Without Snow    ..Sun Behind Cloud
-    (0x26ce, 0x26ce)  // Ophiuchus               ..Ophiuchus
-    (0x26d4, 0x26d4)  // No Entry                ..No Entry
-    (0x26ea, 0x26ea)  // Church                  ..Church
-    (0x26f2, 0x26f3)  // Fountain                ..Flag In Hole
-    (0x26f5, 0x26f5)  // Sailboat                ..Sailboat
-    (0x26fa, 0x26fa)  // Tent                    ..Tent
-    (0x26fd, 0x26fd)  // Fuel Pump               ..Fuel Pump
-    (0x2705, 0x2705)  // White Heavy Check Mark  ..White Heavy Check Mark
-    (0x270a, 0x270b)  // Raised Fist             ..Raised Hand
-    (0x2728, 0x2728)  // Sparkles                ..Sparkles
-    (0x274c, 0x274c)  // Cross Mark              ..Cross Mark
-    (0x274e, 0x274e)  // Negative Squared Cross M..Negative Squared Cross M
-    (0x2753, 0x2755)  // Black Question Mark ||na..White Exclamation Mark O
-    (0x2757, 0x2757)  // Heavy Exclamation Mark S..Heavy Exclamation Mark S
-    (0x2795, 0x2797)  // Heavy Plus Sign         ..Heavy Division Sign
-    (0x27b0, 0x27b0)  // Curly Loop              ..Curly Loop
-    (0x27bf, 0x27bf)  // Double Curly Loop       ..Double Curly Loop
-    (0x2b1b, 0x2b1c)  // Black Large Square      ..White Large Square
-    (0x2b50, 0x2b50)  // White Medium Star       ..White Medium Star
-    (0x2b55, 0x2b55)  // Heavy Large Circle      ..Heavy Large Circle
     (0x2e80, 0x2e99)  // Cjk Radical Repeat      ..Cjk Radical Rap
     (0x2e9b, 0x2ef3)  // Cjk Radical Choke       ..Cjk Radical C-simplified
     (0x2f00, 0x2fd5)  // Kangxi Radical One      ..Kangxi Radical Flute
@@ -358,49 +484,6 @@ let WideEastAsian = [|
     (0xfe68, 0xfe6b)  // Small Reverse Solidus   ..Small Commercial At
     (0xff01, 0xff60)  // Fullwidth Exclamation Ma..Fullwidth Right White Pa
     (0xffe0, 0xffe6)  // Fullwidth Cent Sign     ..Fullwidth Won Sign
-    (0x16fe0, 0x16fe0)  // (nil)                   ..
-    (0x17000, 0x187ec)  // (nil)                   ..
-    (0x18800, 0x18af2)  // (nil)                   ..
-    (0x1b000, 0x1b001)  // Katakana Letter Archaic ..Hiragana Letter Archaic
-    (0x1f004, 0x1f004)  // Mahjong Tile Red Dragon ..Mahjong Tile Red Dragon
-    (0x1f0cf, 0x1f0cf)  // Playing Card Black Joker..Playing Card Black Joker
-    (0x1f18e, 0x1f18e)  // Negative Squared Ab     ..Negative Squared Ab
-    (0x1f191, 0x1f19a)  // Squared Cl              ..Squared Vs
-    (0x1f200, 0x1f202)  // Square Hiragana Hoka    ..Squared Katakana Sa
-    (0x1f210, 0x1f23b)  // Squared Cjk Unified Ideo..
-    (0x1f240, 0x1f248)  // T||toise Shell Bracketed..T||toise Shell Bracketed
-    (0x1f250, 0x1f251)  // Circled Ideograph Advant..Circled Ideograph Accept
-    (0x1f300, 0x1f320)  // Cyclone                 ..Shooting Star
-    (0x1f32d, 0x1f335)  // Hot Dog                 ..Cactus
-    (0x1f337, 0x1f37c)  // Tulip                   ..Baby Bottle
-    (0x1f37e, 0x1f393)  // Bottle With Popping C||k..Graduation Cap
-    (0x1f3a0, 0x1f3ca)  // Carousel H||se          ..Swimmer
-    (0x1f3cf, 0x1f3d3)  // Cricket Bat And Ball    ..Table Tennis Paddle And
-    (0x1f3e0, 0x1f3f0)  // House Building          ..European Castle
-    (0x1f3f4, 0x1f3f4)  // Waving Black Flag       ..Waving Black Flag
-    (0x1f3f8, 0x1f43e)  // Badminton Racquet And Sh..Paw Prints
-    (0x1f440, 0x1f440)  // Eyes                    ..Eyes
-    (0x1f442, 0x1f4fc)  // Ear                     ..Videocassette
-    (0x1f4ff, 0x1f53d)  // Prayer Beads            ..Down-pointing Small Red
-    (0x1f54b, 0x1f54e)  // Kaaba                   ..Men||ah With Nine Branch
-    (0x1f550, 0x1f567)  // Clock Face One Oclock   ..Clock Face Twelve-thirty
-    (0x1f57a, 0x1f57a)  // (nil)                   ..
-    (0x1f595, 0x1f596)  // Reversed Hand With Middl..Raised Hand With Part Be
-    (0x1f5a4, 0x1f5a4)  // (nil)                   ..
-    (0x1f5fb, 0x1f64f)  // Mount Fuji              ..Person With Folded Hands
-    (0x1f680, 0x1f6c5)  // Rocket                  ..Left Luggage
-    (0x1f6cc, 0x1f6cc)  // Sleeping Accommodation  ..Sleeping Accommodation
-    (0x1f6d0, 0x1f6d2)  // Place Of W||ship        ..
-    (0x1f6eb, 0x1f6ec)  // Airplane Departure      ..Airplane Arriving
-    (0x1f6f4, 0x1f6f6)  // (nil)                   ..
-    (0x1f910, 0x1f91e)  // Zipper-mouth Face       ..
-    (0x1f920, 0x1f927)  // (nil)                   ..
-    (0x1f930, 0x1f930)  // (nil)                   ..
-    (0x1f933, 0x1f93e)  // (nil)                   ..
-    (0x1f940, 0x1f94b)  // (nil)                   ..
-    (0x1f950, 0x1f95e)  // (nil)                   ..
-    (0x1f980, 0x1f991)  // Crab                    ..
-    (0x1f9c0, 0x1f9c0)  // Cheese Wedge            ..Cheese Wedge
     (0x20000, 0x2fffd)  // Cjk Unified Ideograph-20..
     (0x30000, 0x3fffd)  // (nil)                   ..
 |]
@@ -452,12 +535,12 @@ type CharType =
 | Control     = -1
 | Invisible   = 0
 | Narrow      = 1
-| Wide        = 2
-| Nerd        = 3
-| Emoji       = 4
+| Powerline   = 2
+| Wide        = 3
+| Nerd        = 4
+| Emoji       = 5
 
-let wcwidth(ucs: char) =
-    let ucs = (int) ucs
+let wcwidth(ucs: int) =
     // NOTE: created by hand, there isn't anything identifiable other than
     // general Cf category code to identify these, and some characters in Cf
     // category code are of non-zero width.
@@ -470,14 +553,36 @@ let wcwidth(ucs: char) =
     elif ucs = 0x2502 || ucs = 0x2630 || ucs = 0x2026                       then CharType.Narrow
     // ASCII-7
     elif ucs < 0x7F                                                         then CharType.Narrow
-    elif intable Powerline ucs                                              then CharType.Narrow
+    elif intable Emoji ucs                                                  then CharType.Emoji
+    elif intable Powerline ucs                                              then CharType.Powerline
     elif intable NerdFont ucs                                               then CharType.Nerd
     elif intable WideEastAsian ucs                                          then CharType.Wide
     // Combining characters with zero width.
     elif intable ZeroWidth ucs                                              then CharType.Invisible
-    else CharType.Narrow
+    else 
+        trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)
+        CharType.Narrow
 
 let wswidth(str: string) = 
     if System.String.IsNullOrEmpty str then CharType.Invisible
-    else str |> Seq.map (int << wcwidth) |> Seq.max |> LanguagePrimitives.EnumOfValue
+    // prepend a low surrogate
+    else (string(char 0xDC00) + str)
+         |> Seq.map int
+         |> Seq.pairwise 
+         |> Seq.choose (fun (a,b) -> 
+                        if System.Char.IsSurrogatePair(char a, char b) 
+                        then Some(0x10000 + (a - 0xD800) * 0x400 + (b - 0xDC00))
+                        elif not <| System.Char.IsSurrogate(char b)
+                        then Some(b)
+                        else None) 
+         |> Seq.map (wcwidth >> int)
+         |> Seq.max 
+         |> LanguagePrimitives.EnumOfValue
+
+let CharTypeWidth(x: CharType): int =
+    match x with
+    | CharType.Control | CharType.Invisible -> 0
+    | CharType.Narrow  | CharType.Powerline -> 1
+    | CharType.Wide | CharType.Nerd | CharType.Emoji -> 2
+    | _ -> 1
 

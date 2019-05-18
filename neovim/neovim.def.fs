@@ -157,6 +157,8 @@ type RedrawCommand =
 | GridCursorGoto of grid: int * row: int * col: int
 | GridScroll of grid:int * top:int * bot:int * left:int * right:int * rows:int * cols: int
 | GridResize of grid: int * width: int * height: int
+// multigrid events
+| WinPos of grid: int * win: int * start_row: int * start_col: int * width: int * height:int
 // legacy events
 //| UpdateFg of Color
 //| UpdateBg of Color
@@ -176,14 +178,14 @@ type Event =
 type UiOptions =
     {
         rgb            : bool
-        //ext_popupmenu  : bool
-        //ext_tabline    : bool
-        //ext_cmdline    : bool
-        //ext_wildmenu   : bool
-        //ext_messages   : bool
         ext_linegrid   : bool
-        //ext_multigrid  : bool
-        //ext_hlstate    : bool
-        //ext_termcolors : bool
+        (*ext_multigrid  : bool*)
+        (*ext_popupmenu  : bool*)
+        (*ext_tabline    : bool*)
+        (*ext_cmdline    : bool*)
+        (*ext_wildmenu   : bool*)
+        (*ext_messages   : bool*)
+        (*ext_hlstate    : bool*)
+        (*ext_termcolors : bool*)
     }
 

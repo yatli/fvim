@@ -3,3 +3,5 @@
 obj/
 bin/
 publish/
+.paket
+packages
