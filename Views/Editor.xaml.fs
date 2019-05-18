@@ -24,6 +24,7 @@ open Avalonia.Threading
 open System.Collections.ObjectModel
 open System.Collections.Specialized
 open System.Collections.Generic
+open Avalonia.Win32
 
 type EmbeddedEditor() as this =
     inherit UserControl()
@@ -33,16 +34,29 @@ type EmbeddedEditor() as this =
 and Editor() as this =
     inherit Canvas()
 
+    let mutable m_saved_size  = Size(100.0,100.0)
+    let mutable m_saved_pos   = PixelPoint(300, 300)
+    let mutable m_saved_state = WindowState.Normal
+
     let toggleFullscreen(v) =
         let win = this.GetVisualRoot() :?> Window
+
         if not v then
-            win.WindowState <- WindowState.Normal
+            win.WindowState <- m_saved_state
+            win.PlatformImpl.Resize(m_saved_size)
+            win.Position <- m_saved_pos
             win.HasSystemDecorations <- true
-            //win.Topmost <- false
         else
+            m_saved_size             <- win.ClientSize
+            m_saved_pos              <- win.Position
+            m_saved_state            <- win.WindowState
+            let screen                = win.Screens.ScreenFromVisual(this)
+            let screenBounds          = screen.Bounds
+            let sz                    = screenBounds.Size.ToSizeWithDpi(96.0 * this.GetVisualRoot().RenderScaling)
             win.HasSystemDecorations <- false
-            win.WindowState <- WindowState.Maximized
-            //win.Topmost <- true
+            win.WindowState          <- WindowState.Normal
+            win.Position             <- screenBounds.TopLeft
+            win.PlatformImpl.Resize(sz)
 
     let doWithDataContext fn =
         match this.DataContext with

@@ -11,8 +11,8 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option) as this =
     let mainGrid               = EditorViewModel(1)
     let mutable m_windowWidth  = 800.0
     let mutable m_windowHeight = 600.0
-    let mutable m_windowX      = 600
-    let mutable m_windowY      = 600
+    let mutable m_windowX      = 300
+    let mutable m_windowY      = 300
     let mutable m_windowState = WindowState.Normal
 
     do
