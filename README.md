@@ -16,19 +16,23 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 
 Try these bindings:
 ```vimL
+if exists('g:fvim_loaded')
     " good old 'set guifont' compatibility
     set guifont=Iosevka\ Slab:h16
     " Ctrl-ScrollWheel for zooming in/out
     nnoremap <silent> <C-ScrollWheelUp> :set guifont=+<CR>
     nnoremap <silent> <C-ScrollWheelDown> :set guifont=-<CR>
     nnoremap <A-CR> :call rpcnotify(1, 'ToggleFullScreen', 1)<CR>
+endif
 ```
 
 Some work-in-progress fancy cursor effects:
 ```vimL
+if exists('g:fvim_loaded')
     " 1st param = blink animation
     " 2nd param = move animation
     call rpcnotify(1, 'SetCursorAnimation', v:true, v:true)
+endif
 ```
 ![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
 

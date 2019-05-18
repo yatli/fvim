@@ -289,8 +289,9 @@ module ModelImpl =
             ignore <| nvim.input [|key|]
         )
 
-let Request  name fn = requestHandlers.Add(name, fn)
-let Notify   name (fn: obj[] -> unit) = (getNotificationEvent name).Publish.Subscribe(fn)
+let Request  name fn                            = requestHandlers.Add(name, fn)
+let Notify   name (fn: obj[] -> unit)           = (getNotificationEvent name).Publish.Subscribe(fn)
+let Redraw        (fn: RedrawCommand[] -> unit) = ev_redraw.Publish.Subscribe(fn)
 
 /// <summary>
 /// Call this once at initialization.
@@ -313,7 +314,6 @@ let Start(args: string[]) =
 
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
-    gridui.Connect ev_redraw.Publish
     gridui.Resized 
     |> Observable.throttle (TimeSpan.FromMilliseconds 20.0)
     |> Observable.add onGridResize

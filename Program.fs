@@ -38,7 +38,7 @@ module Program =
         let cfg = config.load()
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
         let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
-        let mainwin = MainWindowViewModel(workspace)
+        let mainwin = new MainWindowViewModel(workspace)
         app.Run(MainWindow(DataContext = mainwin))
         config.save cfg mainwin.WindowX mainwin.WindowY mainwin.WindowWidth mainwin.WindowHeight mainwin.WindowState
 

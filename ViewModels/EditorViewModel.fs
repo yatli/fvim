@@ -18,6 +18,7 @@ open ReactiveUI
 open System
 open System.Collections.ObjectModel
 open Avalonia.Controls
+open System.Reactive.Disposables
 
 [<Struct>]
 type private GridBufferCell =
@@ -72,10 +73,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
-
+    let mutable disposed         = false
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_dc: IDrawingContextImpl = null
-    let mutable cursor_info = CursorViewModel()
+    let mutable cursor_info = new CursorViewModel()
     let mutable cursor_modeidx   = _d -1 _cursormode
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
@@ -438,10 +439,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | Some(i, child) -> 
             (* manually resize the child grid as per neovim docs *)
             child.initBuffer h w
-            child_grids.[i] <- EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
+            child_grids.[i] <- new EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
         | None -> 
-            let child = EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx)
-            let anchor = EmbeddedEditorViewModel(child, origin.X,origin.Y, child_size.X, child_size.Y)
+            let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx)
+            let anchor = new EmbeddedEditorViewModel(child, origin.X,origin.Y, child_size.X, child_size.Y)
             child_grids.Add <| anchor
             //let wnd = Window()
             //wnd.Height  <- child_size.Y
@@ -479,7 +480,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         default_fg <- fg
         default_sp <- sp
         fontConfig()
-        Model.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid ) |> ignore
+        this.Watch [
+            Model.Redraw (Array.iter redraw)
+            Model.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+        ] 
 
     member private __.initBuffer nrow ncol =
         grid_size <- { rows = nrow; cols = ncol }
@@ -490,7 +494,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         member __.Id = GridId
         member __.GridHeight = int( measured_size.Height / glyph_size.Height )
         member __.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
-        member __.Connect redraw_ev = redraw_ev.Add (Array.iter redraw)
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
 

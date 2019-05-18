@@ -15,15 +15,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="getopt.fs" />
-    <Compile Include="ViewLocator.fs" />
-    <Compile Include="log.fs" />
     <Compile Include="config.fs" />
+    <Compile Include="getopt.fs" />
+    <Compile Include="log.fs" />
     <Compile Include="wcwidth.fs" />
-    <Compile Include="neovim.def.fs" />
-    <Compile Include="neovim.rpc.fs" />
     <Compile Include="ui.fs" />
-    <Compile Include="FVimModel.fs" />
+    <Compile Include="neovim\neovim.def.fs" />
+    <Compile Include="neovim\neovim.rpc.fs" />
+    <Compile Include="neovim\neovim.model.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />
     <Compile Include="ViewModels\EditorViewModel.fs" />
     <Compile Include="ViewModels\MainWindowViewModel.fs" />

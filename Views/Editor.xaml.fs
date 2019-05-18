@@ -61,35 +61,24 @@ and Editor() as this =
                 fb.InvalidateVisual()
         )
 
-    let onViewModelConnected (disposables: CompositeDisposable) (vm:EditorViewModel) =
+    let onViewModelConnected (vm:EditorViewModel) =
         [
-            vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun _ -> redraw vm).DisposeWith(disposables)
-            vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue()).DisposeWith(disposables)
+            vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun _ -> redraw vm)
+            vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.Interval(TimeSpan.FromMilliseconds(100.0))
                       .FirstAsync(fun _ -> this.IsInitialized)
                       .Subscribe(fun _ -> Model.OnGridReady(vm :> IGridUI))
-        ] |> List.iter ignore
+        ] |> vm.Watch 
         
     do
-        this.WhenActivated(fun disposables -> 
-            // bindings stopped working...
-            //ignore <| this.Bind(Editor.RenderTickProp, Binding("RenderTick", BindingMode.OneWay))
-            //ignore <| this.Bind(Editor.FullscreenProp, Binding("Fullscreen", BindingMode.OneWay))
-            //ignore <| this.GetObservable(Editor.FullscreenProp).Subscribe(toggleFullscreen).DisposeWith(disposables)
-            //ignore <| this.GetObservable(Editor.RenderTickProp).Subscribe(redraw).DisposeWith(disposables)
-
-            ignore <| this.TextInput
-                          .Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
-                          .DisposeWith(disposables)
-
-            ignore <| this.GetObservable(Editor.DataContextProperty)
-                          .OfType<EditorViewModel>()
-                          .Subscribe(fun vm -> onViewModelConnected disposables vm)
-                          .DisposeWith(disposables)
-
-            this.Focus()
-        ) |> ignore
         AvaloniaXamlLoader.Load(this)
+        this.Watch [
+            this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
+            this.GetObservable(Editor.DataContextProperty)
+                          .OfType<EditorViewModel>()
+                          .Subscribe(onViewModelConnected)
+            this.Initialized.Subscribe(fun _ -> this.Focus())
+        ]
 
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
     static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
