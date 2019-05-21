@@ -548,7 +548,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             cursor_info.enabled        <- cursor_en
             cursor_info.ingrid         <- cursor_ingrid
             cursor_info.RenderTick     <- cursor_info.RenderTick + 1
-            trace "set cursor info"
+            trace "set cursor info, color = %A %A %A" fg bg sp
         } |> Async.RunSynchronously
 
     member this.setCursorEnabled v =
