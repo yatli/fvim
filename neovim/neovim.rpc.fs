@@ -2,6 +2,7 @@
 
 open FVim.neovim.def
 open FVim.log
+open FVim.getopt
 
 open System
 open System.Diagnostics
@@ -258,20 +259,20 @@ type Process() =
         | None -> failwith "process"
 
 
-    member __.start (args: string[]) =
+    member __.start { args = args; program = prog; preArgs = preargs; stderrenc = enc } =
         match m_proc, m_events with
         | Some(_) , _
         | _, Some(_) -> failwith "neovim: already started"
         | _ -> ()
 
-        let args = "--embed" :: List.ofArray args 
-        let psi  = ProcessStartInfo("nvim", String.Join(' ', args))
+        let args = "--embed" :: args 
+        let psi  = ProcessStartInfo(prog, String.Join(' ', preargs @ args))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true
         psi.RedirectStandardInput   <- true
         psi.RedirectStandardOutput  <- true
-        psi.StandardErrorEncoding   <- Encoding.UTF8
+        psi.StandardErrorEncoding   <- enc
         psi.UseShellExecute         <- false
         psi.WindowStyle             <- ProcessWindowStyle.Hidden
         psi.WorkingDirectory        <- Environment.CurrentDirectory

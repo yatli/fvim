@@ -1,5 +1,6 @@
 ﻿module FVim.Model
 
+open getopt
 open log
 open ui
 open neovim.def
@@ -296,11 +297,11 @@ let Redraw        (fn: RedrawCommand[] -> unit) = ev_redraw.Publish.Subscribe(fn
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
-let Start(args: string[]) =
+let Start opts =
 
     trace "Model" "starting neovim instance..."
-    trace "Model" "args = %A" args
-    nvim.start(args)
+    trace "Model" "opts = %A" opts
+    nvim.start opts
     ignore <|
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 

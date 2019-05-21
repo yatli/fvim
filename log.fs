@@ -3,7 +3,7 @@
 open getopt
 open System.Diagnostics
 
-let mutable private _writelog = (fun (str: string) -> ())
+let mutable private _writelog = (fun _ -> ())
 
 let _addLogger logger =
     let _current = _writelog
@@ -15,7 +15,7 @@ let trace cat fmt =
 let error cat fmt =
     Printf.kprintf (fun s -> _writelog(sprintf "error: %s: %s" cat s)) fmt
 
-let init (logToStdout: bool) (logToFile: string option) =
+let init { logToStdout = logToStdout; logToFile = logToFile } =
     #if DEBUG
     let logToStdout = true
     #endif
