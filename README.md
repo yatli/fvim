@@ -13,8 +13,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Built-in support for Nerd font -- no need to patch your fonts!
 - East asia wide glyph display with font fallback options
 - Emojis!
+- Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
 
-Try these bindings:
+Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
 if exists('g:fvim_loaded')
     " good old 'set guifont' compatibility
