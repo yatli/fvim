@@ -98,7 +98,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                                    | None -> Array.empty<ModeInfo>
                                    | Some arr -> arr.Clone() :?> ModeInfo[]
 
-    let mutable _guifont         = _d "Iosevka Slab" _guifont
+    let mutable _guifont         = _d "IosevkaCC" _guifont
     let mutable _guifontwide     = _d "DengXian" _guifontwide
 
     let mutable font_size        = _d 16.0 _fontsize
