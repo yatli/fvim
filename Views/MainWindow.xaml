@@ -13,5 +13,6 @@
         WindowState="{Binding WindowState, Mode=TwoWay}"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        Content="{Binding MainGrid}">
+        Content="{Binding MainGrid}"
+        >
 </Window>

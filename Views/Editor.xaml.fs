@@ -78,7 +78,10 @@ and Editor() as this =
             vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.Interval(TimeSpan.FromMilliseconds(100.0))
                       .FirstAsync(fun _ -> this.IsInitialized)
-                      .Subscribe(fun _ -> Model.OnGridReady(vm :> IGridUI))
+                      .Subscribe(fun _ -> 
+                        Model.OnGridReady(vm :> IGridUI)
+                        ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
+                    )
         ] |> vm.Watch 
         
     do
@@ -91,14 +94,6 @@ and Editor() as this =
                           .OfType<EditorViewModel>()
                           .Subscribe(onViewModelConnected)
 
-            this.Initialized.Subscribe(fun _ -> this.Focus())
-
-            this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
-                if e.Data.Contains(DataFormats.FileNames) then
-                    Model.EditFiles <| e.Data.GetFileNames()
-                elif e.Data.Contains(DataFormats.Text) then
-                    Model.InsertText <| e.Data.GetText()
-            ))
         ]
 
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")

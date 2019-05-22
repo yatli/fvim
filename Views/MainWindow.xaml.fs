@@ -6,6 +6,7 @@ open log
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
 open Avalonia.Input
+open Avalonia.Interactivity
 open ReactiveUI
 open Avalonia
 open Avalonia.Data
@@ -23,6 +24,8 @@ type MainWindow() as this =
         Avalonia.DevToolsExtensions.AttachDevTools(this)
         #endif
 
+        DragDrop.SetAllowDrop(this, true)
+
         this.Watch [
             this.Closing.Subscribe (fun _ -> Model.OnTerminating())
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
@@ -36,7 +39,19 @@ type MainWindow() as this =
             Model.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "Model" "DrawFPS: %A" v
                 Avalonia.Application.Current.MainWindow.Renderer.DrawFps <- v)
+
+            this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
+                if e.Data.Contains(DataFormats.FileNames) then
+                    Model.EditFiles <| e.Data.GetFileNames()
+                elif e.Data.Contains(DataFormats.Text) then
+                    Model.InsertText <| e.Data.GetText()
+            ))
+
+            this.AddHandler(DragDrop.DragOverEvent, (fun _ (e:DragEventArgs) ->
+                e.DragEffects <- DragDropEffects.Move ||| DragDropEffects.Link ||| DragDropEffects.Copy
+            ))
         ]
+
 
 
     override this.OnDataContextChanged _ =
