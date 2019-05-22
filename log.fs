@@ -2,18 +2,22 @@
 
 open getopt
 open System.Diagnostics
+open FSharp.Control.Reactive
 
-let mutable private _writelog = (fun _ -> ())
+let private _logsSource  = Event<string*string>()
+let private _logsPub     = _logsSource.Publish |> Observable.map (fun (a,b) -> sprintf "%s: %s" a b)
 
-let _addLogger logger =
-    let _current = _writelog
-    _writelog <- (fun str -> _current str; logger str)
+let private _logsESource = Event<string*string>()
+let private _logsEPub    = _logsESource.Publish |> Observable.map (fun (a,b) -> sprintf "error: %s: %s" a b)
+
+let private _logsSink    = Observable.merge _logsPub _logsEPub |> Observable.synchronize
+let private _addLogger   = _logsSink.Add 
 
 let trace cat fmt =
-    Printf.kprintf (fun s -> _writelog(sprintf "%s: %s" cat s)) fmt
+    Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
 
 let error cat fmt =
-    Printf.kprintf (fun s -> _writelog(sprintf "error: %s: %s" cat s)) fmt
+    Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
 
 let init { logToStdout = logToStdout; logToFile = logToFile } =
     #if DEBUG
