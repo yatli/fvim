@@ -73,7 +73,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
-    let mutable disposed         = false
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_dc: IDrawingContextImpl = null
     let mutable cursor_info = new CursorViewModel()
@@ -98,8 +97,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                                    | None -> Array.empty<ModeInfo>
                                    | Some arr -> arr.Clone() :?> ModeInfo[]
 
-    let mutable _guifont         = _d "IosevkaCC" _guifont
-    let mutable _guifontwide     = _d "DengXian" _guifontwide
+    let mutable _guifont         = _d DefaultFont     _guifont
+    let mutable _guifontwide     = _d DefaultFontWide _guifontwide
 
     let mutable font_size        = _d 16.0 _fontsize
     let mutable glyph_size       = _d (Size(10.0, 10.0)) _glyphsize
