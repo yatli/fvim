@@ -29,9 +29,9 @@ let parseOptions (args: string[]) =
     let trace_to_stdout     = eat1 "--trace-to-stdout"
     let trace_to_file       = eat2 "--trace-to-file"
     let wsl                 = eat1 "--wsl"
-    let prog                = "wsl" // if wsl then "wsl" else "nvim"
-    let preargs             = ["nvim"] // if wsl then ["nvim"] else []
-    let enc                 = System.Text.Encoding.Unicode // if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
+    let prog                = if wsl then "wsl" else "nvim"
+    let preargs             = if wsl then ["nvim"] else []
+    let enc                 = if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
     let args                = List.ofSeq args
 
     { 
