@@ -6,6 +6,7 @@
         Focusable  = "True"
         x:Class    = "FVim.Editor"
         Background = "{Binding BackgroundBrush, Mode=OneWay}"
+        DragDrop.AllowDrop="True"
         >
 
     <Canvas.Styles>

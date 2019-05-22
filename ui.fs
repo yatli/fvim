@@ -31,6 +31,10 @@ type ActivatableExt() =
     static member inline Do (this: IActivatable, fn: unit -> unit) =
         do fn()
         Disposable.Empty
+    [<Extension>]
+    static member inline Do (this: ISupportsActivation, fn: unit -> unit) =
+        do fn()
+        Disposable.Empty
 
 type ViewModelBase() =
     inherit ReactiveObject()

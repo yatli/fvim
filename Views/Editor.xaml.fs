@@ -69,10 +69,7 @@ and Editor() as this =
         ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
             let fb = this.FindControl<Image>("FrameBuffer")
             if fb <> null 
-            then 
-                //doWithDataContext (fun vm -> if not vm.TopLevel then printfn "this: %A %A buf: %A %A" this.Height this.Width vm.BufferHeight vm.BufferWidth)
-                //this.Height <- vm.BufferHeight; this.Width <- vm.BufferWidth)
-                fb.InvalidateVisual()
+            then fb.InvalidateVisual()
         )
 
     let onViewModelConnected (vm:EditorViewModel) =
@@ -87,11 +84,21 @@ and Editor() as this =
     do
         AvaloniaXamlLoader.Load(this)
         this.Watch [
+
             this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
+
             this.GetObservable(Editor.DataContextProperty)
                           .OfType<EditorViewModel>()
                           .Subscribe(onViewModelConnected)
+
             this.Initialized.Subscribe(fun _ -> this.Focus())
+
+            this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
+                if e.Data.Contains(DataFormats.FileNames) then
+                    Model.EditFiles <| e.Data.GetFileNames()
+                elif e.Data.Contains(DataFormats.Text) then
+                    Model.InsertText <| e.Data.GetText()
+            ))
         ]
 
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")

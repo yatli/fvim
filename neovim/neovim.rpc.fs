@@ -429,3 +429,4 @@ type Process() =
 
     member __.command (cmd: string) =
         m_call { method = "nvim_command"; parameters = mkparams1 cmd }
+

@@ -345,3 +345,26 @@ let OnTerminating(args) =
     //TODO send closing request to neovim
     ()
 
+let EditFiles (files: string seq) =
+    task {
+        for file in files do
+            let! _ = nvim.command <| "edit " + file
+            ()
+    } |> ignore
+
+let InsertText text =
+    let sb = new Text.StringBuilder()
+    // wrap it as put ='text', escape accordingly
+    ignore <| sb.Append("put ='")
+    for ch in text do
+        match ch with
+        | '|'  -> sb.Append("\\|")
+        | '"'  -> sb.Append("\\\"")
+        | '\'' -> sb.Append("''")
+        | x    -> sb.Append(x)
+        |> ignore
+    ignore <| sb.Append("'")
+
+    if not <| String.IsNullOrEmpty text then
+        let text = sb.ToString()
+        ignore <| nvim.command text
