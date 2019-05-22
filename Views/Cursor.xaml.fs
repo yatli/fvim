@@ -67,7 +67,7 @@ type Cursor() as this =
             fbs.[(w,h,s)] <- fb
         fb
 
-    let cursorConfig tick =
+    let cursorConfig _ =
         //trace "cursor" "render tick %A" id
         if Object.Equals(this.ViewModel, null) 
         then ()

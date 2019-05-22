@@ -135,14 +135,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let mutable bg = Option.defaultValue default_bg attrs.background
         let mutable sp = Option.defaultValue default_sp attrs.special
 
-        let rev (c: Color) =
-            let inv = UInt32.MaxValue - c.ToUint32()
-            Color.FromUInt32(inv ||| 0xFF000000u)
-
         if attrs.reverse then
-            fg <- rev fg
-            bg <- rev bg
-            sp <- rev sp
+            fg <- GetReverseColor fg
+            bg <- GetReverseColor bg
+            sp <- GetReverseColor sp
 
         fg, bg, sp, attrs
 
@@ -510,20 +506,24 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             if mode_defs.Length = 0 || cursor_modeidx < 0 then return ()
             elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then return()
             else
-            let mode  = mode_defs.[cursor_modeidx]
-            let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
-            let hlid  = Option.defaultValue hlid mode.attr_id
-            let fg, bg, sp, attrs = getDrawAttrs hlid 
-            let origin = getPoint cursor_row cursor_col 
-            let text = grid_buffer.[cursor_row, cursor_col].text
-            let text_type = wswidth text
-            let width = float(CharTypeWidth text_type) * glyph_size.Width
+            let mode              = mode_defs.[cursor_modeidx]
+            let hlid              = grid_buffer.[cursor_row, cursor_col].hlid
+            let hlid              = Option.defaultValue hlid mode.attr_id
+            let fg, bg, sp, attrs = getDrawAttrs hlid
+            let origin            = getPoint cursor_row cursor_col
+            let text              = grid_buffer.[cursor_row, cursor_col].text
+            let text_type         = wswidth text
+            let width             = float(CharTypeWidth text_type) * glyph_size.Width
 
             let on, off, wait =
                 match mode with
                 | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
                     when on > 0 && off > 0 && wait > 0 -> on, off, wait
                 | _ -> 0,0,0
+
+            // do not use the default colors for cursor
+            let fg, bg, sp = if hlid = 0 then GetReverseColor fg, GetReverseColor bg, GetReverseColor sp
+                             else fg, bg, sp
 
             cursor_info.typeface       <- _guifont
             cursor_info.wtypeface      <- _guifontwide
