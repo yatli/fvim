@@ -87,7 +87,7 @@ module ui =
             match fontcache.TryGetValue((fname, italic, bold)) with
             | true, typeface -> typeface
             | _ ->
-                let weight   = if bold then SKFontStyleWeight.Medium else SKFontStyleWeight.Thin
+                let weight   = if bold then SKFontStyleWeight.Medium else SKFontStyleWeight.Normal
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)
