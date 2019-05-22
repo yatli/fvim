@@ -80,6 +80,10 @@ module ui =
     let private emoji_typeface = SKTypeface.FromFamilyName("Segoe UI Emoji")
     let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
 
+    let GetReverseColor (c: Color) =
+        let inv = UInt32.MaxValue - c.ToUint32()
+        Color.FromUInt32(inv ||| 0xFF000000u)
+
     let GetTypeface(txt, italic, bold, font, wfont) =
         let w = wswidth txt
 
