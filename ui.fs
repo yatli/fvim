@@ -76,8 +76,28 @@ module ui =
         abstract Resized: IEvent<IGridUI>
         abstract Input: IEvent<InputEvent>
 
+    open System.Runtime.InteropServices
+
+    let DefaultFont =
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Consolas"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Droid Sans Mono"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Menlo"
+        else "Monospace"
+
+    let DefaultFontWide = 
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "DengXian"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Noto Sans CJK SC"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Heiti SC"
+        else "Simsun"
+
+    let DefaultFontEmoji =
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Segoe UI Emoji"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Noto Color Emoji" // ?
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Apple Color Emoji"
+        else "Noto Color Emoji"
+
     let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
-    let private emoji_typeface = SKTypeface.FromFamilyName("Segoe UI Emoji")
+    let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
     let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
 
     let GetReverseColor (c: Color) =

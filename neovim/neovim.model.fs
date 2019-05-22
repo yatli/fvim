@@ -154,7 +154,10 @@ module ModelImpl =
         | Key(HasFlag(InputModifiers.Control), Key.I)                 -> Special "Tab"
         | Key(_, Key.LineFeed)
         | Key(HasFlag(InputModifiers.Control), Key.J)                 -> Special "NL"
-        //| Key(HasFlag(InputModifiers.Control), Key.L)                 -> Special "FF"
+        (* 
+        | Key(HasFlag(InputModifiers.Control), Key.L)                 -> Special "FF" 
+          ^^^ Note: if ^L is sent as <FF> then neovim discards the key.
+        *)
         | Key(_, Key.Return)
         | Key(HasFlag(InputModifiers.Control), Key.M)                 -> Special "CR"
         | Key(_, Key.Escape)
@@ -229,8 +232,6 @@ module ModelImpl =
         |  _                                                          -> Unrecognized
     //| Key.Oem
     let rec (|ModifiersPrefix|_|) (x: InputEvent) =
-        let kf = InputModifiers.Alt &&& InputModifiers.Control &&& InputModifiers.Shift &&& InputModifiers.Windows
-        let mf = InputModifiers.LeftMouseButton &&& InputModifiers.RightMouseButton &&& InputModifiers.MiddleMouseButton
         match x with
         |  Key(m & HasFlag(InputModifiers.Shift), x &
           (Key.OemComma | Key.OemPipe | Key.OemPeriod | Key.Oem2 | Key.OemSemicolon | Key.OemQuotes
@@ -239,7 +240,7 @@ module ModelImpl =
         |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
         |  Key.D8 | Key.D9)) -> 
             (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
-        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J |  Key.M)) ->
+        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.M)) ->
             (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Control), x)
         | Key(m, _)
         | MousePress(m, _, _, _, _) 
