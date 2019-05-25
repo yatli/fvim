@@ -15,6 +15,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Emojis!
 - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
 - Use the front end with a remote neovim: `fvim --ssh user@host`
+- Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
 
 Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
