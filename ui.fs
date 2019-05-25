@@ -31,6 +31,10 @@ type ActivatableExt() =
     static member inline Do (this: IActivatable, fn: unit -> unit) =
         do fn()
         Disposable.Empty
+    [<Extension>]
+    static member inline Do (this: ISupportsActivation, fn: unit -> unit) =
+        do fn()
+        Disposable.Empty
 
 type ViewModelBase() =
     inherit ReactiveObject()
@@ -76,9 +80,33 @@ module ui =
         abstract Resized: IEvent<IGridUI>
         abstract Input: IEvent<InputEvent>
 
+    open System.Runtime.InteropServices
+
+    let DefaultFont =
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Consolas"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Droid Sans Mono"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Menlo"
+        else "Monospace"
+
+    let DefaultFontWide = 
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "DengXian"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Noto Sans CJK SC"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Heiti SC"
+        else "Simsun"
+
+    let DefaultFontEmoji =
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Segoe UI Emoji"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Noto Color Emoji" // ?
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Apple Color Emoji"
+        else "Noto Color Emoji"
+
     let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
-    let private emoji_typeface = SKTypeface.FromFamilyName("Segoe UI Emoji")
+    let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
     let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
+
+    let GetReverseColor (c: Color) =
+        let inv = UInt32.MaxValue - c.ToUint32()
+        Color.FromUInt32(inv ||| 0xFF000000u)
 
     let GetTypeface(txt, italic, bold, font, wfont) =
         let w = wswidth txt
@@ -87,7 +115,7 @@ module ui =
             match fontcache.TryGetValue((fname, italic, bold)) with
             | true, typeface -> typeface
             | _ ->
-                let weight   = if bold then SKFontStyleWeight.Medium else SKFontStyleWeight.Thin
+                let weight   = if bold then SKFontStyleWeight.Medium else SKFontStyleWeight.Normal
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)

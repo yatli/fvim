@@ -1,5 +1,6 @@
 ﻿module FVim.Model
 
+open getopt
 open log
 open ui
 open neovim.def
@@ -153,7 +154,10 @@ module ModelImpl =
         | Key(HasFlag(InputModifiers.Control), Key.I)                 -> Special "Tab"
         | Key(_, Key.LineFeed)
         | Key(HasFlag(InputModifiers.Control), Key.J)                 -> Special "NL"
-        | Key(HasFlag(InputModifiers.Control), Key.L)                 -> Special "FF"
+        (* 
+        | Key(HasFlag(InputModifiers.Control), Key.L)                 -> Special "FF" 
+          ^^^ Note: if ^L is sent as <FF> then neovim discards the key.
+        *)
         | Key(_, Key.Return)
         | Key(HasFlag(InputModifiers.Control), Key.M)                 -> Special "CR"
         | Key(_, Key.Escape)
@@ -228,8 +232,6 @@ module ModelImpl =
         |  _                                                          -> Unrecognized
     //| Key.Oem
     let rec (|ModifiersPrefix|_|) (x: InputEvent) =
-        let kf = InputModifiers.Alt &&& InputModifiers.Control &&& InputModifiers.Shift &&& InputModifiers.Windows
-        let mf = InputModifiers.LeftMouseButton &&& InputModifiers.RightMouseButton &&& InputModifiers.MiddleMouseButton
         match x with
         |  Key(m & HasFlag(InputModifiers.Shift), x &
           (Key.OemComma | Key.OemPipe | Key.OemPeriod | Key.Oem2 | Key.OemSemicolon | Key.OemQuotes
@@ -238,7 +240,7 @@ module ModelImpl =
         |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
         |  Key.D8 | Key.D9)) -> 
             (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
-        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.L | Key.M)) ->
+        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.M)) ->
             (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Control), x)
         | Key(m, _)
         | MousePress(m, _, _, _, _) 
@@ -296,11 +298,11 @@ let Redraw        (fn: RedrawCommand[] -> unit) = ev_redraw.Publish.Subscribe(fn
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
-let Start(args: string[]) =
+let Start opts =
 
     trace "Model" "starting neovim instance..."
-    trace "Model" "args = %A" args
-    nvim.start(args)
+    trace "Model" "opts = %A" opts
+    nvim.start opts
     ignore <|
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
@@ -343,3 +345,26 @@ let OnTerminating(args) =
     //TODO send closing request to neovim
     ()
 
+let EditFiles (files: string seq) =
+    task {
+        for file in files do
+            let! _ = nvim.command <| "edit " + file
+            ()
+    } |> ignore
+
+let InsertText text =
+    let sb = new Text.StringBuilder()
+    // wrap it as put ='text', escape accordingly
+    ignore <| sb.Append("put ='")
+    for ch in text do
+        match ch with
+        | '|'  -> sb.Append("\\|")
+        | '"'  -> sb.Append("\\\"")
+        | '\'' -> sb.Append("''")
+        | x    -> sb.Append(x)
+        |> ignore
+    ignore <| sb.Append("'")
+
+    if not <| String.IsNullOrEmpty text then
+        let text = sb.ToString()
+        ignore <| nvim.command text

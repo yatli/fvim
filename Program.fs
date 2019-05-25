@@ -30,11 +30,9 @@ module Program =
     [<CompiledName "AppMain">]
     let appMain (app: Application) (args: string[]) =
         System.Console.OutputEncoding <- System.Text.Encoding.Unicode
-        let args, logToStdout, logToFile = parseOptions args
-
-        FVim.log.init logToStdout logToFile
-
-        Model.Start(args)
+        let opts = parseOptions args
+        FVim.log.init opts
+        Model.Start opts
         let cfg = config.load()
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
         let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)

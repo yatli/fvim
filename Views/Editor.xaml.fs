@@ -24,6 +24,7 @@ open Avalonia.Threading
 open System.Collections.ObjectModel
 open System.Collections.Specialized
 open System.Collections.Generic
+open Avalonia.Win32
 
 type EmbeddedEditor() as this =
     inherit UserControl()
@@ -33,16 +34,29 @@ type EmbeddedEditor() as this =
 and Editor() as this =
     inherit Canvas()
 
+    let mutable m_saved_size  = Size(100.0,100.0)
+    let mutable m_saved_pos   = PixelPoint(300, 300)
+    let mutable m_saved_state = WindowState.Normal
+
     let toggleFullscreen(v) =
         let win = this.GetVisualRoot() :?> Window
+
         if not v then
-            win.WindowState <- WindowState.Normal
+            win.WindowState <- m_saved_state
+            win.PlatformImpl.Resize(m_saved_size)
+            win.Position <- m_saved_pos
             win.HasSystemDecorations <- true
-            //win.Topmost <- false
         else
+            m_saved_size             <- win.ClientSize
+            m_saved_pos              <- win.Position
+            m_saved_state            <- win.WindowState
+            let screen                = win.Screens.ScreenFromVisual(this)
+            let screenBounds          = screen.Bounds
+            let sz                    = screenBounds.Size.ToSizeWithDpi(96.0 * this.GetVisualRoot().RenderScaling)
             win.HasSystemDecorations <- false
-            win.WindowState <- WindowState.Maximized
-            //win.Topmost <- true
+            win.WindowState          <- WindowState.Normal
+            win.Position             <- screenBounds.TopLeft
+            win.PlatformImpl.Resize(sz)
 
     let doWithDataContext fn =
         match this.DataContext with
@@ -55,10 +69,7 @@ and Editor() as this =
         ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
             let fb = this.FindControl<Image>("FrameBuffer")
             if fb <> null 
-            then 
-                //doWithDataContext (fun vm -> if not vm.TopLevel then printfn "this: %A %A buf: %A %A" this.Height this.Width vm.BufferHeight vm.BufferWidth)
-                //this.Height <- vm.BufferHeight; this.Width <- vm.BufferWidth)
-                fb.InvalidateVisual()
+            then fb.InvalidateVisual()
         )
 
     let onViewModelConnected (vm:EditorViewModel) =
@@ -67,17 +78,22 @@ and Editor() as this =
             vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.Interval(TimeSpan.FromMilliseconds(100.0))
                       .FirstAsync(fun _ -> this.IsInitialized)
-                      .Subscribe(fun _ -> Model.OnGridReady(vm :> IGridUI))
+                      .Subscribe(fun _ -> 
+                        Model.OnGridReady(vm :> IGridUI)
+                        ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
+                    )
         ] |> vm.Watch 
         
     do
         AvaloniaXamlLoader.Load(this)
         this.Watch [
+
             this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
+
             this.GetObservable(Editor.DataContextProperty)
                           .OfType<EditorViewModel>()
                           .Subscribe(onViewModelConnected)
-            this.Initialized.Subscribe(fun _ -> this.Focus())
+
         ]
 
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")

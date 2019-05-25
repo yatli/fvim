@@ -76,7 +76,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
-    let mutable disposed         = false
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_dc: IDrawingContextImpl = null
     let mutable cursor_info = new CursorViewModel()
@@ -101,8 +100,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                                    | None -> Array.empty<ModeInfo>
                                    | Some arr -> arr.Clone() :?> ModeInfo[]
 
-    let mutable _guifont         = _d "Iosevka Slab" _guifont
-    let mutable _guifontwide     = _d "DengXian" _guifontwide
+    let mutable _guifont         = _d DefaultFont     _guifont
+    let mutable _guifontwide     = _d DefaultFontWide _guifontwide
 
     let mutable font_size        = _d 16.0 _fontsize
     let mutable glyph_size       = _d (Size(10.0, 10.0)) _glyphsize
@@ -138,14 +137,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let mutable bg = Option.defaultValue default_bg attrs.background
         let mutable sp = Option.defaultValue default_sp attrs.special
 
-        let rev (c: Color) =
-            let inv = UInt32.MaxValue - c.ToUint32()
-            Color.FromUInt32(inv ||| 0xFF000000u)
-
         if attrs.reverse then
-            fg <- rev fg
-            bg <- rev bg
-            sp <- rev sp
+            fg <- GetReverseColor fg
+            bg <- GetReverseColor bg
+            sp <- GetReverseColor sp
 
         fg, bg, sp, attrs
 
@@ -259,8 +254,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        //let _s = rounding <| Point(float w, float h)
-        let _s = Point(float w, (ceil (grid_scale * float h)) / grid_scale)
+        let _s = Point(float w, (ceil ((float h) * grid_scale)) / grid_scale)
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
@@ -546,20 +540,24 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             if mode_defs.Length = 0 || cursor_modeidx < 0 then return ()
             elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then return()
             else
-            let mode  = mode_defs.[cursor_modeidx]
-            let hlid  = grid_buffer.[cursor_row, cursor_col].hlid
-            let hlid  = Option.defaultValue hlid mode.attr_id
-            let fg, bg, sp, attrs = getDrawAttrs hlid 
-            let origin = getPoint cursor_row cursor_col 
-            let text = grid_buffer.[cursor_row, cursor_col].text
-            let text_type = wswidth text
-            let width = float(CharTypeWidth text_type) * glyph_size.Width
+            let mode              = mode_defs.[cursor_modeidx]
+            let hlid              = grid_buffer.[cursor_row, cursor_col].hlid
+            let hlid              = Option.defaultValue hlid mode.attr_id
+            let fg, bg, sp, attrs = getDrawAttrs hlid
+            let origin            = getPoint cursor_row cursor_col
+            let text              = grid_buffer.[cursor_row, cursor_col].text
+            let text_type         = wswidth text
+            let width             = float(CharTypeWidth text_type) * glyph_size.Width
 
             let on, off, wait =
                 match mode with
                 | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
                     when on > 0 && off > 0 && wait > 0 -> on, off, wait
                 | _ -> 0,0,0
+
+            // do not use the default colors for cursor
+            let fg, bg, sp = if hlid = 0 then GetReverseColor fg, GetReverseColor bg, GetReverseColor sp
+                             else fg, bg, sp
 
             cursor_info.typeface       <- _guifont
             cursor_info.wtypeface      <- _guifontwide
@@ -584,7 +582,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             cursor_info.enabled        <- cursor_en
             cursor_info.ingrid         <- cursor_ingrid
             cursor_info.RenderTick     <- cursor_info.RenderTick + 1
-            trace "set cursor info"
+            trace "set cursor info, color = %A %A %A" fg bg sp
         } |> Async.RunSynchronously
 
     member this.setCursorEnabled v =
