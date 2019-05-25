@@ -28,9 +28,15 @@ let parseOptions (args: string[]) =
 
     let trace_to_stdout     = eat1 "--trace-to-stdout"
     let trace_to_file       = eat2 "--trace-to-file"
+    let ssh                 = eat2 "--ssh"
     let wsl                 = eat1 "--wsl"
-    let prog                = if wsl then "wsl" else "nvim"
-    let preargs             = if wsl then ["nvim"] else []
+    let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
+
+    if wsl && ssh.IsSome then
+        failwith "--wsl and --ssh cannot be used together."
+
+    let prog                = if wsl then "wsl" elif ssh.IsSome then "ssh" else nvim
+    let preargs             = if wsl then [nvim] elif ssh.IsSome then [ssh.Value; nvim] else []
     let enc                 = if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
     let args                = List.ofSeq args
 
