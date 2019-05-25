@@ -165,18 +165,14 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     // To compensate, we have to manually do the rounding to snap the pixels...
     //-------------------------------------------------------------------------
     // like this:
-    let rounding (pt: Point) =
-        let px = pt * grid_scale 
-        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale 
-
-    let getFramebufferRegionR row col nr_row nr_col =
-        let topLeft      = getPoint row col 
-        let bottomRight  = (topLeft + getPoint nr_row nr_col) 
-        Rect(topLeft , bottomRight)
+    let rounding_s v = ceil(v * grid_scale) / grid_scale
+    // let rounding_v (pt: Point) =
+    //     let px = pt * grid_scale 
+    //     Point(ceil px.X, ceil px.Y) / grid_scale 
 
     let getFramebufferRegion row col nr_row nr_col =
         let topLeft      = getPoint row col
-        let bottomRight  = (topLeft + getPoint nr_row nr_col) |> rounding
+        let bottomRight  = (topLeft + getPoint nr_row nr_col) 
         Rect(topLeft , bottomRight)
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
@@ -254,7 +250,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        let _s = Point(float w, (ceil ((float h) * grid_scale)) / grid_scale)
+        let _s = Point(float w, rounding_s (float h))
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
@@ -359,40 +355,49 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
         //flush()
 
-    let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
-        //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
-        //        scrollBuffer first specifies the SR, and offsets SRC/DST according
-        //        to the following rules:
-        //
-        //    If `rows` is bigger than 0, move a rectangle in the SR up, this can
-        //    happen while scrolling down.
-        //>
-        //    +-------------------------+
-        //    | (clipped above SR)      |            ^
-        //    |=========================| dst_top    |
-        //    | dst (still in SR)       |            |
-        //    +-------------------------+ src_top    |
-        //    | src (moved up) and dst  |            |
-        //    |-------------------------| dst_bot    |
-        //    | src (invalid)           |            |
-        //    +=========================+ src_bot
-        //<
-        //    If `rows` is less than zero, move a rectangle in the SR down, this can
-        //    happen while scrolling up.
-        //>
-        //    +=========================+ src_top
-        //    | src (invalid)           |            |
-        //    |------------------------ | dst_top    |
-        //    | src (moved down) and dst|            |
-        //    +-------------------------+ src_bot    |
-        //    | dst (still in SR)       |            |
-        //    |=========================| dst_bot    |
-        //    | (clipped below SR)      |            v
-        //    +-------------------------+
-        //<
-        //    `cols` is always zero in this version of Nvim, and reserved for future
-        //    use. 
+    let __scroll_doc = """
 
+  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
+        scrollBuffer first specifies the SR, and offsets SRC/DST according
+        to the following rules:
+
+    If `rows` is bigger than 0, move a rectangle in the SR up, this can
+    happen while scrolling down.
+>
+    +-------------------------+
+    | (clipped above SR)      |            ^
+    |=========================| dst_top    |
+    | dst (still in SR)       |            |
+    +-------------------------+ src_top    |
+    | src (moved up) and dst  |            |
+    |-------------------------| dst_bot    |
+    | src (invalid)           |            |
+    +=========================+ src_bot
+<
+    If `rows` is less than zero, move a rectangle in the SR down, this can
+    happen while scrolling up.
+>
+    +=========================+ src_top
+    | src (invalid)           |            |
+    |------------------------ | dst_top    |
+    | src (moved down) and dst|            |
+    +-------------------------+ src_bot    |
+    | dst (still in SR)       |            |
+    |=========================| dst_bot    |
+    | (clipped below SR)      |            v
+    +-------------------------+
+<
+    `cols` is always zero in this version of Nvim, and reserved for future
+    use. 
+
+= The blit-scroll rounding problem =
+
+    Currently, the grid rows are done in r*h where h is the height of a glyph,
+    aligned UP to pixel points. (see: [[The rounding error of the rendering system]])
+
+"""
+
+    let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         trace "scroll: %A %A %A %A %A %A" top bot left right rows cols
 
         let copy src dst =
@@ -411,23 +416,24 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 if rows > 0 then (top + rows), bot
                 else top,(bot + rows - 1)
 
-            let src_region = getFramebufferRegionR src_top left (src_bot-src_top+1) (right-left)
-            let dst_region = getFramebufferRegionR (src_top-rows) left (src_bot-src_top+1) (right-left)
+            let src_region = getFramebufferRegion src_top left (src_bot-src_top+1) (right-left)
+            let dst_region = getFramebufferRegion (src_top-rows) left (src_bot-src_top+1) (right-left)
 
             // calculate the pixel sizes
 
-            let sx1 = floor(src_region.X * grid_scale)
-            let sy1 = floor(src_region.Y * grid_scale)
-            let sx2 = floor(sx1 + src_region.Width  * grid_scale)
-            let sy2 = floor(sy1 + src_region.Height * grid_scale)
+            let sx1 = ceil(src_region.X * grid_scale)
+            let sy1 = ceil(src_region.Y * grid_scale)
+            let sx2 = (sx1 + ceil(src_region.Width  * grid_scale))
+            let sy2 = (sy1 + ceil(src_region.Height * grid_scale))
             let src_region = Rect(sx1, sy1, sx2 - sx1, sy2 - sy1)
 
-            let dx1 = floor(dst_region.X * grid_scale)
-            let dy1 = floor(dst_region.Y * grid_scale)
-            let dx2 = floor(dx1 + dst_region.Width  * grid_scale)
-            let dy2 = floor(dy1 + dst_region.Height * grid_scale)
+            let dx1 = (dst_region.X * grid_scale)
+            let dy1 = (dst_region.Y * grid_scale)
+            let dx2 = (dx1 + dst_region.Width  * grid_scale)
+            let dy2 = (dy1 + dst_region.Height * grid_scale)
             let dst_region = Rect(dx1 / grid_scale, dy1 / grid_scale, (dx2 - dx1) / grid_scale, (dy2 - dy1) / grid_scale)
 
+            trace "scroll: src=[%A]   dst=[%A]   glyph=[%A]" src_region dst_region glyph_size
             grid_dc.DrawImage(grid_fb.PlatformImpl :?> IRef<IBitmapImpl>, 1.0, src_region, dst_region)
 
 
