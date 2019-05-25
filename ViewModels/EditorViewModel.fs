@@ -144,32 +144,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
         fg, bg, sp, attrs
 
-    //-------------------------------------------------------------------------
-    //           = The rounding error of the rendering system =
-    //
-    // Suppose our grid is arranged uniformly with the height of the font:
-    //
-    //   Y_line = row * H_font
-    //
-    // Here, row is an integer and H_font float. We then have line Y positions
-    // as a sequence of incrementing floats: [ 0 * H_font; 1 * H_font; ... ]
-    // Suppose the whole grid is rendered in one pass, the lines will be drawn
-    // with coordinates:
-    //
-    //   [ {0Hf, 1Hf}; {1Hf, 2Hf}; {2Hf, 3Hf} ... ]
-    //
-    // Clearly this is overlapping. In a pixel-based coordinate system we simply
-    // reduce the line height by one pixel. However now we are in a float co-
-    // ordinate system.. The overlapped rectangles are drawn differently -- not
-    // only that they don't overlap, they leave whitespace gaps in between!
-    // To compensate, we have to manually do the rounding to snap the pixels...
-    //-------------------------------------------------------------------------
-    // like this:
-    let rounding_s v = ceil(v * grid_scale) / grid_scale
-    // let rounding_v (pt: Point) =
-    //     let px = pt * grid_scale 
-    //     Point(ceil px.X, ceil px.Y) / grid_scale 
-
     let getFramebufferRegion row col nr_row nr_col =
         let topLeft      = getPoint row col
         let bottomRight  = (topLeft + getPoint nr_row nr_col) 
@@ -250,7 +224,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        let _s = Point(float w, rounding_s (float h))
+        let _s = Point(float w, Rounding (float h) grid_scale)
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
@@ -421,16 +395,16 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
             // calculate the pixel sizes
 
-            let sx1 = ceil(src_region.X * grid_scale)
-            let sy1 = ceil(src_region.Y * grid_scale)
-            let sx2 = (sx1 + ceil(src_region.Width  * grid_scale))
-            let sy2 = (sy1 + ceil(src_region.Height * grid_scale))
+            let sx1 = round(src_region.X * grid_scale)
+            let sy1 = round(src_region.Y * grid_scale)
+            let sx2 = (sx1 + round(src_region.Width  * grid_scale))
+            let sy2 = (sy1 + round(src_region.Height * grid_scale))
             let src_region = Rect(sx1, sy1, sx2 - sx1, sy2 - sy1)
 
-            let dx1 = (dst_region.X * grid_scale)
-            let dy1 = (dst_region.Y * grid_scale)
-            let dx2 = (dx1 + dst_region.Width  * grid_scale)
-            let dy2 = (dy1 + dst_region.Height * grid_scale)
+            let dx1 = round(dst_region.X * grid_scale)
+            let dy1 = round(dst_region.Y * grid_scale)
+            let dx2 = round(dx1 + dst_region.Width  * grid_scale)
+            let dy2 = round(dy1 + dst_region.Height * grid_scale)
             let dst_region = Rect(dx1 / grid_scale, dy1 / grid_scale, (dx2 - dx1) / grid_scale, (dy2 - dy1) / grid_scale)
 
             trace "scroll: src=[%A]   dst=[%A]   glyph=[%A]" src_region dst_region glyph_size

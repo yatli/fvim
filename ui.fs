@@ -176,6 +176,32 @@ module ui =
         paint.TextEncoding         <- SKTextEncoding.Utf16
         paint
 
+    //-------------------------------------------------------------------------
+    //           = The rounding error of the rendering system =
+    //
+    // Suppose our grid is arranged uniformly with the height of the font:
+    //
+    //   Y_line = row * H_font
+    //
+    // Here, row is an integer and H_font float. We then have line Y positions
+    // as a sequence of incrementing floats: [ 0 * H_font; 1 * H_font; ... ]
+    // Suppose the whole grid is rendered in one pass, the lines will be drawn
+    // with coordinates:
+    //
+    //   [ {0Hf, 1Hf}; {1Hf, 2Hf}; {2Hf, 3Hf} ... ]
+    //
+    // Clearly this is overlapping. In a pixel-based coordinate system we simply
+    // reduce the line height by one pixel. However now we are in a float co-
+    // ordinate system.. The overlapped rectangles are drawn differently -- not
+    // only that they don't overlap, they leave whitespace gaps in between!
+    // To compensate, we have to manually do the rounding to snap the pixels...
+    //-------------------------------------------------------------------------
+    // like this:
+    let inline Rounding v scale = ceil(v * scale) / scale
+    // let rounding_v (pt: Point) =
+    //     let px = pt * grid_scale 
+    //     Point(ceil px.X, ceil px.Y) / grid_scale 
+
     let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color, _sp: Color, underline: bool, undercurl: bool, text: string) =
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
@@ -183,7 +209,7 @@ module ui =
         //  total_padding = padding space 1 + padding space 2
         let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
         let baseline      = region.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
-        let fontPos       = Point(region.X, floor baseline)
+        let fontPos       = Point(region.X, baseline)
 
         let skia = ctx :?> DrawingContextImpl
 

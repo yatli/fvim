@@ -130,13 +130,13 @@ type Cursor() as this =
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
+            let scale = this.GetVisualRoot().RenderScaling
             let fb = getfb this.Width this.Height
             use dc = fb.CreateDrawingContext(null)
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             let fg = GetForegroundBrush(this.ViewModel.fg, typeface, this.ViewModel.fontSize)
             RenderText(dc, Rect(this.Bounds.Size), fg, this.ViewModel.bg, this.ViewModel.sp, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
 
-            let scale = this.GetVisualRoot().RenderScaling
             ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, scale * fb.Size.Width, scale * fb.Size.Height), Rect(this.Bounds.Size))
         | CursorShape.Horizontal, p ->
             let h = (cellh p)
