@@ -291,9 +291,12 @@ module ModelImpl =
             ignore <| nvim.input [|key|]
         )
 
-let Request  name fn                            = requestHandlers.Add(name, fn)
-let Notify   name (fn: obj[] -> unit)           = (getNotificationEvent name).Publish.Subscribe(fn)
-let Redraw        (fn: RedrawCommand[] -> unit) = ev_redraw.Publish.Subscribe(fn)
+let Request name fn = requestHandlers.Add(name, fn)
+let Notify name (fn: obj[] -> unit) = 
+    (getNotificationEvent name).Publish.Subscribe(fun objs -> 
+        try fn objs
+        with | x -> error "Notify" "exception thrown: %A" <| x.ToString())
+let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish.Subscribe(fn)
 
 /// <summary>
 /// Call this once at initialization.
@@ -313,6 +316,15 @@ let Start opts =
         let! _ = nvim.set_var "fvim_loaded" 1
         ()
     } |> ignore
+
+    [
+        Notify "font.antialias"   (fun [| Bool(v) |] -> ui.antialiased <- v)
+        Notify "font.bounds"      (fun [| Bool(v) |] -> ui.drawBounds <- v)
+        Notify "font.autohint"    (fun [| Bool(v) |] -> ui.autohint <- v)
+        Notify "font.subpixel"    (fun [| Bool(v) |] -> ui.subpixel <- v)
+        Notify "font.lcdrender"   (fun [| Bool(v) |] -> ui.lcdrender <- v)
+        Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
+    ] |> List.iter ignore
 
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands

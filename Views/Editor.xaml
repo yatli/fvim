@@ -36,6 +36,7 @@
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
         Focusable           = "False"
+        IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
         >
         <fvim:Cursor.Transitions>
           <!--<DoubleTransition Property="(fvim:Cursor.PosX)" Duration="0:0:0:0.03" Easing="ExponentialEaseOut"/>-->

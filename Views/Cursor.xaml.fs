@@ -29,7 +29,6 @@ type Cursor() as this =
     static let PosYProp = AvaloniaProperty.Register<Cursor, float>("PosY")
     static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
     static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
-    static let EditorFocusedProp = AvaloniaProperty.Register<Cursor, bool>("EditorFocused")
 
     let mutable cursor_timer: IDisposable = null
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
@@ -70,7 +69,7 @@ type Cursor() as this =
 
     let cursorConfig _ =
         //trace "cursor" "render tick %A" id
-        if Object.Equals(this.ViewModel, null) 
+        if Object.ReferenceEquals(this.ViewModel, null) 
         then ()
         else
             (* update the settings *)
@@ -117,11 +116,12 @@ type Cursor() as this =
             this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style))
             this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style))
             this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
-            this.GetObservable(EditorFocusedProp).Subscribe(fun x -> this.IsVisible <- x)
         ] 
         AvaloniaXamlLoader.Load(this)
 
-    member this.ViewModel: CursorViewModel = this.DataContext :?> CursorViewModel
+    member this.ViewModel: CursorViewModel = 
+        let ctx = this.DataContext 
+        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
 
     override this.Render(ctx) =
 

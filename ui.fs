@@ -62,6 +62,21 @@ type ViewLocator() =
 
 module ui =
 
+    let mutable antialiased = true
+    let mutable drawBounds  = false
+    let mutable autohint    = true
+    let mutable subpixel    = true
+    let mutable lcdrender   = true
+    let mutable hintLevel   = SKPaintHinting.Full
+
+    let setHintLevel (v: string) = 
+        match v.ToLower() with
+        | "none" -> hintLevel   <- SKPaintHinting.NoHinting
+        | "slight" -> hintLevel <- SKPaintHinting.Slight
+        | "normal" -> hintLevel <- SKPaintHinting.Normal
+        | "full" -> hintLevel   <- SKPaintHinting.Full
+        | _ -> ()
+
     type InputEvent = 
     | Key          of mods: InputModifiers * key: Key
     | MousePress   of mods: InputModifiers * row: int * col: int * button: MouseButton * combo: int
@@ -115,7 +130,7 @@ module ui =
             match fontcache.TryGetValue((fname, italic, bold)) with
             | true, typeface -> typeface
             | _ ->
-                let weight   = if bold then SKFontStyleWeight.Medium else SKFontStyleWeight.Normal
+                let weight   = if bold then SKFontStyleWeight.Bold else SKFontStyleWeight.Normal
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)
@@ -134,19 +149,19 @@ module ui =
     let GetTypefaceA(txt, italic, bold, font, wfont, fontSize) =
         let typeface = GetTypeface(txt, italic, bold, font, wfont)
         let style = if italic then FontStyle.Italic else FontStyle.Normal
-        let weight = if bold then FontWeight.Bold else FontWeight.Normal
+        let weight = if bold then FontWeight.Bold else FontWeight.Bold
         Typeface(typeface.FamilyName, fontSize, style, weight)
 
     let MeasureText (str: string, font: string, wfont: string, fontSize: float) =
         use paint = new SKPaint()
-        paint.Typeface <- GetTypeface(str, false, true, font, wfont)
+        paint.Typeface <- GetTypeface(str, false, false, font, wfont)
         paint.TextSize <- single fontSize
-        paint.IsAntialias <- true
-        paint.IsAutohinted <- true
+        paint.IsAntialias <- antialiased
+        paint.IsAutohinted <- autohint
         paint.IsLinearText <- false
-        paint.HintingLevel <- SKPaintHinting.Full
-        paint.LcdRenderText <- true
-        paint.SubpixelText <- true
+        paint.HintingLevel <- hintLevel
+        paint.LcdRenderText <- lcdrender
+        paint.SubpixelText <- subpixel
         paint.TextAlign <- SKTextAlign.Left
         paint.DeviceKerningEnabled <- false
         paint.TextEncoding <- SKTextEncoding.Utf16
@@ -165,12 +180,12 @@ module ui =
         let paint                   = new SKPaint(Color = c.ToSKColor())
         paint.Typeface             <- fontFace
         paint.TextSize             <- single fontSize
-        paint.IsAntialias          <- true
-        paint.IsAutohinted         <- true
+        paint.IsAntialias          <- antialiased
+        paint.IsAutohinted         <- autohint
         paint.IsLinearText         <- false
         paint.HintingLevel         <- SKPaintHinting.Full
-        paint.LcdRenderText        <- true
-        paint.SubpixelText         <- true
+        paint.LcdRenderText        <- lcdrender
+        paint.SubpixelText         <- subpixel
         paint.TextAlign            <- SKTextAlign.Left
         paint.DeviceKerningEnabled <- false
         paint.TextEncoding         <- SKTextEncoding.Utf16
@@ -198,15 +213,16 @@ module ui =
 
         // Text bounding box drawing:
         // --------------------------------------------------
-        // let bounds = ref <| SKRect()
-        // ignore <| fg.MeasureText(String.Concat str, bounds)
-        // let mutable bounds = !bounds
-        // bounds.Left <- bounds.Left + single (fontPos.X)
-        // bounds.Top <- bounds.Top + single (fontPos.Y)
-        // bounds.Right <- bounds.Right + single (fontPos.X)
-        // bounds.Bottom <- bounds.Bottom + single (fontPos.Y)
-        // fg.Style <- SKPaintStyle.Stroke
-        // skia.Canvas.DrawRect(bounds, fg)
+        if drawBounds then
+            let mutable bounds = SKRect()
+            let text = if String.IsNullOrEmpty text then " " else text
+            ignore <| fg.MeasureText(text, &bounds)
+            bounds.Left <- bounds.Left + single (fontPos.X)
+            bounds.Top <- bounds.Top + single (fontPos.Y)
+            bounds.Right <- bounds.Right + single (fontPos.X)
+            bounds.Bottom <- bounds.Bottom + single (fontPos.Y)
+            fg.Style <- SKPaintStyle.Stroke
+            skia.Canvas.DrawRect(bounds, fg)
         // --------------------------------------------------
 
         let sp_thickness = fg.FontMetrics.UnderlineThickness.GetValueOrDefault(1.0F)
