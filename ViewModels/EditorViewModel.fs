@@ -168,8 +168,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
 
+        let x = 
+            match str with
+            | x :: _ -> x
+            | _ -> " "
+
         let attrs = hi_defs.[hlid].rgb_attr
-        let typeface = GetTypeface(List.head str, attrs.italic, attrs.bold, _guifont, _guifontwide)
+        let typeface = GetTypeface(x, attrs.italic, attrs.bold, _guifont, _guifontwide)
         let _fg, bg, sp, attrs = getDrawAttrs hlid 
 
         use fg = GetForegroundBrush(_fg, typeface, font_size)
@@ -194,17 +199,24 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let mutable hlid = grid_buffer.[y, x'].hlid
         let mutable str  = []
         let mutable wc   = wswidth grid_buffer.[y,x'].text
+        let mutable bold = false
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
         for x = xN - 1 downto x0 do
             let myhlid = grid_buffer.[y,x].hlid 
             let mywc   = wswidth grid_buffer.[y,x].text
-            if myhlid <> hlid || mywc <> wc then
+            //  !NOTE bold glyphs are generally wider than normal.
+            //  Therefore, we have to break them into single glyphs
+            //  to prevent overflow into later cells.
+            if myhlid <> hlid || mywc <> wc || bold then
                 drawBuffer ctx y (x + 1) (x' + 1) hlid str
-                hlid <- myhlid 
                 wc <- mywc
                 x' <- x
                 str <- []
+                if hlid <> myhlid then
+                    hlid <- myhlid 
+                    let _,_,_,hl_attrs = getDrawAttrs hlid
+                    bold <- hl_attrs.bold
             str <- grid_buffer.[y,x].text :: str
         drawBuffer ctx y x0 (x' + 1) hlid str
 
