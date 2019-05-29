@@ -199,7 +199,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let mutable hlid = grid_buffer.[y, x'].hlid
         let mutable str  = []
         let mutable wc   = wswidth grid_buffer.[y,x'].text
-        let mutable bold = false
+        let mutable bold = 
+            let _,_,_,hl_attrs = getDrawAttrs hlid
+            hl_attrs.bold
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
         for x = xN - 1 downto x0 do
