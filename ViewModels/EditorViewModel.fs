@@ -12,6 +12,7 @@ open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Platform
 open Avalonia.Threading
+open Avalonia.Skia
 open FSharp.Control.Reactive
 open ReactiveUI
 
@@ -19,6 +20,7 @@ open System
 open System.Collections.ObjectModel
 open Avalonia.Controls
 open System.Reactive.Disposables
+open SkiaSharp
 
 [<Struct>]
 type private GridBufferCell =
@@ -176,9 +178,12 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
         let attrs = hi_defs.[hlid].rgb_attr
         let typeface = GetTypeface(x, attrs.italic, attrs.bold, _guifont, _guifontwide)
-        let _fg, bg, sp, attrs = getDrawAttrs hlid 
+        let fg, bg, sp, attrs = getDrawAttrs hlid 
 
-        use fg = GetForegroundBrush(_fg, typeface, font_size)
+        use fgpaint = new SKPaint()
+        use bgpaint = new SKPaint()
+        use sppaint = new SKPaint()
+        SetForegroundBrush(fgpaint, fg, typeface, font_size)
 
         let nr_col = 
             match wswidth grid_buffer.[row, colend - 1].text with
@@ -189,7 +194,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let bottomRight  = (topLeft + getPoint 1 nr_col) |> rounding
         let bg_region    = Rect(topLeft , bottomRight)
 
-        RenderText(ctx, bg_region, fg, bg, sp, attrs.underline, attrs.undercurl, String.Concat str)
+        bgpaint.Color <- bg.ToSKColor()
+        sppaint.Color <- sp.ToSKColor()
+
+        RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, String.Concat str)
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -199,15 +207,16 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let mutable x'   = xN - 1
         let mutable hlid = grid_buffer.[y, x'].hlid
         let mutable str  = []
-        let mutable wc   = wswidth grid_buffer.[y,x'].text
+        let mutable last = grid_buffer.[y,x'].text
+        let mutable wc   = wswidth last
         let mutable bold = 
             let _,_,_,hl_attrs = getDrawAttrs hlid
             hl_attrs.bold
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
         for x = xN - 1 downto x0 do
-            let myhlid = grid_buffer.[y,x].hlid 
-            let mywc   = wswidth grid_buffer.[y,x].text
+            let { hlid=myhlid; text=cur } = grid_buffer.[y,x]
+            let mywc = wswidth cur
             //  !NOTE bold glyphs are generally wider than normal.
             //  Therefore, we have to break them into single glyphs
             //  to prevent overflow into later cells.
@@ -220,7 +229,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                     hlid <- myhlid 
                     let _,_,_,hl_attrs = getDrawAttrs hlid
                     bold <- hl_attrs.bold
-            str <- grid_buffer.[y,x].text :: str
+            last <- cur
+            str  <- last :: str
         drawBuffer ctx y x0 (x' + 1) hlid str
 
     let markDirty (region: GridRect) =

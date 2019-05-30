@@ -4,21 +4,23 @@ open neovim.def
 open neovim.rpc
 open log
 
-open Avalonia.Controls
 open Avalonia
-open System
-open System.Collections.Generic
-open Avalonia.Threading
-open ui
+open Avalonia.Animation
+open Avalonia.Controls
+open Avalonia.Data
+open Avalonia.Markup.Xaml
 open Avalonia.Media
 open Avalonia.Media.Imaging
+open Avalonia.Skia
+open Avalonia.Threading
 open Avalonia.VisualTree
-open Avalonia.Animation
-open Avalonia.Markup.Xaml
 open ReactiveUI
-open System.Reactive.Linq
+open SkiaSharp
+open System
+open System.Collections.Generic
 open System.Reactive.Disposables
-open Avalonia.Data
+open System.Reactive.Linq
+open ui
 
 type Cursor() as this =
     inherit Control()
@@ -34,6 +36,10 @@ type Cursor() as this =
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
     let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
+
+    let fgpaint = new SKPaint()
+    let bgpaint = new SKPaint()
+    let sppaint = new SKPaint()
     //                    w     h     dpi
     let fbs = Dictionary<(float*float*float), RenderTargetBitmap> ()
 
@@ -133,8 +139,11 @@ type Cursor() as this =
             let fb = getfb this.Width this.Height
             use dc = fb.CreateDrawingContext(null)
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
-            let fg = GetForegroundBrush(this.ViewModel.fg, typeface, this.ViewModel.fontSize)
-            RenderText(dc, Rect(this.Bounds.Size), fg, this.ViewModel.bg, this.ViewModel.sp, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+            SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
+            bgpaint.Color <- this.ViewModel.bg.ToSKColor()
+            sppaint.Color <- this.ViewModel.sp.ToSKColor()
+
+            RenderText(dc, Rect(this.Bounds.Size), fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
 
             let scale = this.GetVisualRoot().RenderScaling
             ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, scale * fb.Size.Width, scale * fb.Size.Height), Rect(this.Bounds.Size))
