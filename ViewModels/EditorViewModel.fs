@@ -114,6 +114,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let child_grids = ObservableCollection<EmbeddedEditorViewModel>()
     let resizeEvent = Event<IGridUI>()
     let inputEvent  = Event<InputEvent>()
+    let hlchangeEvent = Event<unit>()
 
     let toggleFullScreen(gridid: int) =
         if gridid = GridId then
@@ -272,10 +273,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             default_bg <- x.rgb_attr.background.Value
             default_sp <- x.rgb_attr.special.Value
             this.RaisePropertyChanged("BackgroundBrush")
-        markAllDirty()
+        hlchangeEvent.Trigger()
 
     let setDefaultColors fg bg sp = 
-
         setHighlight {
             id = 0
             info = [||]
@@ -291,6 +291,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 undercurl = false
             }
         }
+        trace "setDefaultColors: %A %A %A" fg bg sp
         
     let clearBuffer () =
         trace "RenderScaling is %f" grid_scale
@@ -485,14 +486,19 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | _ -> ()
 
     do
-        let fg,bg,sp,attr = getDrawAttrs 0
+        let fg,bg,sp,_ = getDrawAttrs 0
         default_bg <- bg
         default_fg <- fg
         default_sp <- sp
         fontConfig()
         this.Watch [
             Model.Redraw (Array.iter redraw)
+
             Model.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+
+            hlchangeEvent.Publish 
+            |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
+            |> Observable.subscribe (fun () -> markAllDirty())
         ] 
 
     member private __.initBuffer nrow ncol =
