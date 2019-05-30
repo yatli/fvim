@@ -314,6 +314,7 @@ let Start opts =
     trace "Model" "commencing early initialization..."
     task {
         let! _ = nvim.set_var "fvim_loaded" 1
+        let! _ = nvim.set_var "gui_running" 1
         ()
     } |> ignore
 
