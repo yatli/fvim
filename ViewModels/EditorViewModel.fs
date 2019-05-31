@@ -6,6 +6,7 @@ open wcwidth
 open neovim.def
 open neovim.rpc
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Input
 open Avalonia.Media
@@ -14,7 +15,6 @@ open Avalonia.Platform
 open Avalonia.Threading
 open Avalonia.Skia
 open FSharp.Control.Reactive
-open ReactiveUI
 
 open System
 open System.Collections.ObjectModel

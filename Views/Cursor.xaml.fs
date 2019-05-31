@@ -4,6 +4,7 @@ open neovim.def
 open neovim.rpc
 open log
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Animation
 open Avalonia.Controls
@@ -14,7 +15,6 @@ open Avalonia.Media.Imaging
 open Avalonia.Skia
 open Avalonia.Threading
 open Avalonia.VisualTree
-open ReactiveUI
 open SkiaSharp
 open System
 open System.Collections.Generic
@@ -23,8 +23,7 @@ open System.Reactive.Linq
 open ui
 
 type Cursor() as this =
-    inherit Control()
-
+    inherit UserControl()
     // workaround: binding directly to Canvas.Left/Top won't work.
     // so we introduce a proxy DP for x and y.
     static let PosXProp = AvaloniaProperty.Register<Cursor, float>("PosX")
@@ -125,10 +124,6 @@ type Cursor() as this =
         ] 
         AvaloniaXamlLoader.Load(this)
 
-    member this.ViewModel: CursorViewModel = 
-        let ctx = this.DataContext 
-        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
-
     override this.Render(ctx) =
 
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
@@ -154,6 +149,10 @@ type Cursor() as this =
         | CursorShape.Vertical, p ->
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
+
+    member this.ViewModel: CursorViewModel = 
+        let ctx = this.DataContext 
+        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
 
     interface IViewFor<CursorViewModel> with
         member this.ViewModel

@@ -3,13 +3,14 @@
 open neovim.rpc
 open log
 
+open ReactiveUI
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
 open Avalonia.Input
 open Avalonia.Interactivity
-open ReactiveUI
 open Avalonia
 open Avalonia.Data
+open Avalonia.ReactiveUI
 
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()

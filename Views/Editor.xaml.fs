@@ -4,6 +4,7 @@ open FVim.neovim.def
 open FVim.ui
 open FVim.log
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Input
@@ -14,7 +15,6 @@ open Avalonia.Platform
 open Avalonia.Utilities
 open Avalonia.Skia
 open Avalonia.Data
-open ReactiveUI
 open Avalonia.VisualTree
 open Avalonia.Layout
 open System.Reactive.Linq
