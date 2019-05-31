@@ -229,7 +229,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 str <- []
                 if hlidchange then
                     prev <- current
-                    bold <- let _,_,_,hl_attrs = getDrawAttrs prev_hlid
+                    bold <- let _,_,_,hl_attrs = getDrawAttrs (!current).hlid
                             in hl_attrs.bold
             str <- mytext :: str
         drawBuffer ctx y x0 (x' + 1) (!prev).hlid str
