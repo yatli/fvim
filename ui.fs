@@ -146,12 +146,6 @@ module ui =
         | CharType.Powerline -> nerd_typeface
         | _              -> _get font
 
-    let GetTypefaceA(txt, italic, bold, font, wfont, fontSize) =
-        let typeface = GetTypeface(txt, italic, bold, font, wfont)
-        let style = if italic then FontStyle.Italic else FontStyle.Normal
-        let weight = if bold then FontWeight.Bold else FontWeight.Bold
-        Typeface(typeface.FamilyName, fontSize, style, weight)
-
     let MeasureText (str: string, font: string, wfont: string, fontSize: float) =
         use paint = new SKPaint()
         paint.Typeface <- GetTypeface(str, false, false, font, wfont)

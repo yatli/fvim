@@ -296,7 +296,7 @@ let Notify name (fn: obj[] -> unit) =
     (getNotificationEvent name).Publish.Subscribe(fun objs -> 
         try fn objs
         with | x -> error "Notify" "exception thrown: %A" <| x.ToString())
-let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish.Subscribe(fn)
+let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish |> Observable.synchronize |> Observable.subscribe(fn)
 
 /// <summary>
 /// Call this once at initialization.

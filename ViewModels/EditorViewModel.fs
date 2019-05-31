@@ -206,8 +206,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
         for x = xN - 1 downto x0 do
-            let myhlid = grid_buffer.[y,x].hlid 
-            let mywc   = wswidth grid_buffer.[y,x].text
+            let { hlid=myhlid; text=mycell} = grid_buffer.[y,x]
+            let mywc = wswidth mycell
             //  !NOTE bold glyphs are generally wider than normal.
             //  Therefore, we have to break them into single glyphs
             //  to prevent overflow into later cells.
@@ -218,9 +218,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 str <- []
                 if hlid <> myhlid then
                     hlid <- myhlid 
-                    let _,_,_,hl_attrs = getDrawAttrs hlid
-                    bold <- hl_attrs.bold
-            str <- grid_buffer.[y,x].text :: str
+                    bold <- let _,_,_,hl_attrs = getDrawAttrs hlid
+                            in hl_attrs.bold
+            str <- mycell :: str
         drawBuffer ctx y x0 (x' + 1) hlid str
 
     let markDirty (region: GridRect) =
