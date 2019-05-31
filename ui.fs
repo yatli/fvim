@@ -169,23 +169,22 @@ module ui =
         let pxsize        = PixelSize(int <| (w * scale), int <| (h * scale))
         new RenderTargetBitmap(pxsize, Vector(96.0 * scale, 96.0 * scale))
 
+    let SetForegroundBrush(fgpaint: SKPaint, c: Color, fontFace: SKTypeface, fontSize: float) =
+        fgpaint.Color                <- c.ToSKColor()
+        fgpaint.Typeface             <- fontFace
+        fgpaint.TextSize             <- single fontSize
+        fgpaint.IsAntialias          <- antialiased
+        fgpaint.IsAutohinted         <- autohint
+        fgpaint.IsLinearText         <- false
+        fgpaint.HintingLevel         <- hintLevel
+        fgpaint.LcdRenderText        <- lcdrender
+        fgpaint.SubpixelText         <- subpixel
+        fgpaint.TextAlign            <- SKTextAlign.Left
+        fgpaint.DeviceKerningEnabled <- false
+        fgpaint.TextEncoding         <- SKTextEncoding.Utf16
+        ()
 
-    let GetForegroundBrush(c: Color, fontFace: SKTypeface, fontSize: float) =
-        let paint                   = new SKPaint(Color = c.ToSKColor())
-        paint.Typeface             <- fontFace
-        paint.TextSize             <- single fontSize
-        paint.IsAntialias          <- antialiased
-        paint.IsAutohinted         <- autohint
-        paint.IsLinearText         <- false
-        paint.HintingLevel         <- SKPaintHinting.Full
-        paint.LcdRenderText        <- lcdrender
-        paint.SubpixelText         <- subpixel
-        paint.TextAlign            <- SKTextAlign.Left
-        paint.DeviceKerningEnabled <- false
-        paint.TextEncoding         <- SKTextEncoding.Utf16
-        paint
-
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, _bg: Color, _sp: Color, underline: bool, undercurl: bool, text: string) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string) =
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
@@ -196,14 +195,12 @@ module ui =
 
         let skia = ctx :?> DrawingContextImpl
 
-        use bg = new SKPaint(Color = _bg.ToSKColor())
-        use sp = new SKPaint(Color = _sp.ToSKColor())
-
         //lol wat??
         //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
 
         skia.Canvas.DrawRect(region.ToSKRect(), bg)
-        skia.Canvas.DrawText(text, fontPos.ToSKPoint(), fg)
+        if not <| String.IsNullOrWhiteSpace text then
+            skia.Canvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
 
         // Text bounding box drawing:
         // --------------------------------------------------
@@ -226,7 +223,7 @@ module ui =
             let p1 = fontPos + Point(0.0, float <| underline_pos)
             let p2 = p1 + Point(region.Width, 0.0)
             sp.Style <- SKPaintStyle.Stroke
-            //sp.StrokeWidth <- sp_thickness
+            //sppaint.StrokeWidth <- sp_thickness
             skia.Canvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
 
         if undercurl then
