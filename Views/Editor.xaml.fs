@@ -85,7 +85,6 @@ and Editor() as this =
         ] |> vm.Watch 
         
     do
-        AvaloniaXamlLoader.Load(this)
         this.Watch [
 
             this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
@@ -95,6 +94,7 @@ and Editor() as this =
                           .Subscribe(onViewModelConnected)
 
         ]
+        AvaloniaXamlLoader.Load(this)
 
     static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
     static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")

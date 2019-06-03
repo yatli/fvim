@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
@@ -49,6 +49,7 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.8.0" />
+    <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2019013001" />
     <PackageReference Include="Avalonia.Desktop" Version="0.8.0" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.0" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
