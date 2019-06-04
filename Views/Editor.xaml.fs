@@ -50,8 +50,6 @@ and Editor() as this =
             grid_fb <- null
         grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
         image.Source <- grid_fb
-        image.Stretch <- Media.Stretch.None
-        image.ClipToBounds <- true
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system =
