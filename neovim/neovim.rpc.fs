@@ -284,9 +284,12 @@ type Process() =
             Task.Factory.StartNew(fun () -> 
                  trace "READ!"
                  while not proc.HasExited && not cancel.IsCancellationRequested do
-                     let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
-                     (*trace "stdout message: %A" data*)
-                     ob.OnNext(data)
+                    try
+                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
+                        (*trace "stdout message: %A" data*)
+                        ob.OnNext(data)
+                    with :? InvalidOperationException as ex ->
+                        ob.OnCompleted()
                  trace "READ COMPLETE!"
                  ob.OnCompleted()
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
@@ -326,20 +329,19 @@ type Process() =
                 | _ -> false
             | _ -> true
 
-        let rec exhandler (ex: exn) = 
-            match ex with
-            | :? InvalidOperationException -> Observable.single Exit
-            | _ ->
-                trace "exhandler: %A" ex
-                System.Reactive.Linq.Observable.Create(read)
-                |> Observable.map       parse
-                |> Observable.catchWith exhandler
-
-        let stdout = 
+        let rec _startRead() =
             System.Reactive.Linq.Observable.Create(read)
             |> Observable.map       parse
             |> Observable.catchWith exhandler
+
+        and exhandler (ex: exn) = 
+            trace "exhandler: %A" ex
+            _startRead()
+
+        let stdout = 
+            _startRead()
             |> Observable.filter    intercept
+            |> Observable.concat    (Observable.single Exit)
         let stderr = 
             proc.ErrorDataReceived 
             |> Observable.map (fun data -> Error data.Data )

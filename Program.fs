@@ -19,7 +19,7 @@ module Program =
             .Configure<App>()
             .UsePlatformDetect()
             .UseSkia()
-            .With(new Win32PlatformOptions(UseDeferredRendering=false, AllowEglInitialization=false))
+            .With(new Win32PlatformOptions(UseDeferredRendering=true, AllowEglInitialization=true))
             .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=false))
             .With(new X11PlatformOptions(UseEGL=false, UseGpu=false))
             .With(new MacOSPlatformOptions(ShowInDock=true))

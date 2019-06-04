@@ -41,9 +41,15 @@ and Editor() as this =
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
     let mutable grid_fb: RenderTargetBitmap  = null
-    let mutable grid_dc: IDrawingContextImpl = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
+
+    let trace fmt = 
+        let nr =
+            if grid_vm <> Unchecked.defaultof<_> then (grid_vm:>IGridUI).Id.ToString()
+            else "(no vm attached)"
+        trace ("editor #" + nr) fmt
+
 
     let image() = this.FindControl<Image>("FrameBuffer")
 
@@ -53,12 +59,9 @@ and Editor() as this =
             grid_scale <- this.GetVisualRoot().RenderScaling
             image().Source <- null
             if grid_fb <> null then
-                grid_dc.Dispose()
-                grid_dc <- null
                 grid_fb.Dispose()
                 grid_fb <- null
             grid_fb <- AllocateFramebuffer grid_vm.BufferWidth grid_vm.BufferHeight grid_scale
-            grid_dc <- grid_fb.CreateDrawingContext(null)
             image().Source <- grid_fb
         ) |> ignore
 
@@ -179,10 +182,8 @@ and Editor() as this =
         | _ -> ()
 
     let redraw tick =
-        trace ("editor #" + (grid_vm:>IGridUI).Id.ToString()) "render tick %d" tick
-        ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
-            image().InvalidateVisual()
-        )
+        trace "render tick %d" tick
+        this.InvalidateVisual()
 
     let onViewModelConnected (vm:EditorViewModel) =
         grid_vm <- vm
@@ -218,12 +219,17 @@ and Editor() as this =
     static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
     override this.Render ctx =
-        if grid_dc <> null then
+        if grid_fb <> null then
+            use grid_dc = grid_fb.CreateDrawingContext(null)
             let dirty = grid_vm.Dirty
-            for row = dirty.row to dirty.row_end - 1 do
-                drawBufferLine grid_dc row dirty.col dirty.col_end
-            grid_vm.markClean()
-
+            if dirty.height > 0 then
+                trace "render begin, dirty = %A" dirty
+                grid_dc.PushClip(Rect grid_fb.Size)
+                for row = dirty.row to dirty.row_end - 1 do
+                    drawBufferLine grid_dc row dirty.col dirty.col_end
+                grid_dc.PopClip()
+                trace "render end"
+                grid_vm.markClean()
         base.Render ctx
 
     override this.MeasureOverride(size) =

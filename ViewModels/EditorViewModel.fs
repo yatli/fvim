@@ -408,54 +408,52 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
 
     member __.cursorConfig() =
-        async {
-            if mode_defs.Length = 0 || cursor_modeidx < 0 then return ()
-            elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then return()
-            else
-            let mode              = mode_defs.[cursor_modeidx]
-            let hlid              = grid_buffer.[cursor_row, cursor_col].hlid
-            let hlid              = Option.defaultValue hlid mode.attr_id
-            let fg, bg, sp, attrs = this.GetDrawAttrs hlid
-            let origin            = this.GetPoint cursor_row cursor_col
-            let text              = grid_buffer.[cursor_row, cursor_col].text
-            let text_type         = wswidth text
-            let width             = float(CharTypeWidth text_type) * glyph_size.Width
+        if mode_defs.Length = 0 || cursor_modeidx < 0 then ()
+        elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then ()
+        else
+        let mode              = mode_defs.[cursor_modeidx]
+        let hlid              = grid_buffer.[cursor_row, cursor_col].hlid
+        let hlid              = Option.defaultValue hlid mode.attr_id
+        let fg, bg, sp, attrs = this.GetDrawAttrs hlid
+        let origin            = this.GetPoint cursor_row cursor_col
+        let text              = grid_buffer.[cursor_row, cursor_col].text
+        let text_type         = wswidth text
+        let width             = float(max <| 1 <| CharTypeWidth text_type) * glyph_size.Width
 
-            let on, off, wait =
-                match mode with
-                | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
-                    when on > 0 && off > 0 && wait > 0 -> on, off, wait
-                | _ -> 0,0,0
+        let on, off, wait =
+            match mode with
+            | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
+                when on > 0 && off > 0 && wait > 0 -> on, off, wait
+            | _ -> 0,0,0
 
-            // do not use the default colors for cursor
-            let fg, bg, sp = if hlid = 0 then GetReverseColor fg, GetReverseColor bg, GetReverseColor sp
-                             else fg, bg, sp
+        // do not use the default colors for cursor
+        let fg, bg, sp = if hlid = 0 then GetReverseColor fg, GetReverseColor bg, GetReverseColor sp
+                         else fg, bg, sp
 
-            cursor_info.typeface       <- _guifont
-            cursor_info.wtypeface      <- _guifontwide
-            cursor_info.fontSize       <- font_size
-            cursor_info.text           <- text
-            cursor_info.fg             <- fg
-            cursor_info.bg             <- bg
-            cursor_info.sp             <- sp
-            cursor_info.underline      <- attrs.underline
-            cursor_info.undercurl      <- attrs.undercurl
-            cursor_info.bold           <- attrs.bold
-            cursor_info.italic         <- attrs.italic
-            cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-            cursor_info.w              <- width
-            cursor_info.h              <- glyph_size.Height
-            cursor_info.x              <- origin.X
-            cursor_info.y              <- origin.Y
-            cursor_info.blinkon        <- on
-            cursor_info.blinkoff       <- off
-            cursor_info.blinkwait      <- wait
-            cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
-            cursor_info.enabled        <- cursor_en
-            cursor_info.ingrid         <- cursor_ingrid
-            cursor_info.RenderTick     <- cursor_info.RenderTick + 1
-            trace "set cursor info, color = %A %A %A" fg bg sp
-        } |> Async.RunSynchronously
+        cursor_info.typeface       <- _guifont
+        cursor_info.wtypeface      <- _guifontwide
+        cursor_info.fontSize       <- font_size
+        cursor_info.text           <- text
+        cursor_info.fg             <- fg
+        cursor_info.bg             <- bg
+        cursor_info.sp             <- sp
+        cursor_info.underline      <- attrs.underline
+        cursor_info.undercurl      <- attrs.undercurl
+        cursor_info.bold           <- attrs.bold
+        cursor_info.italic         <- attrs.italic
+        cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
+        cursor_info.w              <- width
+        cursor_info.h              <- glyph_size.Height
+        cursor_info.x              <- origin.X
+        cursor_info.y              <- origin.Y
+        cursor_info.blinkon        <- on
+        cursor_info.blinkoff       <- off
+        cursor_info.blinkwait      <- wait
+        cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
+        cursor_info.enabled        <- cursor_en
+        cursor_info.ingrid         <- cursor_ingrid
+        cursor_info.RenderTick     <- cursor_info.RenderTick + 1
+        trace "set cursor info, color = %A %A %A" fg bg sp
 
     member this.setCursorEnabled v =
         cursor_en <- v

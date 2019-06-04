@@ -143,10 +143,12 @@ type Cursor() as this =
             bgpaint.Color <- this.ViewModel.bg.ToSKColor()
             sppaint.Color <- this.ViewModel.sp.ToSKColor()
 
-            RenderText(dc, Rect(this.Bounds.Size), fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+            let bounds = Rect fb.Size
+            dc.PushClip(bounds)
+            RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+            dc.PopClip()
 
-            let scale = this.GetVisualRoot().RenderScaling
-            ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, scale * fb.Size.Width, scale * fb.Size.Height), Rect(this.Bounds.Size))
+            ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, float fb.PixelSize.Width, float fb.PixelSize.Height), bounds)
         | CursorShape.Horizontal, p ->
             let h = (cellh p)
             let region = Rect(0.0, this.Height - h, this.Width, h)
