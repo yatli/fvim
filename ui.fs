@@ -129,7 +129,7 @@ module ui =
 
     let DefaultFont =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Consolas"
-        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Droid Sans Mono"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Monospace"
         elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Menlo"
         else "Monospace"
 

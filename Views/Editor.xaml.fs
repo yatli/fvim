@@ -1,6 +1,5 @@
 ﻿namespace FVim
 
-open FVim.neovim.def
 open FVim.ui
 open FVim.log
 open FVim.wcwidth
@@ -8,26 +7,15 @@ open FVim.wcwidth
 open SkiaSharp
 open Avalonia
 open Avalonia.Controls
-open Avalonia.Input
 open Avalonia.Markup.Xaml
-open Avalonia.Media
 open Avalonia.Threading
 open Avalonia.Platform
-open Avalonia.Utilities
 open Avalonia.Skia
-open Avalonia.Data
 open Avalonia.Media.Imaging
 open ReactiveUI
 open Avalonia.VisualTree
-open Avalonia.Layout
 open System.Reactive.Linq
-open System.Reactive.Disposables
 open System
-open Avalonia.Threading
-open System.Collections.ObjectModel
-open System.Collections.Specialized
-open System.Collections.Generic
-open Avalonia.Win32
 
 type EmbeddedEditor() as this =
     inherit UserControl()
@@ -54,16 +42,16 @@ and Editor() as this =
     let image() = this.FindControl<Image>("FrameBuffer")
 
     let resizeFrameBuffer() =
-
-        Dispatcher.UIThread.InvokeAsync(fun () ->
-            grid_scale <- this.GetVisualRoot().RenderScaling
-            image().Source <- null
-            if grid_fb <> null then
-                grid_fb.Dispose()
-                grid_fb <- null
-            grid_fb <- AllocateFramebuffer grid_vm.BufferWidth grid_vm.BufferHeight grid_scale
-            image().Source <- grid_fb
-        ) |> ignore
+        grid_scale <- this.GetVisualRoot().RenderScaling
+        let image = image()
+        image.Source <- null
+        if grid_fb <> null then
+            grid_fb.Dispose()
+            grid_fb <- null
+        grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
+        image.Source <- grid_fb
+        image.Stretch <- Media.Stretch.None
+        image.ClipToBounds <- true
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system =
@@ -220,11 +208,11 @@ and Editor() as this =
 
     override this.Render ctx =
         if grid_fb <> null then
-            use grid_dc = grid_fb.CreateDrawingContext(null)
             let dirty = grid_vm.Dirty
             if dirty.height > 0 then
                 trace "render begin, dirty = %A" dirty
-                grid_dc.PushClip(Rect grid_fb.Size)
+                use grid_dc = grid_fb.CreateDrawingContext(null)
+                grid_dc.PushClip(Rect this.Bounds.Size)
                 for row = dirty.row to dirty.row_end - 1 do
                     drawBufferLine grid_dc row dirty.col dirty.col_end
                 grid_dc.PopClip()
