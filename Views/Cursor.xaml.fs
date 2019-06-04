@@ -69,7 +69,8 @@ type Cursor() as this =
         let s = this.GetVisualRoot().RenderScaling
         if not <| fbs.TryGetValue((w,h,s), &fb)
         then 
-            fb <- AllocateFramebuffer w h s
+            let margin = 10.0
+            fb <- AllocateFramebuffer (w + margin) (h + margin) s
             fbs.[(w,h,s)] <- fb
         fb
 
@@ -143,12 +144,12 @@ type Cursor() as this =
             bgpaint.Color <- this.ViewModel.bg.ToSKColor()
             sppaint.Color <- this.ViewModel.sp.ToSKColor()
 
-            let bounds = Rect fb.Size
-            dc.PushClip(bounds)
+            let scale = this.GetVisualRoot().RenderScaling
+            let bounds = Rect(0.0, 0.0, this.Width, this.Height)
+            let scaled_bounds = Rect(0.0, 0.0, this.Width * scale, this.Height * scale)
             RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
-            dc.PopClip()
 
-            ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, float fb.PixelSize.Width, float fb.PixelSize.Height), bounds)
+            ctx.DrawImage(fb, 1.0, scaled_bounds, bounds)
         | CursorShape.Horizontal, p ->
             let h = (cellh p)
             let region = Rect(0.0, this.Height - h, this.Width, h)
