@@ -40,8 +40,6 @@ type Cursor() as this =
     let fgpaint = new SKPaint()
     let bgpaint = new SKPaint()
     let sppaint = new SKPaint()
-    //                    w     h     dpi
-    let fbs = Dictionary<(float*float*float), RenderTargetBitmap> ()
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -63,16 +61,6 @@ type Cursor() as this =
     and blinkoff() = 
         showCursor false
         cursorTimerRun blinkon this.ViewModel.blinkoff
-
-    let getfb w h =
-        let mutable fb = Unchecked.defaultof<RenderTargetBitmap>
-        let s = this.GetVisualRoot().RenderScaling
-        if not <| fbs.TryGetValue((w,h,s), &fb)
-        then 
-            let margin = 10.0
-            fb <- AllocateFramebuffer (w + margin) (h + margin) s
-            fbs.[(w,h,s)] <- fb
-        fb
 
     let cursorConfig _ =
         //trace "cursor" "render tick %A" id
@@ -137,19 +125,17 @@ type Cursor() as this =
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            let fb = getfb this.Width this.Height
-            use dc = fb.CreateDrawingContext(null)
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
             bgpaint.Color <- this.ViewModel.bg.ToSKColor()
             sppaint.Color <- this.ViewModel.sp.ToSKColor()
 
-            let scale = this.GetVisualRoot().RenderScaling
-            let bounds = Rect(0.0, 0.0, this.Width, this.Height)
-            let scaled_bounds = Rect(0.0, 0.0, this.Width * scale, this.Height * scale)
-            RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+            SetOpacity fgpaint this.Opacity
+            SetOpacity bgpaint this.Opacity
+            SetOpacity sppaint this.Opacity
 
-            ctx.DrawImage(fb, 1.0, scaled_bounds, bounds)
+            let bounds = Rect(0.0, 0.0, this.Width, this.Height)
+            RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
         | CursorShape.Horizontal, p ->
             let h = (cellh p)
             let region = Rect(0.0, this.Height - h, this.Width, h)

@@ -199,6 +199,9 @@ module ui =
         let pxsize        = PixelSize(int <| (w * scale), int <| (h * scale))
         new RenderTargetBitmap(pxsize, Vector(96.0 * scale, 96.0 * scale))
 
+    let SetOpacity (paint: SKPaint) (opacity: float) =
+        paint.Color <- paint.Color.WithAlpha(byte <| opacity * 255.0)
+
     let SetForegroundBrush(fgpaint: SKPaint, c: Color, fontFace: SKTypeface, fontSize: float) =
         fgpaint.Color                <- c.ToSKColor()
         fgpaint.Typeface             <- fontFace

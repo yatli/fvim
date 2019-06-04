@@ -46,7 +46,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
-    let mutable cursor_info = new CursorViewModel()
+    let mutable _busy            = false
+    let mutable cursor_info      = new CursorViewModel()
     let mutable cursor_modeidx   = _d -1 _cursormode
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
@@ -219,6 +220,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let setBusy (v: bool) =
         trace "neovim: busy: %A" v
+        _busy <- v
         this.setCursorEnabled <| not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
@@ -504,25 +506,26 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
-        e.Handled <- true
-        inputEvent.Trigger <| InputEvent.Key(e.Modifiers, e.Key)
+        if not _busy then
+            e.Handled <- true
+            inputEvent.Trigger <| InputEvent.Key(e.Modifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (view: Visual) = 
-        if mouse_en then
+        if mouse_en && not _busy then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             mouse_pressed <- e.MouseButton
             inputEvent.Trigger <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (view: Visual) = 
-        if mouse_en then
+        if mouse_en && not _busy then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             mouse_pressed <- MouseButton.None
             inputEvent.Trigger <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
 
     member __.OnMouseMove (e: PointerEventArgs) (view: Visual) = 
-        if mouse_en && mouse_pressed <> MouseButton.None then
+        if mouse_en && mouse_pressed <> MouseButton.None && not _busy then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             if (x,y) <> mouse_pos then
@@ -530,12 +533,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                 inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
-        if mouse_en then
+        if mouse_en && not _busy then
             let x, y = e.GetPosition view |> getPos
             let col, row = int(e.Delta.X), int(e.Delta.Y)
             e.Handled <- true
             inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, col, row)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
-        inputEvent.Trigger <| InputEvent.TextInput(e.Text)
+        if not _busy then
+            inputEvent.Trigger <| InputEvent.TextInput(e.Text)
 
