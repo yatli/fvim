@@ -13,6 +13,8 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Built-in support for Nerd font -- no need to patch your fonts!
 - East asia wide glyph display with font fallback options
 - Emojis!
+- High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
+- GPU acceleration
 - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
 - Use the front end with a remote neovim: `fvim --ssh user@host`
 - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
@@ -41,8 +43,6 @@ endif
 
 ### Goals
 
-- High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
-- GPU acceleration
 - Input method support built from scratch (wip)
 - Multi-grid <=> Multi-window mapping (multiple windows in the OS sense, not Vim "frames")
 - Extend with XAML -- UI widgets as NeoVim plugins
