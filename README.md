@@ -41,8 +41,8 @@ endif
 
 ### Goals
 
-- High performance rendering, low latency (60FPS on 4K display with reasonable font size!) (wip)
-- GPU acceleration (wip)
+- High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
+- GPU acceleration
 - Input method support built from scratch (wip)
 - Multi-grid <=> Multi-window mapping (multiple windows in the OS sense, not Vim "frames")
 - Extend with XAML -- UI widgets as NeoVim plugins
