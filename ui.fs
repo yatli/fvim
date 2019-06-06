@@ -85,6 +85,36 @@ module ui =
     | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: int * dy: int
     | TextInput    of text: string
 
+
+    [<Struct>]
+    type GridBufferCell =
+        {
+            mutable text:  string
+            mutable hlid:  int32
+        } 
+        with static member empty = { text  = " "; hlid = 0 }
+
+    [<Struct>]
+    type GridSize =
+        {
+            rows: int32
+            cols: int32
+        }
+
+    [<Struct>]
+    type GridRect =
+        {
+            row: int32
+            col: int32
+            // exclusive
+            height: int32
+            // exclusive
+            width: int32
+        }
+        with 
+        member x.row_end = x.row + x.height
+        member x.col_end = x.col + x.width
+
     /// Represents a grid in neovim
     type IGridUI =
         abstract Id: int

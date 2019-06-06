@@ -22,35 +22,6 @@ open Avalonia.Controls
 open System.Reactive.Disposables
 open SkiaSharp
 
-[<Struct>]
-type private GridBufferCell =
-    {
-        mutable text:  string
-        mutable hlid:  int32
-    } 
-    with static member empty = { text  = " "; hlid = 0 }
-
-[<Struct>]
-type GridSize =
-    {
-        rows: int32
-        cols: int32
-    }
-
-[<Struct>]
-type private GridRect =
-    {
-        row: int32
-        col: int32
-        // exclusive
-        height: int32
-        // exclusive
-        width: int32
-    }
-    with 
-    member x.row_end = x.row + x.height
-    member x.col_end = x.col + x.width
-
 [<AutoOpen>]
 module private helpers =
     let _d x = Option.defaultValue x
@@ -75,8 +46,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
-    let mutable grid_fb: RenderTargetBitmap  = null
-    let mutable grid_dc: IDrawingContextImpl = null
     let mutable cursor_info = new CursorViewModel()
     let mutable cursor_modeidx   = _d -1 _cursormode
     let mutable cursor_row       = 0
@@ -112,6 +81,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let mutable measured_size    = _d (Size(100.0, 100.0)) _measuredsize
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
+    let mutable _fb_h = 10.0
+    let mutable _fb_w = 10.0
 
     let child_grids = ObservableCollection<EmbeddedEditorViewModel>()
     let resizeEvent = Event<IGridUI>()
@@ -123,116 +94,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             trace "ToggleFullScreen"
             this.Fullscreen <- not this.Fullscreen
 
-    //  converts grid position to UI Point
-    let getPoint row col =
-        Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
-
     let getPos (p: Point) =
         int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
-
-    let getDrawAttrs hlid = 
-        let attrs = hi_defs.[hlid].rgb_attr
-
-        let mutable fg = Option.defaultValue default_fg attrs.foreground
-        let mutable bg = Option.defaultValue default_bg attrs.background
-        let mutable sp = Option.defaultValue default_sp attrs.special
-
-        if attrs.reverse then
-            fg <- GetReverseColor fg
-            bg <- GetReverseColor bg
-            sp <- GetReverseColor sp
-
-        fg, bg, sp, attrs
-
-    //-------------------------------------------------------------------------
-    //           = The rounding error of the rendering system =
-    //
-    // Suppose our grid is arranged uniformly with the height of the font:
-    //
-    //   Y_line = row * H_font
-    //
-    // Here, row is an integer and H_font float. We then have line Y positions
-    // as a sequence of incrementing floats: [ 0 * H_font; 1 * H_font; ... ]
-    // Suppose the whole grid is rendered in one pass, the lines will be drawn
-    // with coordinates:
-    //
-    //   [ {0Hf, 1Hf}; {1Hf, 2Hf}; {2Hf, 3Hf} ... ]
-    //
-    // Clearly this is overlapping. In a pixel-based coordinate system we simply
-    // reduce the line height by one pixel. However now we are in a float co-
-    // ordinate system.. The overlapped rectangles are drawn differently -- not
-    // only that they don't overlap, they leave whitespace gaps in between!
-    // To compensate, we have to manually do the rounding to snap the pixels...
-    //-------------------------------------------------------------------------
-    // like this:
-    let rounding (pt: Point) =
-        let px = pt * grid_scale 
-        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale 
-
-    let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
-
-        let x = 
-            match str with
-            | x :: _ -> x
-            | _ -> " "
-
-        let attrs = hi_defs.[hlid].rgb_attr
-        let typeface = GetTypeface(x, attrs.italic, attrs.bold, _guifont, _guifontwide)
-        let fg, bg, sp, attrs = getDrawAttrs hlid 
-
-        use fgpaint = new SKPaint()
-        use bgpaint = new SKPaint()
-        use sppaint = new SKPaint()
-        SetForegroundBrush(fgpaint, fg, typeface, font_size)
-
-        let nr_col = 
-            match wswidth grid_buffer.[row, colend - 1].text with
-            | CharType.Wide | CharType.Nerd | CharType.Emoji -> colend - col + 1
-            | _ -> colend - col
-
-        let topLeft      = getPoint row col
-        let bottomRight  = (topLeft + getPoint 1 nr_col) |> rounding
-        let bg_region    = Rect(topLeft , bottomRight)
-
-        bgpaint.Color <- bg.ToSKColor()
-        sppaint.Color <- sp.ToSKColor()
-
-        RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, String.Concat str)
-
-    // assembles text from grid and draw onto the context.
-    let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
-        let xN = min xN grid_size.cols
-        let x0 = max x0 0
-        let y  = (min y  (grid_size.rows - 1) ) |> max 0
-        let mutable x': int                  = xN - 1
-        let mutable prev: GridBufferCell ref = ref grid_buffer.[y, x']
-        let mutable str: string list         = []
-        let mutable wc: CharType             = wswidth (!prev).text
-        let mutable bold = 
-            let _,_,_,hl_attrs = getDrawAttrs (!prev).hlid
-            hl_attrs.bold
-        //  in each line we do backward rendering.
-        //  the benefit is that the italic fonts won't be covered by later drawings
-        for x = xN - 1 downto x0 do
-            let current = ref grid_buffer.[y,x]
-            let mytext = (!current).text
-            let mywc = wswidth mytext
-            //  !NOTE bold glyphs are generally wider than normal.
-            //  Therefore, we have to break them into single glyphs
-            //  to prevent overflow into later cells.
-            let prev_hlid = (!prev).hlid
-            let hlidchange = prev_hlid <> (!current).hlid 
-            if hlidchange || mywc <> wc || bold then
-                drawBuffer ctx y (x + 1) (x' + 1) prev_hlid str
-                wc <- mywc
-                x' <- x
-                str <- []
-                if hlidchange then
-                    prev <- current
-                    bold <- let _,_,_,hl_attrs = getDrawAttrs prev_hlid
-                            in hl_attrs.bold
-            str <- mytext :: str
-        drawBuffer ctx y x0 (x' + 1) (!prev).hlid str
 
     let markDirty (region: GridRect) =
         if grid_dirty.height < 1 || grid_dirty.width < 1 
@@ -246,23 +109,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             let bottom = max grid_dirty.row_end region.row_end
             let right = max grid_dirty.col_end region.col_end
             grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
-        if grid_dc <> null then
-            for y = region.row to region.row_end - 1 do
-                drawBufferLine grid_dc y region.col region.col_end
 
     let markAllDirty () =
         grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
-        if grid_dc <> null then
-            for y = 0 to grid_size.rows - 1 do
-                drawBufferLine grid_dc y 0 grid_size.cols
-
-    let markClean () =
-        grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
 
     let flush() = 
         trace "flush."
         this.RenderTick <- this.RenderTick + 1
-        markClean()
 
     let fontConfig() =
         font_size <- max font_size 1.0
@@ -273,6 +126,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
+        markAllDirty()
         resizeEvent.Trigger(this)
 
     let setHighlight x =
@@ -303,17 +157,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             }
         }
         trace "setDefaultColors: %A %A %A" fg bg sp
-        
-    let clearBuffer () =
-        trace "RenderScaling is %f" grid_scale
 
-        this.DestroyFramebuffer()
-        let size          = getPoint grid_size.rows grid_size.cols
-        grid_fb          <- AllocateFramebuffer size.X size.Y grid_scale
-        grid_dc          <- grid_fb.CreateDrawingContext(null)
-        grid_buffer      <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
+    let clearBuffer () =
+        grid_buffer <- Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
         // notify buffer update and size change
-        this.RaisePropertyChanged("FrameBuffer")
+        let size: Point = this.GetPoint grid_size.rows grid_size.cols
+        _fb_w <- size.X
+        _fb_h <- size.Y
         this.RaisePropertyChanged("BufferHeight")
         this.RaisePropertyChanged("BufferWidth")
 
@@ -454,8 +304,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
                      |> Seq.indexed
                      |> Seq.tryPick (function | (i, a) when (a.child :> IGridUI).Id = grid  -> Some(i, a.child)
                                               | _ -> None)
-        let origin = getPoint startrow startcol
-        let child_size = getPoint h w
+        let origin: Point = this.GetPoint startrow startcol
+        let child_size    = this.GetPoint h w
         trace "setWinPos: child will be positioned at %A" origin
         match existing with
         | Some(i, child) -> 
@@ -483,7 +333,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | GridClear id when id = GridId                                      -> clearBuffer()
         | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = GridId then putBuffer line) lines
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
-        | GridDestroy id when id = GridId                                    -> this.DestroyFramebuffer()
+        | GridDestroy id when id = GridId                                    -> ()
         | GridScroll(id, top,bot,left,right,rows,cols) when id = GridId      -> scrollBuffer top bot left right rows cols
         | Flush                                                              -> flush() 
         | Bell                                                               -> bell false
@@ -497,7 +347,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | _ -> ()
 
     do
-        let fg,bg,sp,_ = getDrawAttrs 0
+        let fg,bg,sp,_ = this.GetDrawAttrs 0
         default_bg <- bg
         default_fg <- fg
         default_sp <- sp
@@ -512,6 +362,32 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             |> Observable.subscribe (fun () -> markAllDirty())
         ] 
 
+    member __.Item with get(row, col) = grid_buffer.[row, col]
+
+    member __.Cols with get() = grid_size.cols
+
+    member __.Rows with get() = grid_size.rows
+
+    member __.Dirty with get() = grid_dirty
+
+    member __.GetFontAttrs() =
+        _guifont, _guifontwide, font_size
+
+    member __.GetDrawAttrs hlid = 
+        let attrs = hi_defs.[hlid].rgb_attr
+
+        let mutable fg = Option.defaultValue default_fg attrs.foreground
+        let mutable bg = Option.defaultValue default_bg attrs.background
+        let mutable sp = Option.defaultValue default_sp attrs.special
+
+        if attrs.reverse then
+            fg <- GetReverseColor fg
+            bg <- GetReverseColor bg
+            sp <- GetReverseColor sp
+
+        fg, bg, sp, attrs
+
+
     member private __.initBuffer nrow ncol =
         grid_size <- { rows = nrow; cols = ncol }
         trace "buffer resize = %A" grid_size
@@ -524,12 +400,12 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
 
-    member __.DestroyFramebuffer() =
-        if grid_fb <> null then
-            grid_dc.Dispose()
-            grid_dc <- null
-            grid_fb.Dispose()
-            grid_fb <- null
+    member __.markClean () =
+        grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
+
+    //  converts grid position to UI Point
+    member __.GetPoint row col =
+        Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
 
     member __.cursorConfig() =
         async {
@@ -539,8 +415,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             let mode              = mode_defs.[cursor_modeidx]
             let hlid              = grid_buffer.[cursor_row, cursor_col].hlid
             let hlid              = Option.defaultValue hlid mode.attr_id
-            let fg, bg, sp, attrs = getDrawAttrs hlid
-            let origin            = getPoint cursor_row cursor_col
+            let fg, bg, sp, attrs = this.GetDrawAttrs hlid
+            let origin            = this.GetPoint cursor_row cursor_col
             let text              = grid_buffer.[cursor_row, cursor_col].text
             let text_type         = wswidth text
             let width             = float(CharTypeWidth text_type) * glyph_size.Width
@@ -587,11 +463,6 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     (*******************   Exposed properties   ***********************)
 
-    member this.FrameBuffer
-        with get() : RenderTargetBitmap = grid_fb
-        and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&grid_fb, v)
-
     member this.Fullscreen
         with get() : bool = grid_fullscreen
         and set(v) =
@@ -615,8 +486,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     member __.BackgroundBrush
         with get(): SolidColorBrush = SolidColorBrush(default_bg)
 
-    member __.BufferHeight with get(): float = if grid_fb <> null then grid_fb.Size.Height else 10.0
-    member __.BufferWidth  with get(): float = if grid_fb <> null then grid_fb.Size.Width else 10.0
+    member __.BufferHeight with get(): float = _fb_h
+    member __.BufferWidth  with get(): float = _fb_w
     member __.TopLevel     with get(): bool  = parent.IsNone
 
     member this.MeasuredSize
