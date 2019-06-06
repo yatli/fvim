@@ -4,6 +4,7 @@ open FVim.ui
 open FVim.log
 open FVim.wcwidth
 
+open ReactiveUI
 open SkiaSharp
 open Avalonia
 open Avalonia.Controls
@@ -12,7 +13,6 @@ open Avalonia.Threading
 open Avalonia.Platform
 open Avalonia.Skia
 open Avalonia.Media.Imaging
-open ReactiveUI
 open Avalonia.VisualTree
 open System.Reactive.Linq
 open System

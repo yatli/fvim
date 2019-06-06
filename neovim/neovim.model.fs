@@ -65,7 +65,7 @@ module ModelImpl =
             try event.Trigger req.parameters
             with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
         | Redraw cmd -> redraw cmd 
-        | Exit -> Avalonia.Application.Current.Exit()
+        | Exit -> Avalonia.Application.Current.Shutdown()
         | _ -> ()
 
     let onGridResize(gridui: IGridUI) =
