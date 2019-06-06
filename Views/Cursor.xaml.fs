@@ -21,6 +21,8 @@ open System.Collections.Generic
 open System.Reactive.Disposables
 open System.Reactive.Linq
 open ui
+open Avalonia.Visuals.Media.Imaging
+open System.Runtime.InteropServices
 
 type Cursor() as this =
     inherit UserControl()
@@ -35,12 +37,23 @@ type Cursor() as this =
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
     let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
+    let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
+    let mutable cursor_fb_vm = CursorViewModel()
+    let mutable cursor_fb_s = 1.0
+
+    let ensure_fb() =
+        let s = this.GetVisualRoot().RenderScaling
+        if (cursor_fb_vm.VisualChecksum(),cursor_fb_s) <> (this.ViewModel.VisualChecksum(),s) then
+            cursor_fb_vm <- this.ViewModel.Clone()
+            cursor_fb_s <- s
+            cursor_fb.Dispose()
+            cursor_fb <- AllocateFramebuffer (cursor_fb_vm.w + 50.0) (cursor_fb_vm.h + 50.0) s
+            true
+        else false
 
     let fgpaint = new SKPaint()
     let bgpaint = new SKPaint()
     let sppaint = new SKPaint()
-    //                    w     h     dpi
-    let fbs = Dictionary<(float*float*float), RenderTargetBitmap> ()
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -63,17 +76,8 @@ type Cursor() as this =
         showCursor false
         cursorTimerRun blinkon this.ViewModel.blinkoff
 
-    let getfb w h =
-        let mutable fb = Unchecked.defaultof<RenderTargetBitmap>
-        let s = this.GetVisualRoot().RenderScaling
-        if not <| fbs.TryGetValue((w,h,s), &fb)
-        then 
-            fb <- AllocateFramebuffer w h s
-            fbs.[(w,h,s)] <- fb
-        fb
-
-    let cursorConfig _ =
-        //trace "cursor" "render tick %A" id
+    let cursorConfig id =
+        trace "cursor" "render tick %A" id
         if Object.ReferenceEquals(this.ViewModel, null) 
         then ()
         else
@@ -125,23 +129,40 @@ type Cursor() as this =
         AvaloniaXamlLoader.Load(this)
 
     override this.Render(ctx) =
+        //trace "cursor" "render begin"
 
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            let fb = getfb this.Width this.Height
-            use dc = fb.CreateDrawingContext(null)
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
             bgpaint.Color <- this.ViewModel.bg.ToSKColor()
             sppaint.Color <- this.ViewModel.sp.ToSKColor()
+            let bounds = Rect(this.Bounds.Size)
 
-            RenderText(dc, Rect(this.Bounds.Size), fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
-
-            let scale = this.GetVisualRoot().RenderScaling
-            ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, scale * fb.Size.Width, scale * fb.Size.Height), Rect(this.Bounds.Size))
+            try
+                match ctx.PlatformImpl with
+                | :? ISkiaDrawingContextImpl ->
+                    // immediate
+                    SetOpacity fgpaint this.Opacity
+                    SetOpacity bgpaint this.Opacity
+                    SetOpacity sppaint this.Opacity
+                    RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+                | _ ->
+                    // deferred
+                    let s = this.GetVisualRoot().RenderScaling
+                    let redraw = ensure_fb()
+                    if redraw then
+                        let dc = cursor_fb.CreateDrawingContext(null)
+                        dc.PushClip(bounds)
+                        RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+                        dc.PopClip()
+                        dc.Dispose()
+                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * s, bounds.Height * s), bounds)
+            with
+            | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
         | CursorShape.Horizontal, p ->
             let h = (cellh p)
             let region = Rect(0.0, this.Height - h, this.Width, h)

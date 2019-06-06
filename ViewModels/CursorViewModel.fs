@@ -48,3 +48,24 @@ type CursorViewModel() =
     member this.RenderTick 
         with get(): int = m_tick 
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_tick, v)
+
+    member this.Clone() =
+        this.MemberwiseClone() :?> CursorViewModel
+
+    member this.VisualChecksum() =
+        seq [
+            hash this.typeface
+            hash this.wtypeface
+            hash this.fontSize
+            hash this.text
+            hash this.fg
+            hash this.bg
+            hash this.sp
+            hash this.underline
+            hash this.undercurl
+            hash this.bold
+            hash this.italic
+            hash this.h
+            hash this.w
+        ] |> Seq.fold (^^^) 0
+

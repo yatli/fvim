@@ -1,6 +1,5 @@
 ﻿namespace FVim
 
-open FVim.neovim.def
 open FVim.ui
 open FVim.log
 open FVim.wcwidth
@@ -9,25 +8,14 @@ open ReactiveUI
 open SkiaSharp
 open Avalonia
 open Avalonia.Controls
-open Avalonia.Input
 open Avalonia.Markup.Xaml
-open Avalonia.Media
 open Avalonia.Threading
 open Avalonia.Platform
-open Avalonia.Utilities
 open Avalonia.Skia
-open Avalonia.Data
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
-open Avalonia.Layout
 open System.Reactive.Linq
-open System.Reactive.Disposables
 open System
-open Avalonia.Threading
-open System.Collections.ObjectModel
-open System.Collections.Specialized
-open System.Collections.Generic
-open Avalonia.Win32
 
 type EmbeddedEditor() as this =
     inherit UserControl()
@@ -41,26 +29,27 @@ and Editor() as this =
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
     let mutable grid_fb: RenderTargetBitmap  = null
-    let mutable grid_dc: IDrawingContextImpl = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
+
+    let trace fmt = 
+        let nr =
+            if grid_vm <> Unchecked.defaultof<_> then (grid_vm:>IGridUI).Id.ToString()
+            else "(no vm attached)"
+        trace ("editor #" + nr) fmt
+
 
     let image() = this.FindControl<Image>("FrameBuffer")
 
     let resizeFrameBuffer() =
-
-        Dispatcher.UIThread.InvokeAsync(fun () ->
-            grid_scale <- this.GetVisualRoot().RenderScaling
-            image().Source <- null
-            if grid_fb <> null then
-                grid_dc.Dispose()
-                grid_dc <- null
-                grid_fb.Dispose()
-                grid_fb <- null
-            grid_fb <- AllocateFramebuffer grid_vm.BufferWidth grid_vm.BufferHeight grid_scale
-            grid_dc <- grid_fb.CreateDrawingContext(null)
-            image().Source <- grid_fb
-        ) |> ignore
+        grid_scale <- this.GetVisualRoot().RenderScaling
+        let image = image()
+        image.Source <- null
+        if grid_fb <> null then
+            grid_fb.Dispose()
+            grid_fb <- null
+        grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
+        image.Source <- grid_fb
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system =
@@ -179,10 +168,8 @@ and Editor() as this =
         | _ -> ()
 
     let redraw tick =
-        trace ("editor #" + (grid_vm:>IGridUI).Id.ToString()) "render tick %d" tick
-        ignore <| Dispatcher.UIThread.InvokeAsync(fun () ->
-            image().InvalidateVisual()
-        )
+        trace "render tick %d" tick
+        this.InvalidateVisual()
 
     let onViewModelConnected (vm:EditorViewModel) =
         grid_vm <- vm
@@ -218,12 +205,17 @@ and Editor() as this =
     static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
     override this.Render ctx =
-        if grid_dc <> null then
+        if grid_fb <> null then
             let dirty = grid_vm.Dirty
-            for row = dirty.row to dirty.row_end - 1 do
-                drawBufferLine grid_dc row dirty.col dirty.col_end
-            grid_vm.markClean()
-
+            if dirty.height > 0 then
+                trace "render begin, dirty = %A" dirty
+                use grid_dc = grid_fb.CreateDrawingContext(null)
+                grid_dc.PushClip(Rect this.Bounds.Size)
+                for row = dirty.row to dirty.row_end - 1 do
+                    drawBufferLine grid_dc row dirty.col dirty.col_end
+                grid_dc.PopClip()
+                trace "render end"
+                grid_vm.markClean()
         base.Render ctx
 
     override this.MeasureOverride(size) =

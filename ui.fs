@@ -129,7 +129,7 @@ module ui =
 
     let DefaultFont =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Consolas"
-        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Droid Sans Mono"
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Monospace"
         elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Menlo"
         else "Monospace"
 
@@ -198,6 +198,9 @@ module ui =
     let AllocateFramebuffer w h scale =
         let pxsize        = PixelSize(int <| (w * scale), int <| (h * scale))
         new RenderTargetBitmap(pxsize, Vector(96.0 * scale, 96.0 * scale))
+
+    let SetOpacity (paint: SKPaint) (opacity: float) =
+        paint.Color <- paint.Color.WithAlpha(byte <| opacity * 255.0)
 
     let SetForegroundBrush(fgpaint: SKPaint, c: Color, fontFace: SKTypeface, fontSize: float) =
         fgpaint.Color                <- c.ToSKColor()
