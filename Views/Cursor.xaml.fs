@@ -26,9 +26,9 @@ type Cursor() as this =
     inherit UserControl()
     // workaround: binding directly to Canvas.Left/Top won't work.
     // so we introduce a proxy DP for x and y.
-    static let PosXProp = AvaloniaProperty.Register<Cursor, float>("PosX")
-    static let PosYProp = AvaloniaProperty.Register<Cursor, float>("PosY")
-    static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
+    static let PosXProperty = AvaloniaProperty.Register<Cursor, float>("PosX")
+    static let PosYProperty = AvaloniaProperty.Register<Cursor, float>("PosY")
+    static let RenderTickProperty = AvaloniaProperty.Register<Cursor, int>("RenderTick")
     static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
 
     let mutable cursor_timer: IDisposable = null
@@ -99,11 +99,11 @@ type Cursor() as this =
             transitions.Add(blink_transition)
         if move_en then
             let x_transition = DoubleTransition()
-            x_transition.Property <- PosXProp
+            x_transition.Property <- PosXProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             x_transition.Easing   <- Easings.CubicEaseOut()
             let y_transition = DoubleTransition()
-            y_transition.Property <- PosYProp
+            y_transition.Property <- PosYProperty
             y_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
@@ -118,9 +118,9 @@ type Cursor() as this =
                  | [| Bool(blink); Bool(move) |] -> setCursorAnimation blink move
                  | _ -> setCursorAnimation false false) 
 
-            this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style))
-            this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style))
-            this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
+            this.GetObservable(PosXProperty).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style))
+            this.GetObservable(PosYProperty).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style))
+            this.GetObservable(RenderTickProperty).Subscribe(cursorConfig)
         ] 
         AvaloniaXamlLoader.Load(this)
 
@@ -153,6 +153,18 @@ type Cursor() as this =
     member this.ViewModel: CursorViewModel = 
         let ctx = this.DataContext 
         if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
+
+    member this.PosX
+        with get() = this.GetValue(PosXProperty)
+        and  set(v) = this.SetValue(PosXProperty, v)
+
+    member this.PosY
+        with get() = this.GetValue(PosYProperty)
+        and  set(v) = this.SetValue(PosYProperty, v)
+
+    member this.RenderTick
+        with get() = this.GetValue(RenderTickProperty)
+        and  set(v) = this.SetValue(RenderTickProperty, v)
 
     interface IViewFor<CursorViewModel> with
         member this.ViewModel
