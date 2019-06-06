@@ -12,6 +12,7 @@ open Avalonia.Media.Imaging
 open Avalonia.Platform
 open Avalonia.Skia
 open SkiaSharp
+open SkiaSharp.HarfBuzz
 open System
 open System.Reactive.Disposables
 open System.Reflection
@@ -217,7 +218,7 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
@@ -233,7 +234,12 @@ module ui =
 
         skia.SkCanvas.DrawRect(region.ToSKRect(), bg)
         if not <| String.IsNullOrWhiteSpace text then
-            skia.SkCanvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
+            if useShaping then
+                use shaper = new SKShaper(fg.Typeface)
+                skia.SkCanvas.DrawShapedText(shaper, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
+            else 
+                skia.SkCanvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
+
 
         // Text bounding box drawing:
         // --------------------------------------------------
