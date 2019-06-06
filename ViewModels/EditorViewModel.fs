@@ -274,6 +274,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
 
+        if top <= cursor_row 
+           && cursor_row <= bot 
+           && left <= cursor_col 
+           && cursor_col <= right
+        then
+            this.cursorConfig()
+
     let setOption (opt: UiOption) = 
         trace "setOption: %A" opt
 
