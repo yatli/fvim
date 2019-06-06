@@ -8,7 +8,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 ### Features
 
 - HiDPI support -- try dragging it across two screens with different DPIs ;)
-- Proper font rendering -- respects font style, baseline, etc.
+- Proper font rendering -- respects font style, baseline, [ligatures](https://github.com/tonsky/FiraCode) etc.
 - Proper cursor rendering -- color, blink etc.
 - Built-in support for Nerd font -- no need to patch your fonts!
 - East asia wide glyph display with font fallback options
