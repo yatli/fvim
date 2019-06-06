@@ -560,7 +560,7 @@ let wcwidth(ucs: int) =
     // Combining characters with zero width.
     elif intable ZeroWidth ucs                                              then CharType.Invisible
     else 
-        trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)
+        (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
         CharType.Narrow
 
 let wswidth(str: string) = 
