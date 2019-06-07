@@ -2,6 +2,7 @@
 
 open wcwidth
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Controls.Templates
@@ -10,8 +11,8 @@ open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Platform
 open Avalonia.Skia
-open ReactiveUI
 open SkiaSharp
+open SkiaSharp.HarfBuzz
 open System
 open System.Reactive.Disposables
 open System.Reflection
@@ -38,7 +39,7 @@ type ActivatableExt() =
 
 type ViewModelBase() =
     inherit ReactiveObject()
-    let activator = ViewModelActivator()
+    let activator = new ViewModelActivator()
     interface ISupportsActivation with
         member __.Activator = activator
 
@@ -217,7 +218,7 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
@@ -226,14 +227,19 @@ module ui =
         let baseline      = region.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
         let fontPos       = Point(region.X, floor baseline)
 
-        let skia = ctx :?> DrawingContextImpl
+        let skia = ctx :?> ISkiaDrawingContextImpl
 
         //lol wat??
         //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
 
-        skia.Canvas.DrawRect(region.ToSKRect(), bg)
+        skia.SkCanvas.DrawRect(region.ToSKRect(), bg)
         if not <| String.IsNullOrWhiteSpace text then
-            skia.Canvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
+            if useShaping then
+                use shaper = new SKShaper(fg.Typeface)
+                skia.SkCanvas.DrawShapedText(shaper, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
+            else 
+                skia.SkCanvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
+
 
         // Text bounding box drawing:
         // --------------------------------------------------
@@ -246,7 +252,7 @@ module ui =
             bounds.Right <- bounds.Right + single (fontPos.X)
             bounds.Bottom <- bounds.Bottom + single (fontPos.Y)
             fg.Style <- SKPaintStyle.Stroke
-            skia.Canvas.DrawRect(bounds, fg)
+            skia.SkCanvas.DrawRect(bounds, fg)
         // --------------------------------------------------
 
         let sp_thickness = fg.FontMetrics.UnderlineThickness.GetValueOrDefault(1.0F)
@@ -257,7 +263,7 @@ module ui =
             let p2 = p1 + Point(region.Width, 0.0)
             sp.Style <- SKPaintStyle.Stroke
             //sppaint.StrokeWidth <- sp_thickness
-            skia.Canvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
+            skia.SkCanvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
 
         if undercurl then
             let underline_pos  = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
@@ -280,4 +286,4 @@ module ui =
                 path.LineTo(px + hf,  py)
                 path.LineTo(px + q3f, py2)
                 px <- px + ff
-            skia.Canvas.DrawPath(path , sp)
+            skia.SkCanvas.DrawPath(path , sp)

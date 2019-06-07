@@ -4,6 +4,7 @@ open FVim.ui
 open FVim.log
 open FVim.wcwidth
 
+open ReactiveUI
 open SkiaSharp
 open Avalonia
 open Avalonia.Controls
@@ -12,7 +13,6 @@ open Avalonia.Threading
 open Avalonia.Platform
 open Avalonia.Skia
 open Avalonia.Media.Imaging
-open ReactiveUI
 open Avalonia.VisualTree
 open System.Reactive.Linq
 open System
@@ -76,7 +76,7 @@ and Editor() as this =
         let px = pt * grid_scale 
         Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale 
 
-    let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) =
+    let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) (issym: bool) =
 
         let x = 
             match str with
@@ -104,7 +104,10 @@ and Editor() as this =
         bgpaint.Color <- bg.ToSKColor()
         sppaint.Color <- sp.ToSKColor()
 
-        RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, String.Concat str)
+        let txt = String.Concat str
+        let shaping = txt.Length > 1 && issym
+
+        RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -115,6 +118,7 @@ and Editor() as this =
         let mutable prev: GridBufferCell ref = ref grid_vm.[y, x']
         let mutable str: string list         = []
         let mutable wc: CharType             = wswidth (!prev).text
+        let mutable sym: bool                = issymbol (!prev).text
         let mutable bold = 
             let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!prev).hlid
             hl_attrs.bold
@@ -123,15 +127,19 @@ and Editor() as this =
         for x = xN - 1 downto x0 do
             let current = ref grid_vm.[y,x]
             let mytext = (!current).text
+            //  !NOTE text shaping is slow. We only use shaping for
+            //  a symbol-only span.
+            let mysym = issymbol mytext
             let mywc = wswidth mytext
             //  !NOTE bold glyphs are generally wider than normal.
             //  Therefore, we have to break them into single glyphs
             //  to prevent overflow into later cells.
             let prev_hlid = (!prev).hlid
             let hlidchange = prev_hlid <> (!current).hlid 
-            if hlidchange || mywc <> wc || bold then
-                drawBuffer ctx y (x + 1) (x' + 1) prev_hlid str
+            if hlidchange || mywc <> wc || bold || sym <> mysym then
+                drawBuffer ctx y (x + 1) (x' + 1) prev_hlid str sym
                 wc <- mywc
+                sym <- mysym
                 x' <- x
                 str <- []
                 if hlidchange then
@@ -139,7 +147,7 @@ and Editor() as this =
                     bold <- let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!current).hlid
                             in hl_attrs.bold
             str <- mytext :: str
-        drawBuffer ctx y x0 (x' + 1) (!prev).hlid str
+        drawBuffer ctx y x0 (x' + 1) (!prev).hlid str sym
 
     let toggleFullscreen(v) =
         let win = this.GetVisualRoot() :?> Window

@@ -579,6 +579,12 @@ let wswidth(str: string) =
          |> Seq.max 
          |> LanguagePrimitives.EnumOfValue
 
+let issymbol(str: string) =
+    if System.String.IsNullOrWhiteSpace str then false
+    else 
+        let ch = str.[0]
+        System.Char.IsSymbol(ch) || System.Char.IsPunctuation(ch)
+
 let CharTypeWidth(x: CharType): int =
     match x with
     | CharType.Control | CharType.Invisible -> 0

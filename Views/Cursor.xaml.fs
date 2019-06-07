@@ -4,6 +4,7 @@ open neovim.def
 open neovim.rpc
 open log
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Animation
 open Avalonia.Controls
@@ -14,7 +15,6 @@ open Avalonia.Media.Imaging
 open Avalonia.Skia
 open Avalonia.Threading
 open Avalonia.VisualTree
-open ReactiveUI
 open SkiaSharp
 open System
 open System.Collections.Generic
@@ -25,13 +25,12 @@ open Avalonia.Visuals.Media.Imaging
 open System.Runtime.InteropServices
 
 type Cursor() as this =
-    inherit Control()
-
+    inherit UserControl()
     // workaround: binding directly to Canvas.Left/Top won't work.
     // so we introduce a proxy DP for x and y.
-    static let PosXProp = AvaloniaProperty.Register<Cursor, float>("PosX")
-    static let PosYProp = AvaloniaProperty.Register<Cursor, float>("PosY")
-    static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
+    static let PosXProperty = AvaloniaProperty.Register<Cursor, float>("PosX")
+    static let PosYProperty = AvaloniaProperty.Register<Cursor, float>("PosY")
+    static let RenderTickProperty = AvaloniaProperty.Register<Cursor, int>("RenderTick")
     static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
 
     let mutable cursor_timer: IDisposable = null
@@ -104,11 +103,11 @@ type Cursor() as this =
             transitions.Add(blink_transition)
         if move_en then
             let x_transition = DoubleTransition()
-            x_transition.Property <- PosXProp
+            x_transition.Property <- PosXProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             x_transition.Easing   <- Easings.CubicEaseOut()
             let y_transition = DoubleTransition()
-            y_transition.Property <- PosYProp
+            y_transition.Property <- PosYProperty
             y_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
@@ -123,15 +122,11 @@ type Cursor() as this =
                  | [| Bool(blink); Bool(move) |] -> setCursorAnimation blink move
                  | _ -> setCursorAnimation false false) 
 
-            this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style))
-            this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style))
-            this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
+            this.GetObservable(PosXProperty).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style))
+            this.GetObservable(PosYProperty).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style))
+            this.GetObservable(RenderTickProperty).Subscribe(cursorConfig)
         ] 
         AvaloniaXamlLoader.Load(this)
-
-    member this.ViewModel: CursorViewModel = 
-        let ctx = this.DataContext 
-        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
 
     override this.Render(ctx) =
         //trace "cursor" "render begin"
@@ -148,20 +143,21 @@ type Cursor() as this =
             let bounds = Rect(this.Bounds.Size)
 
             try
-                // immediate
-                if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
+                match ctx.PlatformImpl with
+                | :? ISkiaDrawingContextImpl ->
+                    // immediate
                     SetOpacity fgpaint this.Opacity
                     SetOpacity bgpaint this.Opacity
                     SetOpacity sppaint this.Opacity
-                    RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
-                else
+                    RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                | _ ->
                     // deferred
                     let s = this.GetVisualRoot().RenderScaling
                     let redraw = ensure_fb()
                     if redraw then
                         let dc = cursor_fb.CreateDrawingContext(null)
                         dc.PushClip(bounds)
-                        RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+                        RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
                         dc.PopClip()
                         dc.Dispose()
                     ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * s, bounds.Height * s), bounds)
@@ -175,7 +171,21 @@ type Cursor() as this =
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
 
-        //trace "cursor" "render end"
+    member this.ViewModel: CursorViewModel = 
+        let ctx = this.DataContext 
+        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
+
+    member this.PosX
+        with get() = this.GetValue(PosXProperty)
+        and  set(v) = this.SetValue(PosXProperty, v)
+
+    member this.PosY
+        with get() = this.GetValue(PosYProperty)
+        and  set(v) = this.SetValue(PosYProperty, v)
+
+    member this.RenderTick
+        with get() = this.GetValue(RenderTickProperty)
+        and  set(v) = this.SetValue(RenderTickProperty, v)
 
     interface IViewFor<CursorViewModel> with
         member this.ViewModel

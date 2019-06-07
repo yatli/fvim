@@ -6,6 +6,7 @@ open wcwidth
 open neovim.def
 open neovim.rpc
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Input
 open Avalonia.Media
@@ -14,7 +15,6 @@ open Avalonia.Platform
 open Avalonia.Threading
 open Avalonia.Skia
 open FSharp.Control.Reactive
-open ReactiveUI
 
 open System
 open System.Collections.ObjectModel
@@ -273,6 +273,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         elif rows < 0 then
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
+
+        if top <= cursor_row 
+           && cursor_row <= bot 
+           && left <= cursor_col 
+           && cursor_col <= right
+        then
+            this.cursorConfig()
 
     let setOption (opt: UiOption) = 
         trace "setOption: %A" opt

@@ -4,6 +4,7 @@ open Avalonia
 open Avalonia.Logging.Serilog
 open System.Reflection
 open FSharp.Data
+open Avalonia.ReactiveUI
 
 module Program =
 
@@ -18,12 +19,11 @@ module Program =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
-            .UseSkia()
+            .UseReactiveUI()
             .With(new Win32PlatformOptions(UseDeferredRendering=false, AllowEglInitialization=true))
             .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=true))
             .With(new X11PlatformOptions(UseEGL=true, UseGpu=true))
             .With(new MacOSPlatformOptions(ShowInDock=true))
-            .UseReactiveUI()
             .LogToDebug()
 
     // Your application's entry point.
@@ -37,7 +37,7 @@ module Program =
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
         let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
         let mainwin = new MainWindowViewModel(workspace)
-        app.Run(MainWindow(DataContext = mainwin))
+        app.Run(MainWindow(DataContext = mainwin)) |> ignore
         config.save cfg mainwin.WindowX mainwin.WindowY mainwin.WindowWidth mainwin.WindowHeight mainwin.WindowState
 
 
