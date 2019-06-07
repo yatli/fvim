@@ -5,6 +5,7 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationIcon>fvim.ico</ApplicationIcon>
   </PropertyGroup>
   
   <PropertyGroup>
