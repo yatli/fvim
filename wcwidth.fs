@@ -579,11 +579,19 @@ let wswidth(str: string) =
          |> Seq.max 
          |> LanguagePrimitives.EnumOfValue
 
-let issymbol(str: string) =
+/// <summary>
+/// true if the string could be a part of a programming
+/// symbol ligature.
+/// </summary>
+let isProgrammingSymbol(str: string) =
     if System.String.IsNullOrWhiteSpace str then false
     else 
         let ch = str.[0]
-        System.Char.IsSymbol(ch) || System.Char.IsPunctuation(ch)
+        match ch with
+        // disable the frequent symbols that's too expensive to draw
+        | '\'' | '"' | '{' | '}' 
+            -> false
+        | _ -> System.Char.IsSymbol(ch) || System.Char.IsPunctuation(ch)
 
 let CharTypeWidth(x: CharType): int =
     match x with

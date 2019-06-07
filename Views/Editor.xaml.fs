@@ -118,7 +118,7 @@ and Editor() as this =
         let mutable prev: GridBufferCell ref = ref grid_vm.[y, x']
         let mutable str: string list         = []
         let mutable wc: CharType             = wswidth (!prev).text
-        let mutable sym: bool                = issymbol (!prev).text
+        let mutable sym: bool                = isProgrammingSymbol (!prev).text
         let mutable bold = 
             let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!prev).hlid
             hl_attrs.bold
@@ -128,8 +128,8 @@ and Editor() as this =
             let current = ref grid_vm.[y,x]
             let mytext = (!current).text
             //  !NOTE text shaping is slow. We only use shaping for
-            //  a symbol-only span.
-            let mysym = issymbol mytext
+            //  a symbol-only span (for ligature drawing).
+            let mysym = isProgrammingSymbol mytext
             let mywc = wswidth mytext
             //  !NOTE bold glyphs are generally wider than normal.
             //  Therefore, we have to break them into single glyphs
