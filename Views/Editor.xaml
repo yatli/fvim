@@ -26,22 +26,19 @@
         VerticalAlignment   = "Top"
         Focusable           = "False"
     />
+
     <fvim:Cursor
         DataContext         = "{Binding CursorInfo}"
         Height              = "{Binding h, Mode=OneWay}"
         Width               = "{Binding w, Mode=OneWay}"
-        PosX                = "{Binding x, Mode=OneWay}"
-        PosY                = "{Binding y, Mode=OneWay}"
         RenderTick          = "{Binding RenderTick, Mode=OneWay}"
+        Canvas.Left         = "{Binding x, Mode=OneWay}"
+        Canvas.Top          = "{Binding y, Mode=OneWay}"
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
         Focusable           = "False"
         IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
         >
-        <fvim:Cursor.Transitions>
-          <!--<DoubleTransition Property="(fvim:Cursor.PosX)" Duration="0:0:0:0.03" Easing="ExponentialEaseOut"/>-->
-          <!--<DoubleTransition Property="(fvim:Cursor.PosY)" Duration="0:0:0:0.03" Easing="ExponentialEaseOut"/>-->
-        </fvim:Cursor.Transitions>
     </fvim:Cursor>
     <ItemsControl 
         Items               = "{Binding ChildGrids, Mode=OneWay}"
