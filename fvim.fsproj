@@ -4,7 +4,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
-    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   
   <PropertyGroup>

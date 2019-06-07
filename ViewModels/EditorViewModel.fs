@@ -279,7 +279,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
         let (|FN|_|) (x: string) =
             // try to parse with 'font\ name:hNN'
-            match x.Split(':', StringSplitOptions.RemoveEmptyEntries) with
+            match x.Split(':') with
             | [|name; size|] when size.Length > 0 && size.[0] = 'h' -> Some(name.Trim('\'', '"'), size.Substring(1).TrimEnd('\'','"') |> float)
             | _ -> None
 

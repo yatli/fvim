@@ -265,7 +265,7 @@ type Process() =
         | _ -> ()
 
         let args = "--embed" :: args 
-        let psi  = ProcessStartInfo(prog, String.Join(' ', preargs @ args))
+        let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true
@@ -409,19 +409,9 @@ type Process() =
         m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
-        let opts = 
-            { 
-                rgb            = true 
-                ext_linegrid   = true
-                (*ext_multigrid  = false*)
-                (*ext_cmdline    = false*)
-                (*ext_hlstate    = false*)
-                (*ext_messages   = false*)
-                (*ext_popupmenu  = false*)
-                (*ext_tabline    = false*)
-                (*ext_termcolors = false*)
-                (*ext_wildmenu   = false*)
-            }
+        let opts = Dictionary<string, bool>()
+        opts.[uiopt_rgb]          <- true
+        opts.[uiopt_ext_linegrid] <- true
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 

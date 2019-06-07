@@ -309,13 +309,6 @@ let Start opts =
         (AvaloniaSynchronizationContext.Current) 
         (msg_dispatch)
 
-    trace "Model" "commencing early initialization..."
-    task {
-        let! _ = nvim.set_var "fvim_loaded" 1
-        let! _ = nvim.set_var "gui_running" 1
-        ()
-    } |> ignore
-
     [
         Notify "font.antialias"   (fun [| Bool(v) |] -> ui.antialiased <- v)
         Notify "font.bounds"      (fun [| Bool(v) |] -> ui.drawBounds <- v)
@@ -324,6 +317,13 @@ let Start opts =
         Notify "font.lcdrender"   (fun [| Bool(v) |] -> ui.lcdrender <- v)
         Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
     ] |> List.iter ignore
+
+    trace "Model" "commencing early initialization..."
+    task {
+        let! _ = nvim.set_var "fvim_loaded" 1
+        let! _ = nvim.set_var "gui_running" 1
+        ()
+    } |> ignore
 
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
