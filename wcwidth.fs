@@ -560,7 +560,7 @@ let wcwidth(ucs: int) =
     // Combining characters with zero width.
     elif intable ZeroWidth ucs                                              then CharType.Invisible
     else 
-        trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)
+        (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
         CharType.Narrow
 
 let wswidth(str: string) = 
@@ -578,6 +578,20 @@ let wswidth(str: string) =
          |> Seq.map (wcwidth >> int)
          |> Seq.max 
          |> LanguagePrimitives.EnumOfValue
+
+/// <summary>
+/// true if the string could be a part of a programming
+/// symbol ligature.
+/// </summary>
+let isProgrammingSymbol(str: string) =
+    if System.String.IsNullOrWhiteSpace str then false
+    else 
+        let ch = str.[0]
+        match ch with
+        // disable the frequent symbols that's too expensive to draw
+        | '\'' | '"' | '{' | '}' 
+            -> false
+        | _ -> System.Char.IsSymbol(ch) || System.Char.IsPunctuation(ch)
 
 let CharTypeWidth(x: CharType): int =
     match x with

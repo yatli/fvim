@@ -3,13 +3,14 @@
 open neovim.rpc
 open log
 
+open ReactiveUI
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
 open Avalonia.Input
 open Avalonia.Interactivity
-open ReactiveUI
 open Avalonia
 open Avalonia.Data
+open Avalonia.ReactiveUI
 
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()
@@ -18,7 +19,6 @@ type MainWindow() as this =
     static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
 
     do
-        AvaloniaXamlLoader.Load this
         #if DEBUG
         this.Renderer.DrawFps <- true
         Avalonia.DevToolsExtensions.AttachDevTools(this)
@@ -51,7 +51,7 @@ type MainWindow() as this =
                 e.DragEffects <- DragDropEffects.Move ||| DragDropEffects.Link ||| DragDropEffects.Copy
             ))
         ]
-
+        AvaloniaXamlLoader.Load this
 
 
     override this.OnDataContextChanged _ =

@@ -4,38 +4,52 @@ open neovim.def
 open neovim.rpc
 open log
 
-open Avalonia.Controls
+open ReactiveUI
 open Avalonia
-open System
-open System.Collections.Generic
-open Avalonia.Threading
-open ui
+open Avalonia.Animation
+open Avalonia.Controls
+open Avalonia.Data
+open Avalonia.Markup.Xaml
 open Avalonia.Media
 open Avalonia.Media.Imaging
+open Avalonia.Skia
+open Avalonia.Threading
 open Avalonia.VisualTree
-open Avalonia.Animation
-open Avalonia.Markup.Xaml
-open ReactiveUI
-open System.Reactive.Linq
+open SkiaSharp
+open System
+open System.Collections.Generic
 open System.Reactive.Disposables
-open Avalonia.Data
+open System.Reactive.Linq
+open ui
+open Avalonia.Visuals.Media.Imaging
+open System.Runtime.InteropServices
 
 type Cursor() as this =
-    inherit Control()
-
-    // workaround: binding directly to Canvas.Left/Top won't work.
-    // so we introduce a proxy DP for x and y.
-    static let PosXProp = AvaloniaProperty.Register<Cursor, float>("PosX")
-    static let PosYProp = AvaloniaProperty.Register<Cursor, float>("PosY")
-    static let RenderTickProp = AvaloniaProperty.Register<Cursor, int>("RenderTick")
+    inherit UserControl()
+    static let RenderTickProperty = AvaloniaProperty.Register<Cursor, int>("RenderTick")
     static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
 
     let mutable cursor_timer: IDisposable = null
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
     let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
-    //                    w     h     dpi
-    let fbs = Dictionary<(float*float*float), RenderTargetBitmap> ()
+    let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
+    let mutable cursor_fb_vm = CursorViewModel()
+    let mutable cursor_fb_s = 1.0
+
+    let ensure_fb() =
+        let s = this.GetVisualRoot().RenderScaling
+        if (cursor_fb_vm.VisualChecksum(),cursor_fb_s) <> (this.ViewModel.VisualChecksum(),s) then
+            cursor_fb_vm <- this.ViewModel.Clone()
+            cursor_fb_s <- s
+            cursor_fb.Dispose()
+            cursor_fb <- AllocateFramebuffer (cursor_fb_vm.w + 50.0) (cursor_fb_vm.h + 50.0) s
+            true
+        else false
+
+    let fgpaint = new SKPaint()
+    let bgpaint = new SKPaint()
+    let sppaint = new SKPaint()
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -58,18 +72,9 @@ type Cursor() as this =
         showCursor false
         cursorTimerRun blinkon this.ViewModel.blinkoff
 
-    let getfb w h =
-        let mutable fb = Unchecked.defaultof<RenderTargetBitmap>
-        let s = this.GetVisualRoot().RenderScaling
-        if not <| fbs.TryGetValue((w,h,s), &fb)
-        then 
-            fb <- AllocateFramebuffer w h s
-            fbs.[(w,h,s)] <- fb
-        fb
-
-    let cursorConfig _ =
-        //trace "cursor" "render tick %A" id
-        if Object.Equals(this.ViewModel, null) 
+    let cursorConfig id =
+        trace "cursor" "render tick %A" id
+        if Object.ReferenceEquals(this.ViewModel, null) 
         then ()
         else
             (* update the settings *)
@@ -94,11 +99,11 @@ type Cursor() as this =
             transitions.Add(blink_transition)
         if move_en then
             let x_transition = DoubleTransition()
-            x_transition.Property <- PosXProp
+            x_transition.Property <- Canvas.LeftProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             x_transition.Easing   <- Easings.CubicEaseOut()
             let y_transition = DoubleTransition()
-            y_transition.Property <- PosYProp
+            y_transition.Property <- Canvas.TopProperty
             y_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
@@ -106,38 +111,52 @@ type Cursor() as this =
         this.SetValue(Cursor.TransitionsProperty, transitions)
 
     do
-        [
+        this.Watch [
             Model.Notify "SetCursorAnimation" 
                 (function 
                  | [| Bool(blink) |] -> setCursorAnimation blink false
                  | [| Bool(blink); Bool(move) |] -> setCursorAnimation blink move
                  | _ -> setCursorAnimation false false) 
 
-            this.WhenActivated(fun disposables -> 
-                ignore <| this.GetObservable(PosXProp).Subscribe(fun x -> this.SetValue(Canvas.LeftProperty, x, BindingPriority.Style)).DisposeWith(disposables)
-                ignore <| this.GetObservable(PosYProp).Subscribe(fun y -> this.SetValue(Canvas.TopProperty, y, BindingPriority.Style)).DisposeWith(disposables)
-                ignore <| this.GetObservable(RenderTickProp).Subscribe(cursorConfig)
-            )
-        ] |> List.iter ignore
+            this.GetObservable(RenderTickProperty).Subscribe(cursorConfig)
+        ] 
         AvaloniaXamlLoader.Load(this)
 
-    member this.ViewModel: CursorViewModel = this.DataContext :?> CursorViewModel
-
     override this.Render(ctx) =
+        //trace "cursor" "render begin"
 
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            let scale = this.GetVisualRoot().RenderScaling
-            let fb = getfb this.Width this.Height
-            use dc = fb.CreateDrawingContext(null)
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
-            let fg = GetForegroundBrush(this.ViewModel.fg, typeface, this.ViewModel.fontSize)
-            RenderText(dc, Rect(this.Bounds.Size), fg, this.ViewModel.bg, this.ViewModel.sp, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text)
+            SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
+            bgpaint.Color <- this.ViewModel.bg.ToSKColor()
+            sppaint.Color <- this.ViewModel.sp.ToSKColor()
+            let bounds = Rect(this.Bounds.Size)
 
-            ctx.DrawImage(fb, 1.0, Rect(0.0, 0.0, scale * fb.Size.Width, scale * fb.Size.Height), Rect(this.Bounds.Size))
+            try
+                match ctx.PlatformImpl with
+                | :? ISkiaDrawingContextImpl ->
+                    // immediate
+                    SetOpacity fgpaint this.Opacity
+                    SetOpacity bgpaint this.Opacity
+                    SetOpacity sppaint this.Opacity
+                    RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                | _ ->
+                    // deferred
+                    let s = this.GetVisualRoot().RenderScaling
+                    let redraw = ensure_fb()
+                    if redraw then
+                        let dc = cursor_fb.CreateDrawingContext(null)
+                        dc.PushClip(bounds)
+                        RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                        dc.PopClip()
+                        dc.Dispose()
+                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * s, bounds.Height * s), bounds)
+            with
+            | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
         | CursorShape.Horizontal, p ->
             let h = (cellh p)
             let region = Rect(0.0, this.Height - h, this.Width, h)
@@ -145,6 +164,14 @@ type Cursor() as this =
         | CursorShape.Vertical, p ->
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
+
+    member this.ViewModel: CursorViewModel = 
+        let ctx = this.DataContext 
+        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
+
+    member this.RenderTick
+        with get() = this.GetValue(RenderTickProperty)
+        and  set(v) = this.SetValue(RenderTickProperty, v)
 
     interface IViewFor<CursorViewModel> with
         member this.ViewModel

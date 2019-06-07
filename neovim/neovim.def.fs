@@ -173,19 +173,14 @@ type Event =
 | Error        of string
 | Exit
 
-[<Struct>]
-[<MessagePackObject(keyAsPropertyName=true)>]
-type UiOptions =
-    {
-        rgb            : bool
-        ext_linegrid   : bool
-        (*ext_multigrid  : bool*)
-        (*ext_popupmenu  : bool*)
-        (*ext_tabline    : bool*)
-        (*ext_cmdline    : bool*)
-        (*ext_wildmenu   : bool*)
-        (*ext_messages   : bool*)
-        (*ext_hlstate    : bool*)
-        (*ext_termcolors : bool*)
-    }
+let uiopt_rgb            = "rgb"
+let uiopt_ext_linegrid   = "ext_linegrid"
+let uiopt_ext_multigrid  = "ext_multigrid"
+let uiopt_ext_popupmenu  = "ext_popupmenu"
+let uiopt_ext_tabline    = "ext_tabline"
+let uiopt_ext_cmdline    = "ext_cmdline"
+let uiopt_ext_wildmenu   = "ext_wildmenu"
+let uiopt_ext_messages   = "ext_messages"
+let uiopt_ext_hlstate    = "ext_hlstate"
+let uiopt_ext_termcolors = "ext_termcolors"
 
