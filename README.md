@@ -1,4 +1,4 @@
-# FVim<img src="https://github.com/yatli/fvim/raw/master/Assets/fvim.png" width="32" height="40"> [![Build status](https://ci.appveyor.com/api/projects/status/7uat5poa5bksqa89?svg=true)](https://ci.appveyor.com/project/yatli/fvim)
+# FVim<img src="https://github.com/yatli/fvim/raw/master/Assets/fvim.png" width="40" height="40"> [![Build status](https://ci.appveyor.com/api/projects/status/7uat5poa5bksqa89?svg=true)](https://ci.appveyor.com/project/yatli/fvim)
 
 
 Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Avalonia](http://avaloniaui.net/).
@@ -11,7 +11,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Proper font rendering -- respects font style, baseline, [ligatures](https://github.com/tonsky/FiraCode) etc.
 - Proper cursor rendering -- color, blink etc.
 - Built-in support for Nerd font -- no need to patch your fonts!
-- East asia wide glyph display with font fallback options
+- East Asia wide glyph display with font fallback options
 - Emojis!
 - High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
 - GPU acceleration
