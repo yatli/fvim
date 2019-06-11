@@ -9,6 +9,10 @@ Invoke-Command {
 
 foreach($i in $plat) {
     dotnet publish -f netcoreapp2.2 -c Release --self-contained -r $i
+    if ($i -eq "win-x64") {
+# replace the coreclr hosting exe with an icon-patched one
+        Copy-Item lib/fvim-win10.exe bin/Release/netcoreapp2.2/$i/publish/FVim.exe
+    }
     Compress-Archive -Path bin/Release/netcoreapp2.2/$i/publish/* -DestinationPath publish/fvim-$i.zip -Force
 }
 
