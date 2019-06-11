@@ -14,6 +14,7 @@ open Avalonia.Threading
 open Avalonia.Input
 open Avalonia.Input.Raw
 open FSharp.Control.Reactive
+open System.ComponentModel
 
 #nowarn "0058"
 
@@ -352,8 +353,13 @@ let OnTerminated (args) =
     trace "Model" "terminating nvim..."
     nvim.stop 1
 
-let OnTerminating(args) =
-    //TODO send closing request to neovim
+let OnTerminating(args: CancelEventArgs) =
+    args.Cancel <- true
+    trace "Model" "window is closing"
+    task {
+        let! _ = nvim.command "confirm quit"
+        ()
+    } |> ignore
     ()
 
 let EditFiles (files: string seq) =

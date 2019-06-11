@@ -27,7 +27,7 @@ type MainWindow() as this =
         DragDrop.SetAllowDrop(this, true)
 
         this.Watch [
-            this.Closing.Subscribe (fun _ -> Model.OnTerminating())
+            this.Closing.Subscribe (fun e -> Model.OnTerminating e)
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
             this.Bind(XProp, Binding("WindowX", BindingMode.TwoWay))
             this.Bind(YProp, Binding("WindowY", BindingMode.TwoWay))
