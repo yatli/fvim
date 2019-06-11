@@ -322,7 +322,6 @@ let Start opts =
     trace "Model" "commencing early initialization..."
     task {
         let! _ = nvim.set_var "fvim_loaded" 1
-        let! _ = nvim.set_var "gui_running" 1
         ()
     } |> ignore
 
@@ -345,6 +344,8 @@ let OnGridReady(gridui: IGridUI) =
               gridui.GridWidth gridui.GridHeight
         task {
             let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
+            // TODO ideally this should be triggered in `nvim_command("autocmd VimEnter * call rpcrequest(1, 'vimenter')")`
+            // as per :help ui-start
             let! _ = nvim.command "runtime! ginit.vim"
             ()
         } |> ignore
@@ -357,7 +358,7 @@ let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
     trace "Model" "window is closing"
     task {
-        let! _ = nvim.command "confirm quit"
+        let! _ = nvim.command "confirm quitall"
         ()
     } |> ignore
     ()
