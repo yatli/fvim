@@ -59,8 +59,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="HarfBuzzSharp" Version="2.3.1-preview198" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="2.3.1-preview198" />
+    <PackageReference Include="HarfBuzzSharp" Version="1.4.6.2" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="1.4.6.2" />
     <PackageReference Include="MessagePack" Version="1.7.3.7" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
