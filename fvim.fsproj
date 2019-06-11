@@ -49,16 +49,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.8.1-cibuild0002788-beta" />
+    <PackageReference Include="Avalonia" Version="0.8.1-cibuild0002828-beta" />
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2019013001" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.8.1-cibuild0002788-beta" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.1-cibuild0002788-beta" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.8.1-cibuild0002828-beta" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.1-cibuild0002828-beta" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
     <PackageReference Include="GitInfo" Version="2.0.20">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="HarfBuzzSharp" Version="2.3.1-preview198" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="2.3.1-preview198" />
     <PackageReference Include="MessagePack" Version="1.7.3.7" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
