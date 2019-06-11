@@ -107,7 +107,10 @@ and Editor() as this =
         let txt = String.Concat str
         let shaping = txt.Length > 1 && issym
 
-        RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+        try
+            RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+        with
+        | ex -> trace "drawBuffer: %s" <| ex.ToString()
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
