@@ -436,9 +436,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             | _ -> 0,0,0
 
         // do not use the default colors for cursor
-        let fg, bg, sp = if hlid = 0 then GetReverseColor fg, GetReverseColor bg, GetReverseColor sp
-                         else fg, bg, sp
-
+        let colorf = if hlid = 0 then GetReverseColor else id
+        let fg, bg, sp = colorf fg, colorf bg, colorf sp
         cursor_info.typeface       <- _guifont
         cursor_info.wtypeface      <- _guifontwide
         cursor_info.fontSize       <- font_size
