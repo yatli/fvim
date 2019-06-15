@@ -322,7 +322,18 @@ let Start opts =
     trace "Model" "commencing early initialization..."
     task {
         let! _ = nvim.set_var "fvim_loaded" 1
-        ()
+        let dirs = 
+            [
+                // home
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                // system
+                Environment.GetFolderPath(Environment.SpecialFolder.System)
+                // bin
+                System.Reflection.Assembly.GetExecutingAssembly().Location
+            ] |> List.map System.IO.Path.GetFullPath
+        if List.contains Environment.CurrentDirectory dirs then
+            let! _ = nvim.set_var "fvim_startify" 1
+            ()
     } |> ignore
 
 let OnGridReady(gridui: IGridUI) =
