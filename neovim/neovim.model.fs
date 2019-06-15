@@ -329,7 +329,7 @@ let Start opts =
                 // system
                 Environment.GetFolderPath(Environment.SpecialFolder.System)
                 // bin
-                System.Reflection.Assembly.GetExecutingAssembly().Location
+                System.Reflection.Assembly.GetExecutingAssembly().Location |> System.IO.Path.GetDirectoryName
             ] |> List.map System.IO.Path.GetFullPath
         if List.contains Environment.CurrentDirectory dirs then
             let! _ = nvim.set_var "fvim_startify" 1
