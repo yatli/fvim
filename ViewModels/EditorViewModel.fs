@@ -81,7 +81,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let mutable grid_rendertick  = 0
     let mutable measured_size    = _d (Size(100.0, 100.0)) _measuredsize
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
-    let mutable grid_dirty       = { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
+    let mutable grid_dirty       = GridRegion()
     let mutable _fb_h = 10.0
     let mutable _fb_w = 10.0
 
@@ -98,21 +98,11 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let getPos (p: Point) =
         int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
-    let markDirty (region: GridRect) =
-        if grid_dirty.height < 1 || grid_dirty.width < 1 
-        then
-            // was not dirty
-            grid_dirty <- region
-        else
-            // calculate union
-            let top  = min grid_dirty.row region.row
-            let left = min grid_dirty.col region.col
-            let bottom = max grid_dirty.row_end region.row_end
-            let right = max grid_dirty.col_end region.col_end
-            grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
+    let markDirty = grid_dirty.Union
 
     let markAllDirty () =
-        grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
+        grid_dirty.Clear()
+        grid_dirty.Union{ row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
 
     let flush() = 
         trace "flush."
@@ -409,8 +399,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
 
-    member __.markClean () =
-        grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
+    member __.markClean = grid_dirty.Clear
 
     //  converts grid position to UI Point
     member __.GetPoint row col =

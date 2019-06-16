@@ -218,12 +218,15 @@ and Editor() as this =
     override this.Render ctx =
         if grid_fb <> null then
             let dirty = grid_vm.Dirty
-            if dirty.height > 0 then
-                trace "render begin, dirty = %A" dirty
+            if not <| dirty.Empty() then
+                let regions = dirty.Regions()
+                trace "render begin, %d regions"  regions.Count
                 use grid_dc = grid_fb.CreateDrawingContext(null)
                 grid_dc.PushClip(Rect this.Bounds.Size)
-                for row = dirty.row to dirty.row_end - 1 do
-                    drawBufferLine grid_dc row dirty.col dirty.col_end
+                for r in regions do
+                    for row = r.row to r.row_end - 1 do
+                        drawBufferLine grid_dc row r.col r.col_end
+
                 grid_dc.PopClip()
                 trace "render end"
                 grid_vm.markClean()
