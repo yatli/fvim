@@ -145,7 +145,7 @@ module ModelImpl =
         | _ -> ""
     let suffix (suf: string, r: int, c: int) =
         sprintf "%s><%d,%d" suf r c
-    let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
+    let (|Repeat|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
         | Key(_, Key.Back) 
         | Key(HasFlag(InputModifiers.Control), Key.H)                 -> Special "BS"
@@ -226,7 +226,10 @@ module ModelImpl =
         |  MousePress(_, r, c, but, cnt)                              -> Special(MB(but, cnt) + suffix("Mouse", c, r))
         |  MouseRelease(_, r, c, but)                                 -> Special(MB(but, 1) + suffix("Release", c, r))
         |  MouseDrag(_, r, c, but   )                                 -> Special(MB(but, 1) + suffix("Drag", c, r))
-        |  MouseWheel(_, r, c, dx, dy)                                -> Special("ScrollWheel" + suffix(DIR(dx, dy), c, r))
+        |  MouseWheel(_, r, c, dx, dy)                                -> 
+            let dir = DIR(dx, dy)
+            let rpt = abs dx + abs dy
+            Repeat(rpt, "ScrollWheel" + suffix(dir, c, r))
         |  TextInput txt                                              -> TextInput txt
         |  _                                                          -> Unrecognized
     //| Key.Oem
@@ -266,7 +269,7 @@ module ModelImpl =
                 -> false
             | _ -> true) >>
         // translate to nvim keycode
-        Observable.choose (fun x ->
+        Observable.map(fun x ->
             trace "Model" "OnInput: %A" x
 
             match x with
@@ -276,18 +279,21 @@ module ModelImpl =
             // TODO anything that cancels ime input state?
 
             match x with
-            | (Special sp) & (ModifiersPrefix pref) -> Some <| sprintf "<%s-%s>" pref sp
-            | (Special sp)                          -> Some <| sprintf "<%s>" sp
-            | (Normal n) & (ModifiersPrefix pref)   -> Some <| sprintf "<%s-%s>" pref n
-            | (Normal n)                            -> Some <| n
-            | ImeEvent                              -> None
-            | TextInput txt when _imeArmed          -> Some txt
-            | x                                     -> trace "input" "rejected: %A" x; None
+            | (Repeat(n, sp)) & (ModifiersPrefix pref) -> List.replicate n (sprintf "<%s-%s>" pref sp)
+            | (Special sp) & (ModifiersPrefix pref) -> [ sprintf "<%s-%s>" pref sp ]
+            | (Special sp)                          -> [ sprintf "<%s>" sp ]
+            | (Repeat(n, sp))                       -> List.replicate n (sprintf "<%s>" sp)
+            | (Normal n) & (ModifiersPrefix pref)   -> [ sprintf "<%s-%s>" pref n ]
+            | (Normal n)                            -> [ n ]
+            | ImeEvent                              -> []
+            | TextInput txt when _imeArmed          -> [ txt ]
+            | x                                     -> trace "input" "rejected: %A" x; []
         ) >>
         // hook up nvim_input
         // TODO dispose the subscription when grid is destroyed
-        Observable.add (fun key ->
-            ignore <| nvim.input [|key|]
+        Observable.add (fun keys ->
+            for k in keys do
+                ignore <| nvim.input [|k|]
         )
 
 let Request name fn = requestHandlers.Add(name, fn)
