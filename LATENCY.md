@@ -8,6 +8,7 @@ The latency is measured by recording the time between a `j` keystroke on a keybo
 The key frames are picked manually by stepping through the single frames.
 My iPhone7 is capable of 120fps recording, and thus ~8.33ms per frame.
 
+```
 instance    time        frames
 ------------------------------
 nvim-qt     75.0ms      9
@@ -17,6 +18,7 @@ fvim        100.0ms     12
 fvim        116.7ms     14
 fvim        116.7ms     14
 nvim-gtk    83.3ms      10
+```
 
 Looks like `fvim` is constantly lagging behind for a few frames , and in the worst case, 2x less responsive than `nvim-qt`.
 The tests are done on Windows10, with immediate renderer (and thus better latency) -- this means that the readings on X11 will be even worse.
