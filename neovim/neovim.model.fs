@@ -136,13 +136,16 @@ module ModelImpl =
         let name = x.ToString()
         if c = 1 then name
         else sprintf "%d-%s" c name
-    let DIR (dx: int, dy: int) =
-        match sign dx, sign dy with
-        | -1, _  -> "Right"
-        | 1, _   -> "Left"
-        | _, -1  -> "Down"
-        | _, 1   -> "Up"
-        | _ -> ""
+
+    let mutable accumulatedX = 0.0
+    let mutable accumulatedY = 0.0
+
+    let DIR (dx: float, dy: float, horizontal: bool) =
+        match sign dx, sign dy, horizontal with
+        | -1, _, true  -> "Right"
+        | _, _,  true   -> "Left"
+        | _, -1, false  -> "Down"
+        | _, _, false   -> "Up"
     let suffix (suf: string, r: int, c: int) =
         sprintf "%s><%d,%d" suf r c
     let (|Repeat|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
@@ -227,9 +230,20 @@ module ModelImpl =
         |  MouseRelease(_, r, c, but)                                 -> Special(MB(but, 1) + suffix("Release", c, r))
         |  MouseDrag(_, r, c, but   )                                 -> Special(MB(but, 1) + suffix("Drag", c, r))
         |  MouseWheel(_, r, c, dx, dy)                                -> 
-            let dir = DIR(dx, dy)
-            let rpt = abs dx + abs dy
-            Repeat(rpt, "ScrollWheel" + suffix(dir, c, r))
+            // duh! don't like this
+            accumulatedX <- accumulatedX + dx
+            accumulatedY <- accumulatedY + dy
+            let ax, ay = abs accumulatedX, abs accumulatedY
+            let rpt = max ax ay
+            let dir = DIR(dx, dy, ax >= ay)
+            if rpt >= 1.0 then
+                if ax >= ay then
+                    accumulatedX <- accumulatedX - truncate accumulatedX
+                else
+                    accumulatedY <- accumulatedY - truncate accumulatedY
+                Repeat(int rpt, "ScrollWheel" + suffix(dir, c, r))
+            else
+                Unrecognized
         |  TextInput txt                                              -> TextInput txt
         |  _                                                          -> Unrecognized
     //| Key.Oem

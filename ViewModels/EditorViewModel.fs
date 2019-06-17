@@ -529,9 +529,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     member __.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
-            let col, row = int(e.Delta.X), int(e.Delta.Y)
+            let dx, dy = e.Delta.X, e.Delta.Y
             e.Handled <- true
-            inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, col, row)
+            inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
         inputEvent.Trigger <| InputEvent.TextInput(e.Text)

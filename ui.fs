@@ -83,7 +83,7 @@ module ui =
     | MousePress   of mods: InputModifiers * row: int * col: int * button: MouseButton * combo: int
     | MouseRelease of mods: InputModifiers * row: int * col: int * button: MouseButton
     | MouseDrag    of mods: InputModifiers * row: int * col: int * button: MouseButton
-    | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: int * dy: int
+    | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: float * dy: float
     | TextInput    of text: string
 
 
