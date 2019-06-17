@@ -46,7 +46,7 @@ endif
 
 ### Building from source
 We're now targeting `netcoreapp3.0` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.0).
-We're also actively tracking the head of `Avalonia`, so please add their myget feed to your nuget package manager:
+We're also actively tracking the head of `Avalonia`, so please add their myget feed (https://www.myget.org/F/avalonia-ci/api/v2) to your nuget package manager:
 ```
 # Windows:
 nuget sources add -Name "Avalonia Nightly" -Source "https://www.myget.org/F/avalonia-ci/api/v2" -NonInteractive 
