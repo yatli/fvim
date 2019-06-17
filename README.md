@@ -41,6 +41,28 @@ endif
 ```
 ![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
 
+### Installation
+[Download](https://github.com/yatli/fvim/releases) the latest release package for your system, extract and run `FVim`!
+
+### Building from source
+We're now targeting `netcoreapp3.0` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.0).
+We're also actively tracking the head of `Avalonia`, so please add their myget feed (https://www.myget.org/F/avalonia-ci/api/v2) to your nuget package manager:
+```
+# Windows:
+nuget sources add -Name "Avalonia Nightly" -Source "https://www.myget.org/F/avalonia-ci/api/v2" -NonInteractive 
+# Others:
+Edit ~/.nuget/NuGet/config.xml and insert the feed.
+```
+
+Then, simply:
+
+```
+git clone https://github.com/yatli/fvim
+cd fvim
+dotnet build -c Release
+dotnet run -c Release
+```
+
 ### Goals
 
 - Input method support built from scratch (wip)
