@@ -29,6 +29,12 @@ module Program =
     // Your application's entry point.
     [<CompiledName "AppMain">]
     let appMain (app: Application) (args: string[]) =
+        AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
+            let filename = sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"))
+            use dumpfile = new StreamWriter(filename)
+            dumpfile.WriteLine(sprintf "Unhandled exception: (terminating:%A)" exArgs.IsTerminating)
+            dumpfile.WriteLine(exArgs.ExceptionObject.ToString())
+        )
         System.Console.OutputEncoding <- System.Text.Encoding.Unicode
         let opts = parseOptions args
         FVim.log.init opts
