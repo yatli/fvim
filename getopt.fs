@@ -4,6 +4,7 @@ type Options =
     {
         logToStdout: bool
         logToFile: string option
+        logPatterns: string option
         program: string
         stderrenc: System.Text.Encoding
         preArgs: string list
@@ -28,6 +29,7 @@ let parseOptions (args: string[]) =
 
     let trace_to_stdout     = eat1 "--trace-to-stdout"
     let trace_to_file       = eat2 "--trace-to-file"
+    let trace_patterns      = eat2 "--trace-patterns"
     let ssh                 = eat2 "--ssh"
     let wsl                 = eat1 "--wsl"
     let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
@@ -43,6 +45,7 @@ let parseOptions (args: string[]) =
     { 
         logToStdout     = trace_to_stdout
         logToFile       = trace_to_file
+        logPatterns     = trace_patterns
         program         = prog
         args            = args
         preArgs         = preargs

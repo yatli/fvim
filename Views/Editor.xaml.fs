@@ -234,6 +234,7 @@ and Editor() as this =
             if not <| dirty.Empty() then
                 let regions = dirty.Regions()
                 trace "drawing %d regions"  regions.Count
+                let timer = System.Diagnostics.Stopwatch.StartNew()
                 use grid_dc = grid_fb.CreateDrawingContext(null)
                 grid_dc.PushClip(Rect this.Bounds.Size)
                 for r in regions do
@@ -241,7 +242,8 @@ and Editor() as this =
                         drawBufferLine grid_dc row r.col r.col_end
 
                 grid_dc.PopClip()
-                trace "drawing end"
+                timer.Stop()
+                trace "drawing end, time = %dms." timer.ElapsedMilliseconds
                 grid_vm.markClean()
         (*trace "base rendering"*)
         base.Render ctx
