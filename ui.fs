@@ -181,6 +181,7 @@ module ui =
         abstract GridWidth: int
         abstract Resized: IEvent<IGridUI>
         abstract Input: IEvent<InputEvent>
+        abstract HasChildren: bool
 
     open System.Runtime.InteropServices
 

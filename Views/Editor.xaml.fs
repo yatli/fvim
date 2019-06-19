@@ -14,8 +14,8 @@ open Avalonia.Platform
 open Avalonia.Skia
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
-open System.Reactive.Linq
 open System
+open FSharp.Control.Reactive
 
 type EmbeddedEditor() as this =
     inherit UserControl()
@@ -184,29 +184,41 @@ and Editor() as this =
 
     let onViewModelConnected (vm:EditorViewModel) =
         grid_vm <- vm
-        [
+        trace "viewmodel connected"
+        vm.Watch [
             vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun tick -> redraw <| tick.GetValue())
             vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.merge
-                <| vm.ObservableForProperty(fun x -> x.BufferWidth)
-                <| vm.ObservableForProperty(fun x -> x.BufferHeight)
-            |> Observable.subscribe(fun _ -> resizeFrameBuffer())
-            Observable.Interval(TimeSpan.FromMilliseconds(100.0))
-                      .FirstAsync(fun _ -> this.IsInitialized)
-                      .Subscribe(fun _ -> 
-                        Model.OnGridReady(vm :> IGridUI)
-                        ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
-                    )
-        ] |> vm.Watch 
-        
+                (vm.ObservableForProperty(fun x -> x.BufferWidth))
+                (vm.ObservableForProperty(fun x -> x.BufferHeight))
+            |> Observable.subscribe(fun _ -> 
+                if this.GetVisualRoot() <> null then resizeFrameBuffer())
+
+            Observable.interval(TimeSpan.FromMilliseconds 100.0)
+            |> Observable.firstIf(fun _ -> this.IsInitialized)
+            |> Observable.subscribe(fun _ -> 
+                Model.OnGridReady(vm :> IGridUI)
+                ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
+               )
+        ]
+
+    let subscribeAndHandle fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
+        ob.Subscribe(fun e ->
+            e.Handled <- true
+            doWithDataContext (fn e))
+
     do
         this.Watch [
 
-            this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
-
+            this.TextInput |> subscribeAndHandle(fun e vm -> vm.OnTextInput e)
+            this.KeyDown   |> subscribeAndHandle(fun e vm -> vm.OnKey e)
+            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e this)
+            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e this)
+            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e this)
+            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e this)
             this.GetObservable(Editor.DataContextProperty)
-                          .OfType<EditorViewModel>()
-                          .Subscribe(onViewModelConnected)
+            |> Observable.ofType<EditorViewModel>
+            |> Observable.subscribe onViewModelConnected
 
         ]
         AvaloniaXamlLoader.Load(this)
@@ -216,11 +228,12 @@ and Editor() as this =
     static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
     override this.Render ctx =
+        (*trace "render begin"*)
         if grid_fb <> null then
             let dirty = grid_vm.Dirty
             if not <| dirty.Empty() then
                 let regions = dirty.Regions()
-                trace "render begin, %d regions"  regions.Count
+                trace "drawing %d regions"  regions.Count
                 use grid_dc = grid_fb.CreateDrawingContext(null)
                 grid_dc.PushClip(Rect this.Bounds.Size)
                 for r in regions do
@@ -228,9 +241,11 @@ and Editor() as this =
                         drawBufferLine grid_dc row r.col r.col_end
 
                 grid_dc.PopClip()
-                trace "render end"
+                trace "drawing end"
                 grid_vm.markClean()
+        (*trace "base rendering"*)
         base.Render ctx
+        (*trace "render end"*)
 
     override this.MeasureOverride(size) =
         doWithDataContext (fun vm ->
@@ -241,25 +256,6 @@ and Editor() as this =
         size
 
     (*each event repeats 4 times... use the event instead *)
-    (*override this.OnTextInput(e) =*)
-
-    override __.OnKeyDown(e) =
-        doWithDataContext(fun vm -> vm.OnKey e)
-
-    override __.OnKeyUp(e) =
-        e.Handled <- true
-
-    override this.OnPointerPressed(e) =
-        doWithDataContext(fun vm -> vm.OnMouseDown e this)
-
-    override this.OnPointerReleased(e) =
-        doWithDataContext(fun vm -> vm.OnMouseUp e this)
-
-    override this.OnPointerMoved(e) =
-        doWithDataContext(fun vm -> vm.OnMouseMove e this)
-
-    override this.OnPointerWheelChanged(e) =
-        doWithDataContext(fun vm -> vm.OnMouseWheel e this)
 
     interface IViewFor<EditorViewModel> with
         member this.ViewModel

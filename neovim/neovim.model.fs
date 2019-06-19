@@ -275,7 +275,7 @@ module ModelImpl =
 
     let mutable _imeArmed = false
 
-    let onInput: (IEvent<InputEvent> -> unit) =
+    let onInput: (IObservable<InputEvent> -> unit) =
         // filter out pure modifiers
         Observable.filter (fun x -> 
             match x with
@@ -364,7 +364,9 @@ let OnGridReady(gridui: IGridUI) =
 
     add_grid gridui
 
-    gridui.Input |> onInput
+    gridui.Input 
+    |> Observable.filter (fun _ -> not gridui.HasChildren)
+    |> onInput
 
     if gridui.Id = 1 then
         // Grid #1 is the main grid.

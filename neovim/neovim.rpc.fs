@@ -411,6 +411,7 @@ type Process() =
     member __.ui_attach (w:int) (h:int) =
         let opts = Dictionary<string, bool>()
         opts.[uiopt_rgb]          <- true
+        (*opts.[uiopt_ext_multigrid] <- true*)
         opts.[uiopt_ext_linegrid] <- true
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }

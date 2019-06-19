@@ -15,31 +15,7 @@
         <Setter Property="ZIndex" Value="10" />
       </Style>
     </Canvas.Styles>
-  
-    <Image 
-        Name                = "FrameBuffer"
-        Source              = "{Binding FrameBuffer,  Mode=OneWay}"
-        Width               = "{Binding BufferWidth,  Mode=OneWay}"
-        Height              = "{Binding BufferHeight, Mode=OneWay}"
-        Stretch             = "Fill"
-        HorizontalAlignment = "Left"
-        VerticalAlignment   = "Top"
-        Focusable           = "False"
-    />
 
-    <fvim:Cursor
-        DataContext         = "{Binding CursorInfo}"
-        Height              = "{Binding h, Mode=OneWay}"
-        Width               = "{Binding w, Mode=OneWay}"
-        RenderTick          = "{Binding RenderTick, Mode=OneWay}"
-        Canvas.Left         = "{Binding x, Mode=OneWay}"
-        Canvas.Top          = "{Binding y, Mode=OneWay}"
-        HorizontalAlignment = "Left"
-        VerticalAlignment   = "Top"
-        Focusable           = "False"
-        IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
-        >
-    </fvim:Cursor>
     <ItemsControl 
         Items               = "{Binding ChildGrids, Mode=OneWay}"
         Width               = "{Binding BufferWidth,  Mode=OneWay}"
@@ -69,4 +45,29 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+
+    <Image 
+        Name                = "FrameBuffer"
+        Source              = "{Binding FrameBuffer,  Mode=OneWay}"
+        Width               = "{Binding BufferWidth,  Mode=OneWay}"
+        Height              = "{Binding BufferHeight, Mode=OneWay}"
+        Stretch             = "Fill"
+        HorizontalAlignment = "Left"
+        VerticalAlignment   = "Top"
+        Focusable           = "False"
+    />
+
+    <fvim:Cursor
+        DataContext         = "{Binding CursorInfo}"
+        Height              = "{Binding h, Mode=OneWay}"
+        Width               = "{Binding w, Mode=OneWay}"
+        RenderTick          = "{Binding RenderTick, Mode=OneWay}"
+        Canvas.Left         = "{Binding x, Mode=OneWay}"
+        Canvas.Top          = "{Binding y, Mode=OneWay}"
+        HorizontalAlignment = "Left"
+        VerticalAlignment   = "Top"
+        Focusable           = "False"
+        IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
+        >
+    </fvim:Cursor>
 </Canvas>

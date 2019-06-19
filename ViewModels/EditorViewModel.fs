@@ -398,6 +398,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         member __.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
+        member __.HasChildren = child_grids.Count <> 0
 
     member __.markClean = grid_dirty.Clear
 
