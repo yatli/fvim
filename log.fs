@@ -20,6 +20,11 @@ let trace cat fmt =
 let error cat fmt =
     Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
 
+let flush() =
+    async {
+        do! Async.Sleep 2000
+    }
+
 let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPatterns } =
     #if DEBUG
     let logToStdout = true

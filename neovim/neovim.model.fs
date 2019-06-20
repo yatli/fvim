@@ -67,6 +67,12 @@ module ModelImpl =
             with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
         | Redraw cmd -> redraw cmd 
         | Exit -> Avalonia.Application.Current.Shutdown()
+        | Crash code ->
+            async {
+                trace "rpc" "neovim crashed with code %d" code
+                do! FVim.log.flush()
+                Avalonia.Application.Current.Shutdown()
+            } |> Async.RunSynchronously
         | _ -> ()
 
     let onGridResize(gridui: IGridUI) =
@@ -330,14 +336,14 @@ let Start opts =
         (AvaloniaSynchronizationContext.Current) 
         (msg_dispatch)
 
-    [
+    List.iter ignore [
         Notify "font.antialias"   (fun [| Bool(v) |] -> ui.antialiased <- v)
         Notify "font.bounds"      (fun [| Bool(v) |] -> ui.drawBounds <- v)
         Notify "font.autohint"    (fun [| Bool(v) |] -> ui.autohint <- v)
         Notify "font.subpixel"    (fun [| Bool(v) |] -> ui.subpixel <- v)
         Notify "font.lcdrender"   (fun [| Bool(v) |] -> ui.lcdrender <- v)
         Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
-    ] |> List.iter ignore
+    ] 
 
     trace "Model" "commencing early initialization..."
     task {

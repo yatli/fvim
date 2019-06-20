@@ -171,6 +171,7 @@ type Event =
 | Notification of Request
 | Redraw       of RedrawCommand[]
 | Error        of string
+| Crash        of code: int32
 | Exit
 
 let uiopt_rgb            = "rgb"

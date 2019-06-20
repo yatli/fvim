@@ -147,6 +147,7 @@ module ui =
         member x.Union = rects.Add
         member x.Regions() = 
             let region = ResizeArray()
+            let rects = ResizeArray<_>(rects)
             for x in rects do
                 region
                 |> Seq.indexed

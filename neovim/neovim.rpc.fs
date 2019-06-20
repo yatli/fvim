@@ -282,16 +282,22 @@ type Process() =
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () -> 
-                 trace "READ!"
-                 while not proc.HasExited && not cancel.IsCancellationRequested do
-                    try
-                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
-                        (*trace "stdout message: %A" data*)
-                        ob.OnNext(data)
-                    with :? InvalidOperationException as ex ->
-                        ob.OnCompleted()
-                 trace "READ COMPLETE!"
-                 ob.OnCompleted()
+                trace "begin read loop"
+                while not proc.HasExited && not cancel.IsCancellationRequested do
+                   try
+                       let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
+                       (*trace "stdout message: %A" data*)
+                       ob.OnNext(data)
+                   with :? InvalidOperationException ->
+                       ()
+                if proc.HasExited then
+                    let code = proc.ExitCode
+                    trace "end read loop: process exited, code = %d" code
+                    if code <> 0 then
+                        ob.OnNext(Crash code)
+                else
+                    trace "end read loop: process still running (???)"
+                ob.OnCompleted()
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
         let reply (id: int) (rsp: Response) = async {
