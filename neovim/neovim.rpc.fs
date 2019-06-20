@@ -286,17 +286,19 @@ type Process() =
                 while not proc.HasExited && not cancel.IsCancellationRequested do
                    try
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
-                       (*trace "stdout message: %A" data*)
                        ob.OnNext(data)
-                   with :? InvalidOperationException ->
+                   with :? InvalidOperationException as ex ->
+                       trace "MessagePack: %s" <| ex.ToString()
                        ()
                 if proc.HasExited then
                     let code = proc.ExitCode
                     trace "end read loop: process exited, code = %d" code
                     if code <> 0 then
                         ob.OnNext(Crash code)
+                        Thread.Sleep 2000
                 else
                     trace "end read loop: process still running (???)"
+                    Thread.Sleep 2000
                 ob.OnCompleted()
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
