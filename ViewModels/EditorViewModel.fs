@@ -161,7 +161,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let putBuffer (line: GridLine) =
         let         row  = line.row
         let mutable col  = line.col_start
-        let mutable hlid = -1
+        let mutable hlid = 0
         let mutable rep = 1
         for cell in line.cells do
             hlid <- Option.defaultValue hlid cell.hl_id
@@ -179,14 +179,23 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // workaround: extend the dirty region one cell further towards the end
 
         // italic font artifacts II: when inserting on an italic line, later glyphs cover earlier with the background.
-        // potential workaround 1: redraw the whole line...
-        // potential workaround 2: do not draw the background for the latest glyph
+        // workaround: if italic, extend the dirty region towards the beginning, until not italic
 
         // italic font artifacts III: block cursor may not have italic style. 
         // how to fix this? curious about how the original GVim handles this situation.
 
         // apply workaround I:
-        let dirty = {dirty with width = min (dirty.width + 1) grid_size.cols}
+        let dirty = {dirty with width = min (dirty.width + 1) grid_size.cols }
+        // apply workaround II:
+        col  <- dirty.col - 1
+        let mutable italic = true
+        while col > 0 && italic do
+            hlid <- grid_buffer.[row, col].hlid
+            col <- col - 1
+            italic <- hi_defs.[hlid].rgb_attr.italic 
+        let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
+        
+
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
