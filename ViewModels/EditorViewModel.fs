@@ -166,7 +166,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         for cell in line.cells do
             hlid <- Option.defaultValue hlid cell.hl_id
             rep  <- Option.defaultValue 1 cell.repeat
-            for i = 1 to rep do
+            for _i = 1 to rep do
                 grid_buffer.[row, col].hlid <- hlid
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
@@ -184,14 +184,19 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // italic font artifacts III: block cursor may not have italic style. 
         // how to fix this? curious about how the original GVim handles this situation.
 
+        // ligature artifacts I: ligatures do not build as characters are laid down.
+        // workaround: like italic, case II.
+
         // apply workaround I:
         let dirty = {dirty with width = min (dirty.width + 1) grid_size.cols }
         // apply workaround II:
         col  <- dirty.col - 1
         let mutable italic = true
-        while col > 0 && italic do
+        let mutable ligature = true
+        while col > 0 && (italic || ligature) do
             hlid <- grid_buffer.[row, col].hlid
             col <- col - 1
+            ligature <- isProgrammingSymbol grid_buffer.[row, col].text
             italic <- hi_defs.[hlid].rgb_attr.italic 
         let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
         
