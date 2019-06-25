@@ -10,8 +10,8 @@
 
     <Canvas.Styles>
       <Style Selector="ItemsControl > ContentPresenter">
-        <Setter Property="Canvas.Left" Value="{Binding X, Mode=OneWay}"/>
-        <Setter Property="Canvas.Top" Value="{Binding Y, Mode=OneWay}"/>
+        <Setter Property="Canvas.Left" Value="{Binding AnchorX, Mode=OneWay}"/>
+        <Setter Property="Canvas.Top" Value="{Binding AnchorY, Mode=OneWay}"/>
       </Style>
     </Canvas.Styles>
 

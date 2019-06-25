@@ -26,22 +26,8 @@ open SkiaSharp
 module private helpers =
     let _d x = Option.defaultValue x
 
-type EmbeddedEditorViewModel(child, X, Y, W, H) = 
-    inherit ViewModelBase()
-
-    let mutable m_x = X
-    let mutable m_y = Y
-    let mutable m_w = W
-    let mutable m_h = H
-
-    member this.child: EditorViewModel = child
-    member this.X with get(): float = m_x and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_x, v)
-    member this.Y with get(): float = m_y and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_y, v)
-    member this.W with get(): float = m_w and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_w, v)
-    member this.H with get(): float = m_h and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_h, v)
-
-and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
-                    ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int) as this =
+type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
+                    ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase()
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
@@ -82,8 +68,10 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let mutable measured_size    = _d (Size(100.0, 100.0)) _measuredsize
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = GridRegion()
-    let mutable _fb_h = 10.0
-    let mutable _fb_w = 10.0
+    let mutable _fb_h            = 10.0
+    let mutable _fb_w            = 10.0
+    let mutable anchor_x         = _d 0.0 _anchorX
+    let mutable anchor_y         = _d 0.0 _anchorY
 
     let child_grids = ObservableCollection<EditorViewModel>()
     let resizeEvent = Event<IGridUI>()
@@ -322,10 +310,12 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         trace "setWinPos: child will be positioned at %A" origin
         match existing with
         | Some(i, child) -> 
-            (* manually resize the child grid as per neovim docs *)
+            (* manually resize and position the child grid as per neovim docs *)
             child.initBuffer h w
+            child.AnchorX <- origin.X
+            child.AnchorY <- origin.Y
         | None -> 
-            let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx)
+            let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx, origin.X, origin.Y)
             child_grids.Add child
             //let wnd = Window()
             //wnd.Height  <- child_size.Y
@@ -503,6 +493,14 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     member __.GlyphWidth with get(): float = glyph_size.Width
     member __.TopLevel     with get(): bool  = parent.IsNone
 
+    member __.AnchorX
+        with get() : float = anchor_x
+        and set(v) = anchor_x <- v
+
+    member __.AnchorY
+        with get() : float = anchor_y
+        and set(v) = anchor_y <- v
+
     member this.MeasuredSize
         with get() : Size = measured_size
         and set(v) =
@@ -523,31 +521,31 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         e.Handled <- true
         raiseInputEvent <| InputEvent.Key(e.Modifiers, e.Key)
 
-    member __.OnMouseDown (e: PointerPressedEventArgs) (view: Visual) = 
+    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             e.Handled <- true
             mouse_pressed <- e.MouseButton
             raiseInputEvent <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
 
-    member __.OnMouseUp (e: PointerReleasedEventArgs) (view: Visual) = 
+    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             e.Handled <- true
             mouse_pressed <- MouseButton.None
             raiseInputEvent <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
 
-    member __.OnMouseMove (e: PointerEventArgs) (view: Visual) = 
+    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en && mouse_pressed <> MouseButton.None then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             e.Handled <- true
             if (x,y) <> mouse_pos then
                 mouse_pos <- x,y
                 raiseInputEvent <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
 
-    member __.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
+    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             let dx, dy = e.Delta.X, e.Delta.Y
             e.Handled <- true
             raiseInputEvent <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)

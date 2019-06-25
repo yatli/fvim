@@ -25,13 +25,15 @@ type EmbeddedEditor() as this =
 and Editor() as this =
     inherit Canvas()
 
+    static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
+
     let mutable m_saved_size  = Size(100.0,100.0)
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
-    let mutable (m_visualroot: Visual) = this :> Visual
+    let mutable (m_visualroot: IVisual) = this :> IVisual
 
     let trace fmt = 
         let nr =
@@ -210,7 +212,7 @@ and Editor() as this =
 
     do
         this.Watch [
-            this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root :?> Visual)
+            this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root)
             this.TextInput |> subscribeAndHandle(fun e vm -> vm.OnTextInput e)
             this.KeyDown   |> subscribeAndHandle(fun e vm -> vm.OnKey e)
             this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e m_visualroot)
@@ -223,10 +225,6 @@ and Editor() as this =
 
         ]
         AvaloniaXamlLoader.Load(this)
-
-    static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
-    static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
-    static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
     override this.Render ctx =
         (*trace "render begin"*)
@@ -255,11 +253,12 @@ and Editor() as this =
         doWithDataContext (fun vm ->
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
             let sz  =
-                if vm.TopLevel then
-                    vm.MeasuredSize <- size
-                    size
-                else
-                    Size(vm.BufferWidth, vm.BufferHeight)
+                if vm.TopLevel then size
+                // multigrid: size is top-down managed, which means that
+                // the measurement of the view should be consistent with
+                // the buffer size calculated from the viewmodel.
+                else Size(vm.BufferWidth, vm.BufferHeight)
+            vm.MeasuredSize <- sz
             sz
         )
 
@@ -267,9 +266,9 @@ and Editor() as this =
 
     interface IViewFor<EditorViewModel> with
         member this.ViewModel
-            with get (): EditorViewModel = this.GetValue(Editor.ViewModelProp)
-            and set (v: EditorViewModel): unit = this.SetValue(Editor.ViewModelProp, v)
+            with get (): EditorViewModel = this.GetValue(ViewModelProp)
+            and set (v: EditorViewModel): unit = this.SetValue(ViewModelProp, v)
         member this.ViewModel
-            with get (): obj = this.GetValue(Editor.ViewModelProp) :> obj
-            and set (v: obj): unit = this.SetValue(Editor.ViewModelProp, v)
+            with get (): obj = this.GetValue(ViewModelProp) :> obj
+            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
 
