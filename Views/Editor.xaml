@@ -12,7 +12,6 @@
       <Style Selector="ItemsControl > ContentPresenter">
         <Setter Property="Canvas.Left" Value="{Binding X, Mode=OneWay}"/>
         <Setter Property="Canvas.Top" Value="{Binding Y, Mode=OneWay}"/>
-        <Setter Property="ZIndex" Value="10" />
       </Style>
     </Canvas.Styles>
 
@@ -22,6 +21,7 @@
         Height              = "{Binding BufferHeight, Mode=OneWay}"
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
+        ZIndex              = "3"
         >
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
@@ -34,11 +34,9 @@
 
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-            <fvim:EmbeddedEditor 
+            <fvim:Editor 
                 HorizontalAlignment        = "Stretch"
                 VerticalAlignment          = "Stretch"
-                HorizontalContentAlignment = "Stretch"
-                VerticalContentAlignment   = "Stretch"
                 Width                      = "{Binding W,  Mode=OneWay}"
                 Height                     = "{Binding H,  Mode=OneWay}"
             />

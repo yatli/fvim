@@ -31,6 +31,7 @@ and Editor() as this =
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
+    let mutable (m_visualroot: Visual) = this :> Visual
 
     let trace fmt = 
         let nr =
@@ -176,7 +177,7 @@ and Editor() as this =
         match this.DataContext with
         | :? EditorViewModel as viewModel ->
             fn viewModel
-        | _ -> ()
+        | _ -> Unchecked.defaultof<_>
 
     let redraw tick =
         trace "render tick %d" tick
@@ -209,13 +210,13 @@ and Editor() as this =
 
     do
         this.Watch [
-
+            this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root :?> Visual)
             this.TextInput |> subscribeAndHandle(fun e vm -> vm.OnTextInput e)
             this.KeyDown   |> subscribeAndHandle(fun e vm -> vm.OnKey e)
-            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e this)
-            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e this)
-            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e this)
-            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e this)
+            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e m_visualroot)
+            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e m_visualroot)
+            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e m_visualroot)
+            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e m_visualroot)
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType<EditorViewModel>
             |> Observable.subscribe onViewModelConnected
@@ -250,12 +251,17 @@ and Editor() as this =
         (*trace "render end"*)
 
     override this.MeasureOverride(size) =
+        trace "MeasureOverride: %A" size
         doWithDataContext (fun vm ->
-            if vm.TopLevel then
-                vm.MeasuredSize <- size
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
+            let sz  =
+                if vm.TopLevel then
+                    vm.MeasuredSize <- size
+                    size
+                else
+                    Size(vm.BufferWidth, vm.BufferHeight)
+            sz
         )
-        size
 
     (*each event repeats 4 times... use the event instead *)
 

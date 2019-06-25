@@ -281,16 +281,16 @@ module ModelImpl =
 
     let mutable _imeArmed = false
 
-    let onInput: (IObservable<InputEvent> -> unit) =
+    let onInput: (IObservable<int*InputEvent> -> unit) =
         // filter out pure modifiers
-        Observable.filter (fun x -> 
+        Observable.filter (fun (_, x) -> 
             match x with
             | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin))
                 -> false
             | _ -> true) >>
         // translate to nvim keycode
-        Observable.map(fun x ->
-            trace "Model" "OnInput: %A" x
+        Observable.map(fun (gridid, x) ->
+            trace "Model" "grid #%d: OnInput: %A" gridid x
 
             match x with
             | ImeEvent    -> _imeArmed <- true

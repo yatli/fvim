@@ -85,9 +85,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let mutable _fb_h = 10.0
     let mutable _fb_w = 10.0
 
-    let child_grids = ObservableCollection<EmbeddedEditorViewModel>()
+    let child_grids = ObservableCollection<EditorViewModel>()
     let resizeEvent = Event<IGridUI>()
-    let inputEvent  = Event<InputEvent>()
+    let inputEvent  = Event<int*InputEvent>()
     let hlchangeEvent = Event<unit>()
 
     let toggleFullScreen(gridid: int) =
@@ -315,7 +315,7 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         trace "setWinPos: grid = %A, win = %A, startrow = %A, startcol = %A, w = %A, h = %A" grid win startrow startcol w h
         let existing =  child_grids 
                      |> Seq.indexed
-                     |> Seq.tryPick (function | (i, a) when (a.child :> IGridUI).Id = grid  -> Some(i, a.child)
+                     |> Seq.tryPick (function | (i, a) when (a :> IGridUI).Id = grid  -> Some(i, a)
                                               | _ -> None)
         let origin: Point = this.GetPoint startrow startcol
         let child_size    = this.GetPoint h w
@@ -324,11 +324,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | Some(i, child) -> 
             (* manually resize the child grid as per neovim docs *)
             child.initBuffer h w
-            child_grids.[i] <- new EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
         | None -> 
             let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx)
-            let anchor = new EmbeddedEditorViewModel(child, origin.X,origin.Y, child_size.X, child_size.Y)
-            child_grids.Add <| anchor
+            child_grids.Add child
             //let wnd = Window()
             //wnd.Height  <- child_size.Y
             //wnd.Width   <- child_size.X
@@ -358,6 +356,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
         | _ -> ()
+
+    let raiseInputEvent e =
+        inputEvent.Trigger(GridId, e)
 
     do
         let fg,bg,sp,_ = this.GetDrawAttrs 0
@@ -498,6 +499,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     member __.BufferHeight with get(): float = _fb_h
     member __.BufferWidth  with get(): float = _fb_w
+    member __.GlyphHeight with get(): float = glyph_size.Height
+    member __.GlyphWidth with get(): float = glyph_size.Width
     member __.TopLevel     with get(): bool  = parent.IsNone
 
     member this.MeasuredSize
@@ -509,7 +512,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             measured_size <- v
             let gw', gh' = gridui.GridWidth, gridui.GridHeight
             if gw <> gw' || gh <> gh' then 
-                resizeEvent.Trigger(this)
+                if this.TopLevel then
+                    resizeEvent.Trigger(this)
 
     member __.ChildGrids = child_grids
 
@@ -517,21 +521,21 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     member __.OnKey (e: KeyEventArgs) = 
         e.Handled <- true
-        inputEvent.Trigger <| InputEvent.Key(e.Modifiers, e.Key)
+        raiseInputEvent <| InputEvent.Key(e.Modifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             mouse_pressed <- e.MouseButton
-            inputEvent.Trigger <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
+            raiseInputEvent <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
             e.Handled <- true
             mouse_pressed <- MouseButton.None
-            inputEvent.Trigger <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
+            raiseInputEvent <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
 
     member __.OnMouseMove (e: PointerEventArgs) (view: Visual) = 
         if mouse_en && mouse_pressed <> MouseButton.None then
@@ -539,15 +543,15 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             e.Handled <- true
             if (x,y) <> mouse_pos then
                 mouse_pos <- x,y
-                inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
+                raiseInputEvent <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
         if mouse_en then
             let x, y = e.GetPosition view |> getPos
             let dx, dy = e.Delta.X, e.Delta.Y
             e.Handled <- true
-            inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
+            raiseInputEvent <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
-        inputEvent.Trigger <| InputEvent.TextInput(e.Text)
+        raiseInputEvent <| InputEvent.TextInput(e.Text)
 

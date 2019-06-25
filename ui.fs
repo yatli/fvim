@@ -181,7 +181,7 @@ module ui =
         /// Number of columns
         abstract GridWidth: int
         abstract Resized: IEvent<IGridUI>
-        abstract Input: IEvent<InputEvent>
+        abstract Input: IEvent<int*InputEvent>
         abstract HasChildren: bool
 
     open System.Runtime.InteropServices

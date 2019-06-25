@@ -288,7 +288,6 @@ type Process() =
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                        ob.OnNext(data)
                    with :? InvalidOperationException as ex ->
-                       trace "MessagePack: %s" <| ex.ToString()
                        ()
                 if proc.HasExited then
                     let code = proc.ExitCode
