@@ -2,6 +2,7 @@
 
 type Options =
     {
+        regFileAssoc: bool
         logToStdout: bool
         logToFile: string option
         logPatterns: string option
@@ -33,6 +34,7 @@ let parseOptions (args: string[]) =
     let ssh                 = eat2 "--ssh"
     let wsl                 = eat1 "--wsl"
     let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
+    let fileassoc           = eat1 "--register-file-association"
 
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
@@ -50,5 +52,6 @@ let parseOptions (args: string[]) =
         args            = args
         preArgs         = preargs
         stderrenc       = enc
+        regFileAssoc    = fileassoc
     }
 

@@ -293,7 +293,7 @@ type Process() =
                     let code = proc.ExitCode
                     trace "end read loop: process exited, code = %d" code
                     if code <> 0 then
-                        ob.OnNext(Crash code)
+                        ob.OnNext([|box(Crash code)|])
                         Thread.Sleep 2000
                 else
                     trace "end read loop: process still running (???)"
@@ -325,6 +325,8 @@ type Process() =
             // notification
             | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
                 -> Notification { method = method; parameters = parameters }
+            // event forwarding
+            | [| :? Event as e |] -> e
             | _ -> raise <| EventParseException(data)
 
         let intercept (ev: Event) =

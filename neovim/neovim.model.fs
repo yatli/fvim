@@ -71,7 +71,7 @@ module ModelImpl =
             async {
                 trace "rpc" "neovim crashed with code %d" code
                 do! FVim.log.flush()
-                Avalonia.Application.Current.Shutdown()
+                do! Async.AwaitTask(Dispatcher.UIThread.InvokeAsync(Avalonia.Application.Current.Shutdown))
             } |> Async.RunSynchronously
         | _ -> ()
 
