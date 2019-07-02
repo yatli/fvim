@@ -25,12 +25,15 @@ type EmbeddedEditor() as this =
 and Editor() as this =
     inherit Canvas()
 
+    static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
+
     let mutable m_saved_size  = Size(100.0,100.0)
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
+    let mutable (m_visualroot: IVisual) = this :> IVisual
 
     let trace fmt = 
         let nr =
@@ -176,7 +179,7 @@ and Editor() as this =
         match this.DataContext with
         | :? EditorViewModel as viewModel ->
             fn viewModel
-        | _ -> ()
+        | _ -> Unchecked.defaultof<_>
 
     let redraw tick =
         trace "render tick %d" tick
@@ -209,23 +212,19 @@ and Editor() as this =
 
     do
         this.Watch [
-
+            this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root)
             this.TextInput |> subscribeAndHandle(fun e vm -> vm.OnTextInput e)
             this.KeyDown   |> subscribeAndHandle(fun e vm -> vm.OnKey e)
-            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e this)
-            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e this)
-            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e this)
-            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e this)
+            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e m_visualroot)
+            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e m_visualroot)
+            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e m_visualroot)
+            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e m_visualroot)
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType<EditorViewModel>
             |> Observable.subscribe onViewModelConnected
 
         ]
         AvaloniaXamlLoader.Load(this)
-
-    static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
-    static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
-    static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
     override this.Render ctx =
         (*trace "render begin"*)
@@ -250,20 +249,26 @@ and Editor() as this =
         (*trace "render end"*)
 
     override this.MeasureOverride(size) =
+        trace "MeasureOverride: %A" size
         doWithDataContext (fun vm ->
-            if vm.TopLevel then
-                vm.MeasuredSize <- size
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
+            let sz  =
+                if vm.TopLevel then size
+                // multigrid: size is top-down managed, which means that
+                // the measurement of the view should be consistent with
+                // the buffer size calculated from the viewmodel.
+                else Size(vm.BufferWidth, vm.BufferHeight)
+            vm.MeasuredSize <- sz
+            sz
         )
-        size
 
     (*each event repeats 4 times... use the event instead *)
 
     interface IViewFor<EditorViewModel> with
         member this.ViewModel
-            with get (): EditorViewModel = this.GetValue(Editor.ViewModelProp)
-            and set (v: EditorViewModel): unit = this.SetValue(Editor.ViewModelProp, v)
+            with get (): EditorViewModel = this.GetValue(ViewModelProp)
+            and set (v: EditorViewModel): unit = this.SetValue(ViewModelProp, v)
         member this.ViewModel
-            with get (): obj = this.GetValue(Editor.ViewModelProp) :> obj
-            and set (v: obj): unit = this.SetValue(Editor.ViewModelProp, v)
+            with get (): obj = this.GetValue(ViewModelProp) :> obj
+            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
 

@@ -52,6 +52,7 @@
     </AvaloniaResource>
     <EmbeddedResource Include="nerd.ttf" />
     <Content Include="Assets\*" />
+    <None Include="icons\*.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -68,6 +69,7 @@
     <PackageReference Include="HarfBuzzSharp" Version="1.4.6.2" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="1.4.6.2" />
     <PackageReference Include="MessagePack" Version="1.7.3.7" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="4.5.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
