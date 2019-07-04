@@ -120,6 +120,11 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         hlchangeEvent.Trigger()
 
     let setDefaultColors fg bg sp = 
+
+        let bg = 
+            if fg = bg && bg = sp then GetReverseColor bg
+            else bg
+
         setHighlight {
             id = 0
             info = [||]
