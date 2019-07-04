@@ -37,7 +37,7 @@ module Program =
             |> fun x -> Path.Combine(x, "icons")
             |> Directory.GetFiles
             |> Array.filter (fun x -> x.EndsWith ".ico" && Path.GetFileName(x).StartsWith("."))
-            |> Array.map (fun x -> {| Icon = Path.GetFullPath(x); Ext = let x = Path.GetFileName(x) in x.Substring(0, x.Length - 4)|})
+            |> Array.map (fun x -> (Path.GetFullPath(x), let x = Path.GetFileName(x) in x.Substring(0, x.Length - 4)))
         FVim.log.trace "FVim" "registering file associations..."
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
             // Win32 fileassoc registration
@@ -75,15 +75,15 @@ module Program =
             // https://docs.microsoft.com/en-us/windows/desktop/shell/fa-how-work
             // https://docs.microsoft.com/en-us/windows/desktop/shell/fa-verbs
             // https://docs.microsoft.com/en-us/windows/desktop/shell/fa-progids
-            for ico in icons do
+            for (ico,ext) in icons do
                 // register ProgId
                 // https://docs.microsoft.com/en-us/windows/desktop/shell/how-to-register-a-file-type-for-a-new-application
-                let progId = "FVim" + ico.Ext
+                let progId = "FVim" + ext
                 use progIdKey = HKCR.CreateSubKey(progId)
                 use defaultIcon = progIdKey.CreateSubKey("DefaultIcon")
-                defaultIcon.SetValue("", ico.Icon)
+                defaultIcon.SetValue("", ico)
                 setupShell progIdKey
-                use extKey = HKCR.CreateSubKey(ico.Ext)
+                use extKey = HKCR.CreateSubKey(ext)
                 extKey.SetValue("", progId)
     }
 
