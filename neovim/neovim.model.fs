@@ -20,6 +20,8 @@ open System.ComponentModel
 
 open FSharp.Control.Tasks.V2
 
+let appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
+
 [<AutoOpen>]
 module ModelImpl =
 
@@ -66,12 +68,12 @@ module ModelImpl =
             try event.Trigger req.parameters
             with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
         | Redraw cmd -> redraw cmd 
-        | Exit -> Avalonia.Application.Current.Shutdown()
+        | Exit -> appLifetime.Shutdown()
         | Crash code ->
             async {
                 trace "rpc" "neovim crashed with code %d" code
                 do! FVim.log.flush()
-                do! Async.AwaitTask(Dispatcher.UIThread.InvokeAsync(Avalonia.Application.Current.Shutdown))
+                do! Async.AwaitTask(Dispatcher.UIThread.InvokeAsync(appLifetime.Shutdown))
             } |> Async.RunSynchronously
         | _ -> ()
 

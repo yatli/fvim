@@ -7,6 +7,8 @@ open FSharp.Data
 open Avalonia.ReactiveUI
 open System.Runtime.InteropServices
 open Microsoft.Win32
+open System.Threading
+open Avalonia.Controls.ApplicationLifetimes
 
 module Program =
 
@@ -87,9 +89,20 @@ module Program =
                 extKey.SetValue("", progId)
     }
 
-    // Your application's entry point.
-    [<CompiledName "AppMain">]
-    let appMain (app: Application) (args: string[]) =
+
+    // Initialization code. Don't use any Avalonia, third-party APIs or any
+    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
+    // yet and stuff might break.
+    [<EntryPoint>]
+    [<CompiledName "Main">]
+    let main(args: string[]) =
+        let _ = Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
+        let builder = buildAvaloniaApp()
+        let lifetime = new ClassicDesktopStyleApplicationLifetime(builder.Instance)
+        lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
+        builder.Instance.ApplicationLifetime <- lifetime
+        let _ = builder.SetupWithoutStarting()
+
         AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
             let filename = Path.Combine(config.configdir, sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")))
             use dumpfile = new StreamWriter(filename)
@@ -107,16 +120,8 @@ module Program =
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
         let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
         let mainwin = new MainWindowViewModel(workspace)
-        app.Run(MainWindow(DataContext = mainwin)) |> ignore
+        lifetime.MainWindow <- MainWindow(DataContext = mainwin)
+        let ret = lifetime.Start(args)
+
         config.save cfg mainwin.WindowX mainwin.WindowY mainwin.WindowWidth mainwin.WindowHeight mainwin.WindowState
-
-
-
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
-    [<EntryPoint>]
-    [<CompiledName "Main">]
-    let main(args: string[]) =
-        buildAvaloniaApp().Start(appMain, args)
-        0
+        ret

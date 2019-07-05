@@ -38,7 +38,7 @@ type MainWindow() as this =
 
             Model.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "Model" "DrawFPS: %A" v
-                Avalonia.Application.Current.MainWindow.Renderer.DrawFps <- v)
+                this.Renderer.DrawFps <- v)
 
             this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
                 if e.Data.Contains(DataFormats.FileNames) then

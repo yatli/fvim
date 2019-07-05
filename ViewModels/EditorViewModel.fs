@@ -345,7 +345,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | Bell                                                               -> bell false
         | VisualBell                                                         -> bell true
         | Busy is_busy                                                       -> setBusy is_busy
-        | SetTitle title                                                     -> Application.Current.MainWindow.Title <- title
+        | SetTitle title                                                     -> Model.appLifetime.MainWindow.Title <- title
         | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
