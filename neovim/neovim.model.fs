@@ -174,8 +174,11 @@ module ModelImpl =
         | Key(HasFlag(InputModifiers.Control), Key.Oem4)              -> Special "Esc"
         | Key(_, Key.Space)                                           -> Special "Space"
         | Key(HasFlag(InputModifiers.Shift), Key.OemComma)            -> Special "LT"
-        | Key(NoFlag(InputModifiers.Shift), Key.OemPipe)              -> Special "Bslash"
-        | Key(HasFlag(InputModifiers.Shift), Key.OemPipe)             -> Special "Bar"
+        // note, on Windows '\' is recognized as OemPipe but on macOS it's OemBackslash
+        | Key(NoFlag(InputModifiers.Shift), 
+             (Key.OemPipe | Key.OemBackslash))                        -> Special "Bslash"
+        | Key(HasFlag(InputModifiers.Shift), 
+             (Key.OemPipe | Key.OemBackslash))                        -> Special "Bar"
         | Key(_, Key.Delete)                                          -> Special "Del"
         | Key(HasFlag(InputModifiers.Alt), Key.Escape)                -> Special "xCSI"
         | Key(_, Key.Up)                                              -> Special "Up"
@@ -257,20 +260,23 @@ module ModelImpl =
     //| Key.Oem
     let rec (|ModifiersPrefix|_|) (x: InputEvent) =
         match x with
+        // -------------- keys with special form do not carry shift modifiers
         |  Key(m & HasFlag(InputModifiers.Shift), x &
-          (Key.OemComma | Key.OemPipe | Key.OemPeriod | Key.Oem2 | Key.OemSemicolon | Key.OemQuotes
+          (Key.OemComma | Key.OemPipe | Key.OemBackslash | Key.OemPeriod | Key.Oem2 | Key.OemSemicolon | Key.OemQuotes
         |  Key.Oem4 | Key.OemCloseBrackets | Key.OemMinus | Key.OemPlus | Key.OemTilde
         |  Key.D0 | Key.D1 | Key.D2 | Key.D3 
         |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
-        |  Key.D8 | Key.D9)) -> 
-            (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
-        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.M)) ->
-            (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Control), x)
+        |  Key.D8 | Key.D9)) 
+            -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
+        // -------------- C-x special forms do not carry control modifiers
+        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.M)) 
+            -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Control), x)
         | Key(m, _)
         | MousePress(m, _, _, _, _) 
         | MouseRelease(m, _, _, _) 
         | MouseDrag(m, _, _, _) 
-        | MouseWheel(m, _, _, _, _) ->
+        | MouseWheel(m, _, _, _, _) 
+            ->
             let c = if m.HasFlag(InputModifiers.Control) then "C-" else ""
             let a = if m.HasFlag(InputModifiers.Alt)     then "A-" else ""
             let d = if m.HasFlag(InputModifiers.Windows) then "D-" else ""
