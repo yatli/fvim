@@ -264,7 +264,7 @@ type Process() =
         | _, Some(_) -> failwith "neovim: already started"
         | _ -> ()
 
-        let args = "--embed" :: args 
+        let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
         let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false

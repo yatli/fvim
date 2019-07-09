@@ -89,10 +89,6 @@ module Program =
                 extKey.SetValue("", progId)
     }
 
-
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
     [<EntryPoint>]
     [<CompiledName "Main">]
     let main(args: string[]) =
@@ -102,6 +98,8 @@ module Program =
         lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
         builder.Instance.ApplicationLifetime <- lifetime
         let _ = builder.SetupWithoutStarting()
+
+        // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
         AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
             let filename = Path.Combine(config.configdir, sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")))
