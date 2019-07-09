@@ -233,6 +233,7 @@ module ModelImpl =
            Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
         |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
         |  Key(NoFlag(InputModifiers.Shift), x)                       -> Normal (x.ToString().ToLowerInvariant())
+        |  Key(_, Key.None)                                           -> Unrecognized
         |  Key(_, x)                                                  -> Normal (x.ToString())
         |  MousePress(_, r, c, but, cnt)                              -> Special(MB(but, cnt) + suffix("Mouse", c, r))
         |  MouseRelease(_, r, c, but)                                 -> Special(MB(but, 1) + suffix("Release", c, r))
