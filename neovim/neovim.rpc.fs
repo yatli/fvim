@@ -280,7 +280,7 @@ type Nvim() =
 
                 StartProcess <| Process.Start(psi)
             | Tcp ipe ->
-                let sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
                 sock.Connect(ipe)
                 ConnectTcp <| new NetworkStream(sock, true)
 
@@ -311,8 +311,12 @@ type Nvim() =
                    try
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                        ob.OnNext(data)
-                   with :? InvalidOperationException as ex ->
-                       ()
+                   with 
+                   | :? InvalidOperationException 
+                   | :? System.IO.IOException
+                   | :? System.Net.Sockets.SocketException
+                   | :? ObjectDisposedException
+                       -> ()
 
                 let ec = serverExitCode()
                 if ec.IsSome then
