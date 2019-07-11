@@ -8,6 +8,7 @@ open System
 open System.Diagnostics
 open System.Text
 open System.Collections.Concurrent
+open System.Net.Sockets
 open MessagePack
 open System.Collections.Generic
 open System.Threading.Tasks
@@ -240,63 +241,88 @@ let private parse_redrawcmd (x: obj) =
     //| C("suspend", _)                                                                    -> 
     //| C("update_menu", _)                                                                -> 
 
-type Process() = 
+type NvimIO =
+    | Disconnected
+    | StartProcess of Process
+    | ConnectTcp of NetworkStream
+
+type Nvim() = 
     let m_id = Guid.NewGuid()
     let mutable m_notify = default_notify
     let mutable m_call   = default_call
-    let mutable m_proc   = None
     let mutable m_events = None
+    let mutable m_io     = Disconnected
 
     member private this.events =
         match m_events with
         | Some events -> events
         | None -> failwith "events"
 
-    member private this.proc =
-        match m_proc with
-        | Some proc -> proc
-        | None -> failwith "process"
+    member __.start { server = serveropts; program = prog; preArgs = preargs; stderrenc = enc } =
+        match m_io, m_events with
+        | Disconnected, None -> ()
+        | _ -> failwith "neovim: already started"
 
+        let io = 
+            match serveropts with
+            | StartNew args ->
+                let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
+                let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
+                psi.CreateNoWindow          <- true
+                psi.ErrorDialog             <- false
+                psi.RedirectStandardError   <- true
+                psi.RedirectStandardInput   <- true
+                psi.RedirectStandardOutput  <- true
+                psi.StandardErrorEncoding   <- enc
+                psi.UseShellExecute         <- false
+                psi.WindowStyle             <- ProcessWindowStyle.Hidden
+                psi.WorkingDirectory        <- Environment.CurrentDirectory
 
-    member __.start { args = args; program = prog; preArgs = preargs; stderrenc = enc } =
-        match m_proc, m_events with
-        | Some(_) , _
-        | _, Some(_) -> failwith "neovim: already started"
-        | _ -> ()
+                StartProcess <| Process.Start(psi)
+            | Tcp ipe ->
+                let sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                sock.Connect(ipe)
+                ConnectTcp <| new NetworkStream(sock, true)
 
-        let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
-        let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
-        psi.CreateNoWindow          <- true
-        psi.ErrorDialog             <- false
-        psi.RedirectStandardError   <- true
-        psi.RedirectStandardInput   <- true
-        psi.RedirectStandardOutput  <- true
-        psi.StandardErrorEncoding   <- enc
-        psi.UseShellExecute         <- false
-        psi.WindowStyle             <- ProcessWindowStyle.Hidden
-        psi.WorkingDirectory        <- Environment.CurrentDirectory
+        let serverExitCode() =
+            match io with
+            | StartProcess proc -> if proc.HasExited then Some proc.ExitCode else None
+            | ConnectTcp _ -> None
+            | Disconnected -> Some -1
 
-        let proc   = Process.Start(psi)
-        let stdout = proc.StandardOutput.BaseStream
-        let stdin  = proc.StandardInput.BaseStream
+        let stdin, stdout, stderr = 
+            match io with
+            | StartProcess proc ->
+                let stdout = proc.StandardOutput.BaseStream
+                let stdin  = proc.StandardInput.BaseStream
+                let stderr = 
+                    proc.ErrorDataReceived 
+                    |> Observable.map (fun data -> Error data.Data )
+                proc.BeginErrorReadLine()
+                stdin, stdout, stderr
+            | ConnectTcp stream ->
+                stream :> System.IO.Stream, stream :> System.IO.Stream, Observable.empty
+            | _ -> failwith ""
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () -> 
                 trace "begin read loop"
-                while not proc.HasExited && not cancel.IsCancellationRequested do
+                while serverExitCode().IsNone && not cancel.IsCancellationRequested do
                    try
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                        ob.OnNext(data)
                    with :? InvalidOperationException as ex ->
                        ()
-                if proc.HasExited then
-                    let code = proc.ExitCode
+
+                let ec = serverExitCode()
+                if ec.IsSome then
+                    let code = ec.Value
                     trace "end read loop: process exited, code = %d" code
                     if code <> 0 then
                         ob.OnNext([|box(Crash code)|])
                         Thread.Sleep 2000
                 else
-                    trace "end read loop: process still running (???)"
+                    trace "end read loop: server process still running"
                     Thread.Sleep 2000
                 ob.OnCompleted()
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
@@ -351,9 +377,7 @@ type Process() =
             _startRead()
             |> Observable.filter    intercept
             |> Observable.concat    (Observable.single Exit)
-        let stderr = 
-            proc.ErrorDataReceived 
-            |> Observable.map (fun data -> Error data.Data )
+
         let events = Observable.merge stdout stderr
         
 
@@ -385,25 +409,27 @@ type Process() =
             return response
         }
 
-        proc.BeginErrorReadLine()
-
-        m_proc   <- Some proc
+        m_io <- io
         m_events <- Some events
         m_notify <- notify
         m_call   <- call
 
     member __.stop (timeout: int) =
-        match m_proc with
-        | Some proc ->
+        match m_io with
+        | StartProcess proc ->
             proc.CancelErrorRead()
             if not <| proc.WaitForExit(timeout) then
                 proc.Kill()
             proc.Close()
-            m_proc <- None
-            m_events <- None
-            m_notify <- default_notify
-            m_call <- default_call
-        | _ -> ()
+        | ConnectTcp stream -> 
+            stream.Close()
+            stream.Dispose()
+        | Disconnected -> ()
+
+        m_io <- Disconnected
+        m_events <- None
+        m_notify <- default_notify
+        m_call <- default_call
 
     member this.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
         this.events

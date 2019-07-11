@@ -25,7 +25,7 @@ let appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.
 [<AutoOpen>]
 module ModelImpl =
 
-    let nvim = Process()
+    let nvim = Nvim()
 
     let ev_redraw     = Event<RedrawCommand[]>()
 

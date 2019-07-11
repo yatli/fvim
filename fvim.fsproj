@@ -21,6 +21,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="common.fs" />
     <Compile Include="config.fs" />
     <Compile Include="getopt.fs" />
     <Compile Include="log.fs" />

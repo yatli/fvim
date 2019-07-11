@@ -1,5 +1,12 @@
 ﻿module FVim.getopt
 
+open Common
+open System.Net
+
+type ServerOptions =
+    | StartNew of args: string list
+    | Tcp of endpoint: IPEndPoint
+
 type Options =
     {
         regFileAssoc: bool
@@ -9,7 +16,7 @@ type Options =
         program: string
         stderrenc: System.Text.Encoding
         preArgs: string list
-        args: string list
+        server: ServerOptions
     }
 
 let parseOptions (args: string[]) =
@@ -35,6 +42,7 @@ let parseOptions (args: string[]) =
     let wsl                 = eat1 "--wsl"
     let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
     let fileassoc           = eat1 "--register-file-association"
+    let connect             = eat2 "--connect"
 
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
@@ -42,14 +50,21 @@ let parseOptions (args: string[]) =
     let prog                = if wsl then "wsl" elif ssh.IsSome then "ssh" else nvim
     let preargs             = if wsl then [nvim] elif ssh.IsSome then [ssh.Value; nvim] else []
     let enc                 = if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
-    let args                = List.ofSeq args
+
+    let serveropts = 
+        if connect.IsNone then 
+            StartNew(List.ofSeq args)
+        else
+            match connect.Value.Split(':') with
+            | [| ParseIp ipaddr; ParseUInt16 port |] -> Tcp(IPEndPoint(ipaddr, int port))
+            | _ -> failwith "unrecognized server address"
 
     { 
         logToStdout     = trace_to_stdout
         logToFile       = trace_to_file
         logPatterns     = trace_patterns
         program         = prog
-        args            = args
+        server          = serveropts
         preArgs         = preargs
         stderrenc       = enc
         regFileAssoc    = fileassoc
