@@ -32,11 +32,12 @@ type NvimIO =
     | StreamChannel of System.IO.Stream
 
 type Nvim() = 
-    let m_id = Guid.NewGuid()
     let mutable m_notify = default_notify
     let mutable m_call   = default_call
     let mutable m_events = None
     let mutable m_io     = Disconnected
+
+    member __.Id = Guid.NewGuid()
 
     member private this.events =
         match m_events with
@@ -165,7 +166,9 @@ type Nvim() =
                 // trace "response %d: %A" msgid rsp
                 match pending.TryRemove msgid with
                 | true, src -> src.SetResult rsp; false
-                | _ -> false
+                | _ -> 
+                    trace "call %d: error response %A" msgid rsp
+                    false
             | _ -> true
 
         let rec _startRead() =
@@ -212,10 +215,11 @@ type Nvim() =
         m_notify <- notify
         m_call   <- call
 
-    member __.isRemote =
-        match m_io with
-        | StreamChannel _ -> true
-        | _ -> false
+    member __.isRemote 
+        with get() =
+            match m_io with
+            | StreamChannel _ -> true
+            | _ -> false
 
     member __.stop (timeout: int) =
         match m_io with
@@ -275,3 +279,18 @@ type Nvim() =
 
     member __.quitall () =
         m_call { method = "nvim_command"; parameters = mkparams1 "confirm quitall" }
+
+    member __.set_client_info (name: string) (version: IDictionary<string, obj>) (_type: string) (methods: IDictionary<string,obj>) (attributes: IDictionary<string,string>) =
+        m_call { 
+            method = "nvim_set_client_info"
+            parameters = mkparams5 name version _type methods attributes
+        }
+
+    member __.list_chans() =
+        task {
+            let! rsp = m_call { method = "nvim_list_chans"; parameters = [||] }
+
+            match rsp.result with
+            | Choice1Of2(ObjArray arr) -> return arr
+            | _ -> return [||]
+        }

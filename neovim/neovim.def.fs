@@ -194,10 +194,11 @@ type EventParseException(data: obj) =
     member __.Input = data
     override __.Message = sprintf "Could not parse the neovim message: %A" data
 
-let mkparams1 (t1: 'T1)                                = [| box t1 |]
-let mkparams2 (t1: 'T1) (t2: 'T2)                      = [| box t1; box t2 |]
-let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)            = [| box t1; box t2; box t3 |]
-let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)  = [| box t1; box t2; box t3; box t4|]
+let mkparams1 (t1: 'T1)                                          = [| box t1 |]
+let mkparams2 (t1: 'T1) (t2: 'T2)                                = [| box t1; box t2 |]
+let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)                      = [| box t1; box t2; box t3 |]
+let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)            = [| box t1; box t2; box t3; box t4|]
+let mkparams5 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4) (t5: 'T5)  = [| box t1; box t2; box t3; box t4; box t5|]
 
 let (|ObjArray|_|) (x:obj) =
     match x with
@@ -214,6 +215,21 @@ let (|Bool|_|) (x:obj) =
 let (|String|_|) (x:obj) =
     match x with
     | :? string as x     -> Some x
+    | _ -> None
+
+let IsString (x:obj) =
+    match x with
+    | :? string as x     -> Some x
+    | _ -> None
+
+let Integer32 (x:obj) =
+    match x with
+    | :? int32  as x     -> Some(int32 x)
+    | :? int16  as x     -> Some(int32 x)
+    | :? int8   as x     -> Some(int32 x)
+    | :? uint16 as x     -> Some(int32 x)
+    | :? uint32 as x     -> Some(int32 x)
+    | :? uint8  as x     -> Some(int32 x)
     | _ -> None
 
 let (|Integer32|_|) (x:obj) =
@@ -249,6 +265,18 @@ let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
 let (|KV|_|) (k: string) (x: obj) =
     match x with
     | ObjArray [| (String key); x |] when key = k -> Some x
+    | _ -> None
+
+let FindKV (k: string) (x: obj) =
+    match x with
+    | ObjArray arr ->
+        Array.tryPick (function | (KV(k)x) -> Some x | _ -> None) arr
+    | _ -> None
+
+let (|FindKV|_|) (k: string) (x: obj) =
+    match x with
+    | ObjArray arr ->
+        Array.tryPick (function | (KV(k)x) -> Some x | _ -> None) arr
     | _ -> None
 
 let (|AmbiWidth|_|) (x: obj) =

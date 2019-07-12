@@ -3,6 +3,7 @@
 open getopt
 open log
 open ui
+open Common
 open neovim.def
 open neovim.proc
 
@@ -366,7 +367,47 @@ let Start opts =
         if hasInstance then
             Environment.Exit(0)
 
+        let clientId = nvim.Id.ToString()
+        let clientName = "FVim"
+        let clientVersion = 
+            dict [
+                "major", box "0"
+                "minor", box "1"
+                "prerelease", box "dev"
+            ]
+        let clientType = "ui"
+        let clientMethods = dict []
+        let clientAttributes = 
+            dict [
+                "InstanceId", clientId
+            ]
+
         let! _ = Async.AwaitTask(nvim.set_var "fvim_loaded" 1)
+        let! _ = Async.AwaitTask(nvim.set_client_info clientName clientVersion clientType clientMethods clientAttributes)
+        let! channels = Async.AwaitTask(nvim.list_chans())
+
+        let inline (>>=) (x: 'a option) (f: 'a -> 'b option) =
+            match x with
+            | Some x -> f x
+            | _ -> None
+
+        let ch_finder ch =
+            let chid = FindKV("id") ch >>= Integer32
+            
+            FindKV("client")ch
+            >>= fun client -> 
+                match client with
+                | FindKV("name")(String name) when name = clientName -> Some client
+                | _ -> None
+            >>= FindKV("attributes")
+            >>= FindKV("InstanceId")
+            >>= IsString
+            >>= fun iid -> if iid = clientId then chid else None
+
+        let myChannel = channels |> Seq.pick ch_finder
+
+        trace "Model" "FVim client channel is: %d" myChannel
+
         let dirs = 
             [
                 // home
