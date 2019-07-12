@@ -12,6 +12,7 @@ open System.Net.Sockets
 open System.Text
 open System.Collections.Concurrent
 open System.Collections.Generic
+open System.Security.Principal
 open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
@@ -28,7 +29,7 @@ let private default_call (e: Request) =
 type NvimIO =
     | Disconnected
     | StartProcess of Process
-    | ConnectTcp of NetworkStream
+    | StreamChannel of System.IO.Stream
 
 type Nvim() = 
     let m_id = Guid.NewGuid()
@@ -42,36 +43,49 @@ type Nvim() =
         | Some events -> events
         | None -> failwith "events"
 
-    member __.start { server = serveropts; program = prog; preArgs = preargs; stderrenc = enc } =
+    member private this.createIO ({ args = args; server = serveropts; program = prog; preArgs = preargs; stderrenc = enc } as opts) = 
+        match serveropts with
+        | StartNew ->
+            let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
+            let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
+            psi.CreateNoWindow          <- true
+            psi.ErrorDialog             <- false
+            psi.RedirectStandardError   <- true
+            psi.RedirectStandardInput   <- true
+            psi.RedirectStandardOutput  <- true
+            psi.StandardErrorEncoding   <- enc
+            psi.UseShellExecute         <- false
+            psi.WindowStyle             <- ProcessWindowStyle.Hidden
+            psi.WorkingDirectory        <- Environment.CurrentDirectory
+
+            StartProcess <| Process.Start(psi)
+        | Tcp ipe ->
+            let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            sock.Connect(ipe)
+            StreamChannel <| (new NetworkStream(sock, true) :> System.IO.Stream)
+        | NamedPipe addr ->
+            let pipe = new System.IO.Pipes.NamedPipeClientStream(".", addr, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
+            pipe.Connect()
+            StreamChannel pipe
+        | TryDaemon ->
+            try 
+                let pipe = new System.IO.Pipes.NamedPipeClientStream(".", FVim.Shell.FVimServerAddress, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
+                pipe.Connect(timeout=50)
+                StreamChannel pipe
+            with :? TimeoutException ->
+                this.createIO {opts with server = StartNew}
+
+    member this.start opts =
         match m_io, m_events with
         | Disconnected, None -> ()
         | _ -> failwith "neovim: already started"
 
-        let io = 
-            match serveropts with
-            | StartNew args ->
-                let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
-                let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
-                psi.CreateNoWindow          <- true
-                psi.ErrorDialog             <- false
-                psi.RedirectStandardError   <- true
-                psi.RedirectStandardInput   <- true
-                psi.RedirectStandardOutput  <- true
-                psi.StandardErrorEncoding   <- enc
-                psi.UseShellExecute         <- false
-                psi.WindowStyle             <- ProcessWindowStyle.Hidden
-                psi.WorkingDirectory        <- Environment.CurrentDirectory
-
-                StartProcess <| Process.Start(psi)
-            | Tcp ipe ->
-                let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
-                sock.Connect(ipe)
-                ConnectTcp <| new NetworkStream(sock, true)
+        let io = this.createIO opts
 
         let serverExitCode() =
             match io with
             | StartProcess proc -> if proc.HasExited then Some proc.ExitCode else None
-            | ConnectTcp _ -> None
+            | StreamChannel _ -> None
             | Disconnected -> Some -1
 
         let stdin, stdout, stderr = 
@@ -84,14 +98,15 @@ type Nvim() =
                     |> Observable.map (fun data -> Error data.Data )
                 proc.BeginErrorReadLine()
                 stdin, stdout, stderr
-            | ConnectTcp stream ->
-                stream :> System.IO.Stream, stream :> System.IO.Stream, Observable.empty
+            | StreamChannel stream ->
+                stream, stream, Observable.empty
             | _ -> failwith ""
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () -> 
                 trace "begin read loop"
-                while serverExitCode().IsNone && not cancel.IsCancellationRequested do
+                let mutable ex = false
+                while not ex && serverExitCode().IsNone && not cancel.IsCancellationRequested do
                    try
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                        ob.OnNext(data)
@@ -100,7 +115,7 @@ type Nvim() =
                    | :? System.IO.IOException
                    | :? System.Net.Sockets.SocketException
                    | :? ObjectDisposedException
-                       -> ()
+                       -> ex <- true
 
                 let ec = serverExitCode()
                 if ec.IsSome then
@@ -108,10 +123,10 @@ type Nvim() =
                     trace "end read loop: process exited, code = %d" code
                     if code <> 0 then
                         ob.OnNext([|box(Crash code)|])
+                        // sleep, allow message to be flushed
                         Thread.Sleep 2000
                 else
-                    trace "end read loop: server process still running"
-                    Thread.Sleep 2000
+                    trace "end read loop."
                 ob.OnCompleted()
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
@@ -147,8 +162,9 @@ type Nvim() =
             match ev with
             | Response(msgid, rsp) ->
                 // intercept response message, if it can be completed successfully
+                // trace "response %d: %A" msgid rsp
                 match pending.TryRemove msgid with
-                | true, src -> src.TrySetResult rsp |> not
+                | true, src -> src.SetResult rsp; false
                 | _ -> false
             | _ -> true
 
@@ -185,22 +201,21 @@ type Nvim() =
             then failwith "call: cannot create call request"
 
             let payload = mkparams4 0 myid ev.method ev.parameters
-            MessagePackSerializer.ToJson(payload) |> trace "call: %s"
+            MessagePackSerializer.ToJson(payload) |> trace "call: %d -> %s" myid
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
-            let! response = src.Task
-
-            match response.result with
-            | Choice2Of2 err -> trace "call #%d(%s) failed with: %A" myid ev.method err
-            | _ -> ()
-
-            return response
+            return! src.Task
         }
 
         m_io <- io
         m_events <- Some events
         m_notify <- notify
         m_call   <- call
+
+    member __.isRemote =
+        match m_io with
+        | StreamChannel _ -> true
+        | _ -> false
 
     member __.stop (timeout: int) =
         match m_io with
@@ -209,7 +224,7 @@ type Nvim() =
             if not <| proc.WaitForExit(timeout) then
                 proc.Kill()
             proc.Close()
-        | ConnectTcp stream -> 
+        | StreamChannel stream -> 
             stream.Close()
             stream.Dispose()
         | Disconnected -> ()
@@ -239,9 +254,24 @@ type Nvim() =
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 
+    member __.exists (var: string) =
+        task {
+            let! response = m_call { method = "nvim_call_function"; parameters = mkparams2 "exists" (mkparams1 var) }
+            //return response
+            trace "exists: response = %A" response
+            match response.result with
+            | Choice1Of2(Integer32 1) -> return true
+            | _ -> return false
+        }
+
     member __.set_var (var: string) (value: obj) =
         m_call { method = "nvim_set_var"; parameters = mkparams2 var value }
 
     member __.command (cmd: string) =
         m_call { method = "nvim_command"; parameters = mkparams1 cmd }
 
+    member __.edit (file: string) =
+        m_call { method = "nvim_command"; parameters = mkparams1 ("edit " + file) }
+
+    member __.quitall () =
+        m_call { method = "nvim_command"; parameters = mkparams1 "confirm quitall" }

@@ -1,5 +1,7 @@
 module FVim.Common
 
+open System.Runtime.InteropServices
+
 let (|ParseUInt16|_|) (x: string) =
     match System.UInt16.TryParse x with
     | true, x -> Some x
@@ -16,3 +18,4 @@ let (|ParseIp|_|) (x: string) =
     | _ -> 
         try System.Net.Dns.GetHostEntry(x).AddressList.[0] |> Some
         with _ -> None
+

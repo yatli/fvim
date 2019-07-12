@@ -1,7 +1,8 @@
 ﻿namespace FVim
 
-open neovim.def
 open log
+open ui
+open neovim.def
 
 open ReactiveUI
 open Avalonia
@@ -19,7 +20,6 @@ open System
 open System.Collections.Generic
 open System.Reactive.Disposables
 open System.Reactive.Linq
-open ui
 open Avalonia.Visuals.Media.Imaging
 open System.Runtime.InteropServices
 

@@ -25,13 +25,20 @@ let flush() =
         do! Async.Sleep 2000
     }
 
-let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPatterns } =
+let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPatterns; intent = intent } =
     #if DEBUG
     let logToStdout = true
     #endif
     if logToStdout then 
         _logsSink.Add(fun str -> printfn "%s" str)
-    let logToFile = Option.defaultValue (System.IO.Path.Combine(config.configdir, "fvim.log")) logToFile
+    let time = System.DateTime.Now
+    let ftime = time.ToString "yyyy-MM-dd-hh-mm-ss"
+    let fprefix = 
+        match intent with
+        | Daemon -> "fvim-daemon"
+        | _ -> "fvim"
+    let logname = sprintf "%s-%s.log" fprefix ftime
+    let logToFile = Option.defaultValue (System.IO.Path.Combine(config.configdir, logname)) logToFile
     try System.IO.File.Delete logToFile
     with _ -> ()
     _logsSink
@@ -48,4 +55,4 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
         trace "log" "trace patterns: %A" patterns
         _filter <- fun s -> Array.exists (fun (x: string) -> s.Contains x) patterns
 
-    trace "log" "fvim started. time = %A" System.DateTime.Now
+    trace "log" "fvim started. time = %A" time

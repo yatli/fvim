@@ -355,8 +355,18 @@ let Start opts =
     ] 
 
     trace "Model" "commencing early initialization..."
-    task {
-        let! _ = nvim.set_var "fvim_loaded" 1
+    async {
+        // for remote, send open file args as edit commands
+        if nvim.isRemote then
+            for file in opts.args do
+                let! _ = Async.AwaitTask(nvim.edit file)
+                in ()
+
+        let! hasInstance = Async.AwaitTask(nvim.exists "g:fvim_loaded")
+        if hasInstance then
+            Environment.Exit(0)
+
+        let! _ = Async.AwaitTask(nvim.set_var "fvim_loaded" 1)
         let dirs = 
             [
                 // home
@@ -367,10 +377,11 @@ let Start opts =
                 System.Reflection.Assembly.GetExecutingAssembly().Location |> System.IO.Path.GetDirectoryName
             ] |> List.map System.IO.Path.GetFullPath
         if List.contains Environment.CurrentDirectory dirs then
-            let! _ = nvim.set_var "fvim_startify" 1
-            ()
-    } |> ignore
+            let! _ = Async.AwaitTask(nvim.set_var "fvim_startify" 1)
+            in ()
+    }
 
+    
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
     gridui.Resized 
@@ -395,7 +406,7 @@ let OnGridReady(gridui: IGridUI) =
             // TODO ideally this should be triggered in `nvim_command("autocmd VimEnter * call rpcrequest(1, 'vimenter')")`
             // as per :help ui-start
             let! _ = nvim.command "runtime! ginit.vim"
-            ()
+            in ()
         } |> ignore
 
 let OnTerminated (args) =
@@ -406,7 +417,7 @@ let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
     trace "Model" "window is closing"
     task {
-        let! _ = nvim.command "confirm quitall"
+        let! _ = nvim.quitall()
         ()
     } |> ignore
     ()
@@ -414,7 +425,7 @@ let OnTerminating(args: CancelEventArgs) =
 let EditFiles (files: string seq) =
     task {
         for file in files do
-            let! _ = nvim.command <| "edit " + file
+            let! _ = nvim.edit file
             ()
     } |> ignore
 

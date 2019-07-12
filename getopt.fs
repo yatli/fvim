@@ -4,16 +4,23 @@ open Common
 open System.Net
 
 type ServerOptions =
-    | StartNew of args: string list
+    | StartNew
     | Tcp of endpoint: IPEndPoint
     | NamedPipe of address: string
+    | TryDaemon
+
+type Intent =
+    | Start
+    | Setup
+    | Daemon
 
 type Options =
     {
-        regFileAssoc: bool
+        intent: Intent
         logToStdout: bool
         logToFile: string option
         logPatterns: string option
+        args: string list
         program: string
         stderrenc: System.Text.Encoding
         preArgs: string list
@@ -42,8 +49,10 @@ let parseOptions (args: string[]) =
     let ssh                 = eat2 "--ssh"
     let wsl                 = eat1 "--wsl"
     let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
-    let fileassoc           = eat1 "--register-file-association"
     let connect             = eat2 "--connect"
+    let setup               = eat1 "--setup"
+    let tryDaemon           = eat1 "--tryDaemon"
+    let runDaemon           = eat1 "--daemon"
 
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
@@ -52,9 +61,16 @@ let parseOptions (args: string[]) =
     let preargs             = if wsl then [nvim] elif ssh.IsSome then [ssh.Value; nvim] else []
     let enc                 = if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
 
+    let intent = 
+        if setup then Setup
+        elif runDaemon then Daemon
+        else Start
+
     let serveropts = 
-        if connect.IsNone then 
-            StartNew(List.ofSeq args)
+        if tryDaemon then
+            TryDaemon
+        elif connect.IsNone then 
+            StartNew
         else
             match connect.Value.Split(':') with
             | [| ParseIp ipaddr; ParseUInt16 port |] -> Tcp(IPEndPoint(ipaddr, int port))
@@ -65,9 +81,10 @@ let parseOptions (args: string[]) =
         logToFile       = trace_to_file
         logPatterns     = trace_patterns
         program         = prog
+        args            = List.ofSeq args
         server          = serveropts
         preArgs         = preargs
         stderrenc       = enc
-        regFileAssoc    = fileassoc
+        intent          = intent
     }
 

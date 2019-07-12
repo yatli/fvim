@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "fvim": {
+      "commandName": "Project",
+      "commandLineArgs": "--tryDaemon"
+    }
+  }
+}
