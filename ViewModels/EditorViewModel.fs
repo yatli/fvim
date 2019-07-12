@@ -4,7 +4,6 @@ open log
 open ui
 open wcwidth
 open neovim.def
-open neovim.rpc
 
 open ReactiveUI
 open Avalonia

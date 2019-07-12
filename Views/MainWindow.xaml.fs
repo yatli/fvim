@@ -1,6 +1,6 @@
 ﻿namespace FVim
 
-open neovim.rpc
+open neovim.def
 open log
 
 open ReactiveUI

@@ -5,3 +5,4 @@ bin/
 publish/
 .paket
 packages
+desktop.ini

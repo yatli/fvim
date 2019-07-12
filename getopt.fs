@@ -6,6 +6,7 @@ open System.Net
 type ServerOptions =
     | StartNew of args: string list
     | Tcp of endpoint: IPEndPoint
+    | NamedPipe of address: string
 
 type Options =
     {
@@ -57,7 +58,7 @@ let parseOptions (args: string[]) =
         else
             match connect.Value.Split(':') with
             | [| ParseIp ipaddr; ParseUInt16 port |] -> Tcp(IPEndPoint(ipaddr, int port))
-            | _ -> failwith "unrecognized server address"
+            | _ -> NamedPipe connect.Value
 
     { 
         logToStdout     = trace_to_stdout

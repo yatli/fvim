@@ -28,7 +28,7 @@
     <Compile Include="wcwidth.fs" />
     <Compile Include="ui.fs" />
     <Compile Include="neovim\neovim.def.fs" />
-    <Compile Include="neovim\neovim.rpc.fs" />
+    <Compile Include="neovim\neovim.process.fs" />
     <Compile Include="neovim\neovim.model.fs" />
     <Compile Include="ViewModels\GridVisualViewModel.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />

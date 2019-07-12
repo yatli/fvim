@@ -4,7 +4,7 @@ open getopt
 open log
 open ui
 open neovim.def
-open neovim.rpc
+open neovim.proc
 
 open Avalonia.Diagnostics.ViewModels
 open Avalonia.Media
