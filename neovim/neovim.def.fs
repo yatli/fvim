@@ -1,6 +1,7 @@
 ﻿module FVim.neovim.def
 
 open FVim.log
+open FVim.Common
 
 open Avalonia.Media
 open System.Collections.Generic
@@ -242,6 +243,20 @@ let (|Integer32|_|) (x:obj) =
     | :? uint8  as x     -> Some(int32 x)
     | _ -> None
 
+// converts to bool in a desperate (read: JavaScript) attempt
+let (|ForceBool|_|) (x:obj) =
+    match x with
+    | Bool x -> Some x
+    | String("v:true")
+    | String("true") -> Some true
+    | String("v:false") 
+    | String("false") -> Some false
+    | String(ParseInt32 x) when x <> 0 -> Some true
+    | String(ParseInt32 x) when x = 0 -> Some false
+    | String("") -> Some false
+    | String(_) -> Some true
+    | _ -> None
+
 let (|C|_|) (x:obj) =
     match x with
     | ObjArray x -> 
@@ -271,12 +286,20 @@ let FindKV (k: string) (x: obj) =
     match x with
     | ObjArray arr ->
         Array.tryPick (function | (KV(k)x) -> Some x | _ -> None) arr
+    | :? hashmap<obj, obj> as dict ->
+        match dict.TryGetValue k with
+        | true, x -> Some x
+        | _ -> None
     | _ -> None
 
 let (|FindKV|_|) (k: string) (x: obj) =
     match x with
     | ObjArray arr ->
         Array.tryPick (function | (KV(k)x) -> Some x | _ -> None) arr
+    | :? hashmap<obj, obj> as dict ->
+        match dict.TryGetValue k with
+        | true, x -> Some x
+        | _ -> None
     | _ -> None
 
 let (|AmbiWidth|_|) (x: obj) =
@@ -312,12 +335,12 @@ let private _c  = (|Color|_|)
 let private _s  = (|String|_|)
 let private _b  = (|Bool|_|)
 
-let _get (map: Dictionary<obj, obj>) (key: string) (fn: obj -> 'a option) =
+let _get (map: hashmap<obj, obj>) (key: string) (fn: obj -> 'a option) =
     let (|OK_FN|_|) = fn
     match map.TryGetValue key with
     | true, OK_FN x -> Some x
     | _ -> None
-let _getd (map: Dictionary<obj, obj>) (key: string) (fn: obj -> 'a option) d =
+let _getd (map: hashmap<obj, obj>) (key: string) (fn: obj -> 'a option) d =
     let (|OK_FN|_|) = fn
     match map.TryGetValue key with
     | true, OK_FN x -> x
@@ -325,7 +348,7 @@ let _getd (map: Dictionary<obj, obj>) (key: string) (fn: obj -> 'a option) d =
 
 let (|HighlightAttr|_|) (x: obj) =
     match x with
-    | :? Dictionary<obj, obj> as map ->
+    | :? hashmap<obj, obj> as map ->
         let inline _get a b = _get map a b
         let inline _getd a b = _getd map a b
         Some {
@@ -362,7 +385,7 @@ let parse_default_colors (x: obj) =
 
 let parse_mode_info (x: obj) =
     match x with
-    | :? Dictionary<obj, obj> as map ->
+    | :? hashmap<obj, obj> as map ->
         let inline _get a b = _get map a b
         Some {
                 cursor_shape    =  _get  "cursor_shape"    _cs

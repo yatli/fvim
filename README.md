@@ -18,6 +18,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
 - Use the front end with a remote neovim: `fvim --ssh user@host`
 - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
+- Host a daemon to preload NeoVim:
+    - `fvim --daemon`
+    - `fvim --tryDaemon`
 
 Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
@@ -27,16 +30,15 @@ if exists('g:fvim_loaded')
     " Ctrl-ScrollWheel for zooming in/out
     nnoremap <silent> <C-ScrollWheelUp> :set guifont=+<CR>
     nnoremap <silent> <C-ScrollWheelDown> :set guifont=-<CR>
-    nnoremap <A-CR> :call rpcnotify(1, 'ToggleFullScreen', 1)<CR>
+    nnoremap <A-CR> :FVimToggleFullScreen<CR>
 endif
 ```
 
 Some work-in-progress fancy cursor effects:
 ```vimL
 if exists('g:fvim_loaded')
-    " 1st param = blink animation
-    " 2nd param = move animation
-    call rpcnotify(1, 'SetCursorAnimation', v:true, v:true)
+    FVimCursorSmoothMove v:true
+    FVimCursorSmoothBlink v:true
 endif
 ```
 ![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
@@ -61,6 +63,28 @@ git clone https://github.com/yatli/fvim
 cd fvim
 dotnet build -c Release
 dotnet run -c Release
+```
+### FVim-specific commands
+
+The following new commands are available:
+```vimL
+" Toggle between normal and fullscreen
+FVimToggleFullScreen
+
+" Cursor tweaks
+FVimCursorSmoothMove v:true
+FVimCursorSmoothBlink v:true
+
+" Debug UI overlay
+FVimDrawFPS v:true
+
+" Font tweaks
+FVimFontAntialias v:true
+FVimFontDrawBounds v:true
+FVimFontAutohint v:true
+FVimFontSubpixel v:true
+FVimFontLcdRender v:true
+FVimFontHintLevel 'full'
 ```
 
 ### Goals

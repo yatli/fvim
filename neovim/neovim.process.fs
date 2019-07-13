@@ -3,6 +3,7 @@ module FVim.neovim.proc
 open def
 open FVim.getopt
 open FVim.log
+open FVim.Common
 
 open MessagePack
 
@@ -48,7 +49,7 @@ type Nvim() =
         match serveropts with
         | StartNew ->
             let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
-            let psi  = ProcessStartInfo(prog, String.Join(" ", preargs @ args))
+            let psi  = ProcessStartInfo(prog, join(preargs @ args))
             psi.CreateNoWindow          <- true
             psi.ErrorDialog             <- false
             psi.RedirectStandardError   <- true
@@ -163,12 +164,13 @@ type Nvim() =
             match ev with
             | Response(msgid, rsp) ->
                 // intercept response message, if it can be completed successfully
-                // trace "response %d: %A" msgid rsp
+                match rsp.result with
+                | Choice2Of2 err -> trace "call %d: error response %A" msgid err
+                | _ -> ()
+
                 match pending.TryRemove msgid with
                 | true, src -> src.SetResult rsp; false
-                | _ -> 
-                    trace "call %d: error response %A" msgid rsp
-                    false
+                | _ -> false
             | _ -> true
 
         let rec _startRead() =
@@ -251,7 +253,7 @@ type Nvim() =
         m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
-        let opts = Dictionary<string, bool>()
+        let opts = hashmap[]
         opts.[uiopt_rgb]          <- true
         (*opts.[uiopt_ext_multigrid] <- true*)
         opts.[uiopt_ext_linegrid] <- true
@@ -274,13 +276,22 @@ type Nvim() =
     member __.command (cmd: string) =
         m_call { method = "nvim_command"; parameters = mkparams1 cmd }
 
-    member __.edit (file: string) =
-        m_call { method = "nvim_command"; parameters = mkparams1 ("edit " + file) }
+    member nvim.``command!`` (name: string) (nargs: int) (cmd: string) =
+        let nargs = 
+            match nargs with
+            | 0 -> "0"
+            | 1 -> "1"
+            | _ -> "+"
 
-    member __.quitall () =
-        m_call { method = "nvim_command"; parameters = mkparams1 "confirm quitall" }
+        nvim.command(sprintf "command! -nargs=%s %s %s" nargs name cmd)
 
-    member __.set_client_info (name: string) (version: IDictionary<string, obj>) (_type: string) (methods: IDictionary<string,obj>) (attributes: IDictionary<string,string>) =
+    member nvim.edit (file: string) =
+        nvim.command ("edit " + file)
+
+    member nvim.quitall () =
+        nvim.command "confirm quitall"
+
+    member __.set_client_info (name: string) (version: hashmap<string,string>) (_type: string) (methods: hashmap<string,string>) (attributes: hashmap<string,string>) =
         m_call { 
             method = "nvim_set_client_info"
             parameters = mkparams5 name version _type methods attributes

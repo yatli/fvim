@@ -23,6 +23,8 @@ open FSharp.Control.Tasks.V2
 
 let appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
 
+let private trace x = trace "Model" x
+
 [<AutoOpen>]
 module ModelImpl =
 
@@ -31,10 +33,10 @@ module ModelImpl =
     let ev_redraw     = Event<RedrawCommand[]>()
 
     // request handlers are explicitly registered, 1:1, with no broadcast.
-    let requestHandlers      = Dictionary<string, obj[] -> Response Async>()
+    let requestHandlers      = hashmap[]
     // notification events are broadcasted to all subscribers.
-    let notificationEvents   = Dictionary<string, Event<obj[]>>()
-    let grids                = Dictionary<int, IGridUI>()
+    let notificationEvents   = hashmap[]
+    let grids                = hashmap[]
 
     let getNotificationEvent eventName =
         match notificationEvents.TryGetValue eventName with
@@ -72,14 +74,14 @@ module ModelImpl =
         | Exit -> appLifetime.Shutdown()
         | Crash code ->
             async {
-                trace "rpc" "neovim crashed with code %d" code
+                trace "neovim crashed with code %d" code
                 do! FVim.log.flush()
                 do! Async.AwaitTask(Dispatcher.UIThread.InvokeAsync(appLifetime.Shutdown))
             } |> Async.RunSynchronously
         | _ -> ()
 
     let onGridResize(gridui: IGridUI) =
-        trace "Model" "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
+        trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
     //  notation                                    meaning                                         equivalent                    decimal value(s)      ~
@@ -300,7 +302,7 @@ module ModelImpl =
             | _ -> true) >>
         // translate to nvim keycode
         Observable.map(fun (gridid, x) ->
-            trace "Model" "grid #%d: OnInput: %A" gridid x
+            trace "grid #%d: OnInput: %A" gridid x
 
             match x with
             | ImeEvent    -> _imeArmed <- true
@@ -317,7 +319,7 @@ module ModelImpl =
             | (Normal n)                            -> [ n ]
             | ImeEvent                              -> []
             | TextInput txt when _imeArmed          -> [ txt ]
-            | x                                     -> trace "input" "rejected: %A" x; []
+            | x                                     -> trace "rejected: %A" x; []
         ) >>
         // hook up nvim_input
         // TODO dispose the subscription when grid is destroyed
@@ -338,8 +340,8 @@ let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish |> Observable.subsc
 /// </summary>
 let Start opts =
 
-    trace "Model" "starting neovim instance..."
-    trace "Model" "opts = %A" opts
+    trace "starting neovim instance..."
+    trace "opts = %A" opts
     nvim.start opts
     ignore <|
     nvim.subscribe 
@@ -355,7 +357,7 @@ let Start opts =
         Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
     ] 
 
-    trace "Model" "commencing early initialization..."
+    trace "commencing early initialization..."
     async {
         // for remote, send open file args as edit commands
         if nvim.isRemote then
@@ -370,15 +372,15 @@ let Start opts =
         let clientId = nvim.Id.ToString()
         let clientName = "FVim"
         let clientVersion = 
-            dict [
-                "major", box "0"
-                "minor", box "1"
-                "prerelease", box "dev"
+            hashmap [
+                "major", "0"
+                "minor", "1"
+                "prerelease", "dev"
             ]
         let clientType = "ui"
-        let clientMethods = dict []
+        let clientMethods = hashmap []
         let clientAttributes = 
-            dict [
+            hashmap [
                 "InstanceId", clientId
             ]
 
@@ -393,7 +395,7 @@ let Start opts =
 
         let ch_finder ch =
             let chid = FindKV("id") ch >>= Integer32
-            
+
             FindKV("client")ch
             >>= fun client -> 
                 match client with
@@ -405,21 +407,22 @@ let Start opts =
             >>= fun iid -> if iid = clientId then chid else None
 
         let myChannel = channels |> Seq.pick ch_finder
+        trace "FVim client channel is: %d" myChannel
+        let! _ = Async.AwaitTask(nvim.set_var "fvim_channel" myChannel)
 
-        trace "Model" "FVim client channel is: %d" myChannel
+        let! _ = Async.AwaitTask(nvim.``command!`` "FVimToggleFullScreen" 0 (sprintf "call rpcnotify(%d, 'ToggleFullScreen', 1)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothmove', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothblink', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
 
-        let dirs = 
-            [
-                // home
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                // system
-                Environment.GetFolderPath(Environment.SpecialFolder.System)
-                // bin
-                System.Reflection.Assembly.GetExecutingAssembly().Location |> System.IO.Path.GetDirectoryName
-            ] |> List.map System.IO.Path.GetFullPath
-        if List.contains Environment.CurrentDirectory dirs then
-            let! _ = Async.AwaitTask(nvim.set_var "fvim_startify" 1)
-            in ()
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.bounds', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutohint" 1 (sprintf "call rpcnotify(%d, 'font.autohint', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontSubpixel" 1 (sprintf "call rpcnotify(%d, 'font.subpixel', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLcdRender" 1 (sprintf "call rpcnotify(%d, 'font.lcdrender', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 (sprintf "call rpcnotify(%d, 'font.hindLevel', <args>)" myChannel))
+
+        ()
     }
 
     
@@ -439,7 +442,7 @@ let OnGridReady(gridui: IGridUI) =
         // Grid #1 is the main grid.
         // When ready, the UI should be ready for events now. 
         // Notify nvim about its presence
-        trace "Model" 
+        trace 
               "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
         task {
@@ -451,12 +454,12 @@ let OnGridReady(gridui: IGridUI) =
         } |> ignore
 
 let OnTerminated (args) =
-    trace "Model" "terminating nvim..."
+    trace "terminating nvim..."
     nvim.stop 1
 
 let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
-    trace "Model" "window is closing"
+    trace "window is closing"
     task {
         let! _ = nvim.quitall()
         ()

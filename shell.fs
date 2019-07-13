@@ -4,6 +4,7 @@ module FVim.Shell
 
 open log
 open getopt
+open Common
 
 open System
 open System.IO
@@ -129,7 +130,7 @@ let daemon {args=args; program=program; stderrenc = enc} =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then @"\\.\pipe\" + FVimServerAddress
         else FVimServerAddress
     while true do
-        let psi = ProcessStartInfo(program, String.Join(" ", "--headless" :: "--listen" :: pipeaddr :: args))
+        let psi = ProcessStartInfo(program, join("--headless" :: "--listen" :: pipeaddr :: args))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true

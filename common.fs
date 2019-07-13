@@ -19,3 +19,7 @@ let (|ParseIp|_|) (x: string) =
         try System.Net.Dns.GetHostEntry(x).AddressList.[0] |> Some
         with _ -> None
 
+type hashmap<'a, 'b> = System.Collections.Generic.Dictionary<'a, 'b>
+let hashmap (xs: seq<'a*'b>) = new hashmap<'a,'b>(xs |> Seq.map (fun (a,b) -> System.Collections.Generic.KeyValuePair(a,b)))
+
+let join (xs: string seq) = System.String.Join(" ", xs)

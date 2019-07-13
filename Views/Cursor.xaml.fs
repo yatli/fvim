@@ -36,6 +36,9 @@ type Cursor() as this =
     let mutable cursor_fb_vm = CursorViewModel()
     let mutable cursor_fb_s = 1.0
 
+    let mutable smooth_blink = false
+    let mutable smooth_move = false
+
     let ensure_fb() =
         let s = this.GetVisualRoot().RenderScaling
         if (cursor_fb_vm.VisualChecksum(),cursor_fb_s) <> (this.ViewModel.VisualChecksum(),s) then
@@ -88,15 +91,15 @@ type Cursor() as this =
             cursorTimerRun blinkon this.ViewModel.blinkwait
             this.InvalidateVisual()
 
-    let setCursorAnimation (blink_en: bool) (move_en: bool) =
+    let setCursorAnimation() =
         let transitions = Transitions()
-        if blink_en then 
+        if smooth_blink then 
             let blink_transition = DoubleTransition()
             blink_transition.Property <- Cursor.OpacityProperty
             blink_transition.Duration <- TimeSpan.FromMilliseconds(150.0)
             blink_transition.Easing   <- Easings.LinearEasing()
             transitions.Add(blink_transition)
-        if move_en then
+        if smooth_move then
             let x_transition = DoubleTransition()
             x_transition.Property <- Canvas.LeftProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
@@ -111,11 +114,12 @@ type Cursor() as this =
 
     do
         this.Watch [
-            Model.Notify "SetCursorAnimation" 
-                (function 
-                 | [| Bool(blink) |] -> setCursorAnimation blink false
-                 | [| Bool(blink); Bool(move) |] -> setCursorAnimation blink move
-                 | _ -> setCursorAnimation false false) 
+            Model.Notify "cursor.smoothblink" (fun [| Bool(blink) |] -> 
+                     smooth_blink <- blink
+                     setCursorAnimation())
+            Model.Notify "cursor.smoothmove" (fun [| Bool(move) |] -> 
+                     smooth_move <- move
+                     setCursorAnimation())
 
             this.GetObservable(RenderTickProperty).Subscribe(cursorConfig)
         ] 
