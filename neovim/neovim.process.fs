@@ -33,10 +33,11 @@ type NvimIO =
     | StreamChannel of System.IO.Stream
 
 type Nvim() = 
-    let mutable m_notify = default_notify
-    let mutable m_call   = default_call
-    let mutable m_events = None
-    let mutable m_io     = Disconnected
+    let mutable m_notify      = default_notify
+    let mutable m_call        = default_call
+    let mutable m_events      = None
+    let mutable m_io          = Disconnected
+    let mutable m_disposables = []
 
     member __.Id = Guid.NewGuid()
 
@@ -188,7 +189,6 @@ type Nvim() =
             |> Observable.concat    (Observable.single Exit)
 
         let events = Observable.merge stdout stderr
-        
 
         let notify (ev: Request) = task {
             let payload = mkparams3 2 ev.method ev.parameters
@@ -224,6 +224,12 @@ type Nvim() =
             | _ -> false
 
     member __.stop (timeout: int) =
+
+        // Disconnect all the subscriptions first
+        for (d: IDisposable) in m_disposables do
+            d.Dispose()
+
+        // Close the IO channel
         match m_io with
         | StartProcess proc ->
             proc.CancelErrorRead()
@@ -239,11 +245,18 @@ type Nvim() =
         m_events <- None
         m_notify <- default_notify
         m_call <- default_call
+        m_disposables <- []
+
+    member __.pushSubscription(x: IDisposable) =
+        m_disposables <- x :: m_disposables
 
     member this.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
         this.events
         |> Observable.observeOnContext ctx
         |> Observable.subscribe        fn
+        |> this.pushSubscription
+
+    //  ========================== NeoVim API ===============================
 
     member __.input (keys: string[]) =
         let keys = Array.map (fun x -> box x) keys

@@ -85,6 +85,11 @@ FVimFontAutohint v:true
 FVimFontSubpixel v:true
 FVimFontLcdRender v:true
 FVimFontHintLevel 'full'
+
+" Detach from a remote session without killing the server
+" If this command is executed on a standalone instance,
+" the embedded process will be terminated anyway.
+FVimDetach
 ```
 
 ### Goals

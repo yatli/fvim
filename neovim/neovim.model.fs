@@ -293,7 +293,7 @@ module ModelImpl =
 
     let mutable _imeArmed = false
 
-    let onInput: (IObservable<int*InputEvent> -> unit) =
+    let onInput: (IObservable<int*InputEvent> -> IDisposable) =
         // filter out pure modifiers
         Observable.filter (fun (_, x) -> 
             match x with
@@ -322,8 +322,8 @@ module ModelImpl =
             | x                                     -> trace "rejected: %A" x; []
         ) >>
         // hook up nvim_input
-        // TODO dispose the subscription when grid is destroyed
-        Observable.add (fun keys ->
+        // TODO dispose the subscription when nvim is stopped
+        Observable.subscribe (fun keys ->
             for k in keys do
                 ignore <| nvim.input [|k|]
         )
@@ -335,6 +335,10 @@ let Notify name (fn: obj[] -> unit) =
         with | x -> error "Notify" "exception thrown: %A" <| x.ToString())
 let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish |> Observable.subscribe(fn)
 
+let Detach() =
+    nvim.stop(0)
+    appLifetime.Shutdown(0)
+
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
@@ -343,11 +347,11 @@ let Start opts =
     trace "starting neovim instance..."
     trace "opts = %A" opts
     nvim.start opts
-    ignore <|
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
         (msg_dispatch)
 
+    // rpc handlers
     List.iter ignore [
         Notify "font.antialias"   (fun [| Bool(v) |] -> ui.antialiased <- v)
         Notify "font.bounds"      (fun [| Bool(v) |] -> ui.drawBounds <- v)
@@ -355,6 +359,7 @@ let Start opts =
         Notify "font.subpixel"    (fun [| Bool(v) |] -> ui.subpixel <- v)
         Notify "font.lcdrender"   (fun [| Bool(v) |] -> ui.lcdrender <- v)
         Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
+        Notify "remote.detach"    (fun _ -> Detach())
     ] 
 
     trace "commencing early initialization..."
@@ -364,10 +369,6 @@ let Start opts =
             for file in opts.args do
                 let! _ = Async.AwaitTask(nvim.edit file)
                 in ()
-
-        let! hasInstance = Async.AwaitTask(nvim.exists "g:fvim_loaded")
-        if hasInstance then
-            Environment.Exit(0)
 
         let clientId = nvim.Id.ToString()
         let clientName = "FVim"
@@ -394,8 +395,9 @@ let Start opts =
             | _ -> None
 
         let ch_finder ch =
-            let chid = FindKV("id") ch >>= Integer32
-
+            FindKV("id") ch 
+            >>= Integer32
+            >>= fun chid ->
             FindKV("client")ch
             >>= fun client -> 
                 match client with
@@ -404,9 +406,15 @@ let Start opts =
             >>= FindKV("attributes")
             >>= FindKV("InstanceId")
             >>= IsString
-            >>= fun iid -> if iid = clientId then chid else None
+            >>= (fun iid -> Some(iid, chid))
+        
+        let fvimChannels = Seq.choose ch_finder channels |> List.ofSeq
+        let _, myChannel = List.find (fun (iid, _) -> iid = clientId) fvimChannels
 
-        let myChannel = channels |> Seq.pick ch_finder
+        // Another instance is already up
+        if fvimChannels.Length > 1 then
+            Environment.Exit(0)
+
         trace "FVim client channel is: %d" myChannel
         let! _ = Async.AwaitTask(nvim.set_var "fvim_channel" myChannel)
 
@@ -414,6 +422,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothmove', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothblink', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "FVimDetach" 0 (sprintf "call rpcnotify(%d, 'remote.detach')" myChannel))
 
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.bounds', <args>)" myChannel))
@@ -437,6 +446,7 @@ let OnGridReady(gridui: IGridUI) =
     gridui.Input 
     |> Observable.filter (fun _ -> not gridui.HasChildren)
     |> onInput
+    |> nvim.pushSubscription
 
     if gridui.Id = 1 then
         // Grid #1 is the main grid.
@@ -461,8 +471,11 @@ let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
     trace "window is closing"
     task {
-        let! _ = nvim.quitall()
-        ()
+        if nvim.isRemote then
+            Detach()
+        else
+            let! _ = nvim.quitall()
+            ()
     } |> ignore
     ()
 

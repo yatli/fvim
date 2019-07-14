@@ -6,3 +6,4 @@ publish/
 .paket
 packages
 desktop.ini
+.netrwhist
