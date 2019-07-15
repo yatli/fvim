@@ -20,7 +20,7 @@
     <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(OS)' == 'Windows_NT' ">
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(RuntimeIdentifier)' == 'win-x64' ">
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
