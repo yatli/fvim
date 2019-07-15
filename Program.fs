@@ -62,7 +62,7 @@ module Program =
         FVim.log.init opts
         match opts.intent with
         | Setup -> setup()
-        | Daemon -> daemon opts
+        | Daemon(port, pipe) -> daemon port pipe opts
         | Start -> 
 
         Async.RunSynchronously(Model.Start opts)

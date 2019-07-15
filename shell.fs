@@ -30,7 +30,6 @@ let FVimIcons =
     |> Array.filter (fun x -> x.EndsWith ".ico" && Path.GetFileName(x).StartsWith("."))
     |> Array.map (fun x -> (Path.GetFullPath(x), let x = Path.GetFileName(x) in x.Substring(0, x.Length - 4)))
 
-trace "FVimServerName = %s" FVimServerAddress
 trace "FVim directory = %s" FVimDir
 trace "Discovered %d file icons" FVimIcons.Length
 
@@ -124,13 +123,20 @@ let setup() =
     // setup finished.
     0
 
-let daemon {args=args; program=program; stderrenc = enc} = 
+let daemon (port: uint16 option) (pipe: string option) {args=args; program=program; stderrenc = enc} = 
     trace "Running as daemon."
-    let pipeaddr = 
-        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then @"\\.\pipe\" + FVimServerAddress
-        else FVimServerAddress
+    let pipe = pipe |> Option.defaultValue FVimServerAddress
+    trace "FVimServerName = %s" pipe
+    let pipeArgs = 
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then ["--listen"; @"\\.\pipe\" + pipe]
+        else ["--listen"; pipe]
+    let tcpArgs =
+        if port.IsSome then 
+            trace "listening on port %d" port.Value
+            ["--listen"; sprintf "0.0.0.0:%d" port.Value]
+        else []
     while true do
-        let psi = ProcessStartInfo(program, join("--headless" :: "--listen" :: pipeaddr :: args))
+        let psi = ProcessStartInfo(program, join("--headless" :: pipeArgs @ tcpArgs))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true
@@ -140,6 +146,7 @@ let daemon {args=args; program=program; stderrenc = enc} =
         psi.UseShellExecute         <- false
         psi.WindowStyle             <- ProcessWindowStyle.Hidden
         psi.WorkingDirectory        <- Environment.CurrentDirectory
+        psi.Environment.["VIMINIT"] <- "let g:fvim_loaded = 1"
 
         use proc = Process.Start(psi)
         use __sub = AppDomain.CurrentDomain.ProcessExit.Subscribe (fun _ -> proc.Kill(true))

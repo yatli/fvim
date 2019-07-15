@@ -35,7 +35,7 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
     let ftime = time.ToString "yyyy-MM-dd-hh-mm-ss"
     let fprefix = 
         match intent with
-        | Daemon -> "fvim-daemon"
+        | Daemon _ -> "fvim-daemon"
         | _ -> "fvim"
     let logname = sprintf "%s-%s.log" fprefix ftime
     let logToFile = Option.defaultValue (System.IO.Path.Combine(config.configdir, logname)) logToFile

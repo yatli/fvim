@@ -12,7 +12,7 @@ type ServerOptions =
 type Intent =
     | Start
     | Setup
-    | Daemon
+    | Daemon of port: uint16 option * pipe: string option
 
 type Options =
     {
@@ -53,6 +53,8 @@ let parseOptions (args: string[]) =
     let setup               = eat1 "--setup"
     let tryDaemon           = eat1 "--tryDaemon"
     let runDaemon           = eat1 "--daemon"
+    let port                = eat2 "--daemonPort" >>= ParseUInt16
+    let pipe                = eat2 "--daemonPipe"
 
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
@@ -63,7 +65,7 @@ let parseOptions (args: string[]) =
 
     let intent = 
         if setup then Setup
-        elif runDaemon then Daemon
+        elif runDaemon then Daemon(port, pipe)
         else Start
 
     let serveropts = 

@@ -389,11 +389,6 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.set_client_info clientName clientVersion clientType clientMethods clientAttributes)
         let! channels = Async.AwaitTask(nvim.list_chans())
 
-        let inline (>>=) (x: 'a option) (f: 'a -> 'b option) =
-            match x with
-            | Some x -> f x
-            | _ -> None
-
         let ch_finder ch =
             FindKV("id") ch 
             >>= Integer32

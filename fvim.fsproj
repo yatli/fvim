@@ -18,7 +18,9 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <OutputType>WinExe</OutputType>
     <PublishTrimmed>true</PublishTrimmed>
-    <!-- TODO R2R not supported on Linux/Mac -->
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(OS)' == 'Windows_NT' ">
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
