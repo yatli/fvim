@@ -23,3 +23,8 @@ steps:
   inputs:
     filePath: 'pack.ps1'
 
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: 'publish'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
