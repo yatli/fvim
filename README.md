@@ -18,9 +18,8 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
 - Use the front end with a remote neovim: `fvim --ssh user@host`
 - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
-- Host a daemon to preload NeoVim:
-    - `fvim --daemon`
-    - `fvim --tryDaemon`
+- Host a daemon to preload NeoVim
+- Connect to a remote NeoVim backend: `fvim --connect localhost:9527`
 
 Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
@@ -90,6 +89,55 @@ FVimFontHintLevel 'full'
 " If this command is executed on a standalone instance,
 " the embedded process will be terminated anyway.
 FVimDetach
+```
+
+### Startup options
+
+```
+Usage: FVim [FVim-args] [NeoVim-args]
+
+FVim-args:
+
+    =========================== Client options ===================================
+
+    --ssh user@host             Start NeoVim remotely over ssh
+    --wsl                       Start NeoVim in WSL
+    --nvim path-to-program      Use an alternative nvim program
+
+    --connect target            Connect to a remote NeoVim backend. The target 
+                                can be an IP endpoint (127.0.0.1:9527), or a 
+                                Unix socket address (/tmp/path/to/socket), or a
+                                Windows named pipe (PipeName).
+
+    --setup                     Registers FVim as a text editor, and updates 
+                                file association and icons. Requires UAC 
+                                elevation on Windows.
+
+    =========================== Daemon options ===================================
+
+    --daemon                    Start a daemon that ensures that a NeoVim
+                                backend is always listening in the background.
+                                The backend will be respawn on exit.
+
+    --daemonPort port           Set the Tcp listening port of the daemon.
+                                When this option is not given, Tcp server is
+                                disabled.
+
+    --daemonPipe                Override the named pipe address of the daemon.
+                                When this option is not given, defaults to 
+                                '/tmp/FVimServer'
+
+    --tryDaemon                 First try to connect to a local daemon. If not 
+                                found, start an embedded NeoVim instance.
+
+    =========================== Debug options ====================================
+
+    --trace-to-stdout           Trace to stdout.
+    --trace-to-file             Trace to a file.
+    --trace-patterns            Filter trace output by a list of keyword strings
+
+
+The FVim arguments will be consumed and filtered before the rest are passed to NeoVim.
 ```
 
 ### Goals
