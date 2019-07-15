@@ -11,3 +11,6 @@ pool:
 
 steps:
 
+- task: PowerShell@2
+  inputs:
+    filePath: '.\Pack.ps1'
