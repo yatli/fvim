@@ -36,14 +36,7 @@ module Program =
     [<CompiledName "Main">]
     let main(args: string[]) =
 
-        // Avalonia initialization
         let _ = Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
-        let builder = buildAvaloniaApp()
-        let lifetime = new ClassicDesktopStyleApplicationLifetime(builder.Instance)
-        lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
-        builder.Instance.ApplicationLifetime <- lifetime
-        let _ = builder.SetupWithoutStarting()
-        // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
         CompositeResolver.RegisterAndSetAsDefault(
             ImmutableCollectionResolver.Instance,
@@ -64,6 +57,14 @@ module Program =
         | Setup -> setup()
         | Daemon(port, pipe) -> daemon port pipe opts
         | Start -> 
+
+        // Avalonia initialization
+        let builder = buildAvaloniaApp()
+        let lifetime = new ClassicDesktopStyleApplicationLifetime(builder.Instance)
+        lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
+        builder.Instance.ApplicationLifetime <- lifetime
+        let _ = builder.SetupWithoutStarting()
+        // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
         Async.RunSynchronously(Model.Start opts)
         let cfg = config.load()
