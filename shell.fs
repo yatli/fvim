@@ -136,7 +136,7 @@ let daemon (port: uint16 option) (pipe: string option) {args=args; program=progr
             ["--listen"; sprintf "0.0.0.0:%d" port.Value]
         else []
     while true do
-        let psi = ProcessStartInfo(program, join("--headless" :: pipeArgs @ tcpArgs))
+        let psi = ProcessStartInfo(program, join("--headless" :: "--cmd \"let g:fvim_loaded = 1\"" :: pipeArgs @ tcpArgs))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true
@@ -146,7 +146,6 @@ let daemon (port: uint16 option) (pipe: string option) {args=args; program=progr
         psi.UseShellExecute         <- false
         psi.WindowStyle             <- ProcessWindowStyle.Hidden
         psi.WorkingDirectory        <- Environment.CurrentDirectory
-        psi.Environment.["VIMINIT"] <- "let g:fvim_loaded = 1"
 
         use proc = Process.Start(psi)
         use __sub = AppDomain.CurrentDomain.ProcessExit.Subscribe (fun _ -> proc.Kill(true))

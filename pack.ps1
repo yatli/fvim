@@ -1,4 +1,4 @@
-$plat = "win7-x64","win-x64","linux-x64","osx-x64"
+param([string[]]$plat=("win7-x64","win-x64","linux-x64","osx-x64"))
 
 New-Item -ItemType Directory -Force -Name publish -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force bin\ -ErrorAction SilentlyContinue
