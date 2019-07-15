@@ -10,7 +10,9 @@ pool:
   vmImage: 'windows-latest'
 
 steps:
-
+- task: NuGetToolInstaller@1
+  inputs:
+    versionSpec: 
 - task: PowerShell@2
   inputs:
     filePath: '.\Pack.ps1'
