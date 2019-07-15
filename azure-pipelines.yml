@@ -18,6 +18,9 @@ steps:
     installationPath: $(Agent.ToolsDirectory)/dotnet
     includePreviewVersions: true
 - task: NuGetToolInstaller@1
+- task: PowerShell@2
+  inputs:
+    filePath: 'add_nuget_source.ps1'
 - task: DotNetCoreCLI@2
   inputs:
     command: 'build'
