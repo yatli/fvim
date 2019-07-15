@@ -10,12 +10,15 @@ pool:
   vmImage: 'windows-latest'
 
 steps:
+- task: UseDotNet@2
+  displayName: 'Use .NET Core sdk'
+  inputs:
+    packageType: sdk
+    version: 3.0.0-preview6
+    installationPath: $(Agent.ToolsDirectory)/dotnet
 - task: NuGetToolInstaller@1
   inputs:
     versionSpec: 
 - task: DotNetCoreCLI@2
   inputs:
     command: 'build'
-- task: PowerShell@2
-  inputs:
-    filePath: '.\Pack.ps1'
