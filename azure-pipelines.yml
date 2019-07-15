@@ -14,13 +14,11 @@ steps:
   displayName: 'Use .NET Core sdk'
   inputs:
     packageType: sdk
-    version: 3.0.0-preview6
+    version: 3.0.0
     installationPath: $(Agent.ToolsDirectory)/dotnet
     includePreviewVersions: true
 - task: NuGetToolInstaller@1
 - task: PowerShell@2
   inputs:
-    filePath: 'add_nuget_source.ps1'
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'build'
+    filePath: 'pack.ps1'
+
