@@ -87,7 +87,7 @@ type Nvim() =
 
         let serverExitCode() =
             match io with
-            | StartProcess proc -> if proc.HasExited then Some proc.ExitCode else None
+            | StartProcess proc -> try Some proc.ExitCode with _ -> None
             | StreamChannel _ -> None
             | Disconnected -> Some -1
 

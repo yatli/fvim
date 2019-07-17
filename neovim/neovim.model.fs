@@ -406,11 +406,13 @@ let Start opts =
         let fvimChannels = Seq.choose ch_finder channels |> List.ofSeq
         let _, myChannel = List.find (fun (iid, _) -> iid = clientId) fvimChannels
 
+        trace "FVim connected clients: %A" fvimChannels
+        trace "FVim client channel is: %d" myChannel
+
         // Another instance is already up
         if fvimChannels.Length > 1 then
             Environment.Exit(0)
 
-        trace "FVim client channel is: %d" myChannel
         let! _ = Async.AwaitTask(nvim.set_var "fvim_channel" myChannel)
 
         let! _ = Async.AwaitTask(nvim.``command!`` "FVimToggleFullScreen" 0 (sprintf "call rpcnotify(%d, 'ToggleFullScreen', 1)" myChannel))

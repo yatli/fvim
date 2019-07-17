@@ -2,7 +2,7 @@
   "profiles": {
     "fvim": {
       "commandName": "Project",
-      "commandLineArgs": "--tryDaemon"
+      "commandLineArgs": "--connect localhost:9527"
     }
   }
 }
