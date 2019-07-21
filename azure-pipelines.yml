@@ -18,12 +18,10 @@ jobs:
       includePreviewVersions: true
       version: 3.0.100-preview6-012264
       installationPath: $(Agent.ToolsDirectory)/dotnet
-
   - task: NuGetToolInstaller@1
   - task: PowerShell@2
     inputs:
       filePath: 'pack.ps1'
-
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'publish'
@@ -42,7 +40,10 @@ jobs:
       includePreviewVersions: true
       version: 3.0.100-preview6-012264
       installationPath: $(Agent.ToolsDirectory)/dotnet
-
+  - task: Bash@3
+    inputs:
+      filePath: 'pack.sh'
+      arguments: 'linux-x64'
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'publish'
