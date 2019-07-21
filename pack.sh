@@ -13,7 +13,6 @@ VERSION=${VERSION:1}
 PKG_ROOT="bin/Release/netcoreapp3.0/$PKG_TFM/publish"
 
 sed -i '4i    <add key="Avalonia Nightly" value="https://www.myget.org/F/avalonia-ci/api/v2" />' ~/.nuget/NuGet/NuGet.Config
-dotnet publish -f netcoreapp3.0 -c Release --self-contained -r $PKG_TFM
 
 
 # references:
