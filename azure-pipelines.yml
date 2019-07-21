@@ -7,7 +7,7 @@ trigger:
 - master
 
 jobs:
-- job: Windows-builds
+- job: Windows_builds
   pool:
     vmImage: 'windows-latest'
   steps:
@@ -31,7 +31,7 @@ jobs:
       publishLocation: 'Container'
 
 
-- job: Linux-builds
+- job: Linux_builds
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
