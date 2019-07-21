@@ -40,6 +40,15 @@ jobs:
       includePreviewVersions: true
       version: 3.0.100-preview6-012264
       installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: UseRubyVersion@0
+    inputs:
+      versionSpec: '>= 2.4'
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        apt-get install ruby ruby-dev rubygems build-essential
+        gem install --no-ri --no-rdoc fpm
   - task: Bash@3
     inputs:
       filePath: 'pack.sh'
