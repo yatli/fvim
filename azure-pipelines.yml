@@ -6,25 +6,45 @@
 trigger:
 - master
 
-pool:
-  vmImage: 'windows-latest'
+jobs:
+- job: Windows-builds
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: true
+      version: 3.0.100-preview6-012264
+      installationPath: $(Agent.ToolsDirectory)/dotnet
 
-steps:
-- task: UseDotNet@2
-  displayName: 'Use .NET Core sdk'
-  inputs:
-    packageType: sdk
-    includePreviewVersions: true
-    version: 3.0.100-preview6-012264
-    installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: NuGetToolInstaller@1
+  - task: PowerShell@2
+    inputs:
+      filePath: 'pack.ps1'
 
-- task: NuGetToolInstaller@1
-- task: PowerShell@2
-  inputs:
-    filePath: 'pack.ps1'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-windows'
+      publishLocation: 'Container'
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: 'publish'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+
+- job: Linux-builds
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: true
+      version: 3.0.100-preview6-012264
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-linux'
+      publishLocation: 'Container'

@@ -7,3 +7,4 @@ publish/
 packages
 desktop.ini
 .netrwhist
+*.deb
