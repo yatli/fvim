@@ -31,6 +31,7 @@ function pack-linux-x64()
     mkdir -p publish/usr/bin
     mv fvim publish/usr/share/
     popd
+    chmod +x $PKG_ROOT/usr/share/fvim/FVim
     cp lib/fvim $PKG_ROOT/usr/bin/fvim
     cp Assets/fvim.ico $PKG_ROOT/usr/share/icons/hicolor/48x48/apps/fvim.ico
     cp lib/fvim.desktop $PKG_ROOT/usr/share/applications/fvim.desktop
