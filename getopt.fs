@@ -55,6 +55,8 @@ let parseOptions (args: string[]) =
     let runDaemon           = eat1 "--daemon"
     let port                = eat2 "--daemonPort" >>= ParseUInt16
     let pipe                = eat2 "--daemonPipe"
+    let terminal            = eat1 "--terminal"
+    let termcmd             = eat2 "--terminal-cmd"
 
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
@@ -67,6 +69,21 @@ let parseOptions (args: string[]) =
         if setup then Setup
         elif runDaemon then Daemon(port, pipe)
         else Start
+
+    if terminal then
+        let set x = "+\"set " + x + "\""
+        // fvim --wsl -u NORC +terminal +"set noshowmode" +"set laststatus=0" +"set noruler" +"set noshowcmd"
+        args.AddRange([
+            "-u"; "NORC"
+            set "noshowmode"
+            set "laststatus=0"
+            set "noruler"
+            set "noshowcmd"
+        ])
+        match termcmd with
+        | Some cmd -> "+\"terminal " + cmd + "\""
+        | None -> "+terminal"
+        |> args.Add
 
     let serveropts = 
         if tryDaemon then

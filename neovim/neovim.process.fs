@@ -49,7 +49,7 @@ type Nvim() =
     member private this.createIO ({ args = args; server = serveropts; program = prog; preArgs = preargs; stderrenc = enc } as opts) = 
         match serveropts with
         | StartNew ->
-            let args = "--embed" :: (List.map (fun (x: string) -> if x.Contains(' ') then "\"" + x + "\"" else x) args)
+            let args = "--embed" :: args
             let psi  = ProcessStartInfo(prog, join(preargs @ args))
             psi.CreateNoWindow          <- true
             psi.ErrorDialog             <- false
