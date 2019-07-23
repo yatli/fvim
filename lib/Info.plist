@@ -88,24 +88,6 @@
     <dict>
         <key>CFBundleTypeExtensions</key>
         <array>
-            <string>pch</string>
-        </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>h</string>
-        <key>CFBundleTypeName</key>
-        <string>C Precompiled Header Source File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <true/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>public.precompiled-c-header</string>
-        </array>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
             <string>hh</string>
             <string>hp</string>
             <string>hpp</string>
@@ -113,31 +95,13 @@
             <string>h++</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>h</string>
+        <string>hh</string>
         <key>CFBundleTypeName</key>
         <string>C++ Header Source File</string>
         <key>CFBundleTypeRole</key>
         <string>Editor</string>
         <key>LSIsAppleDefaultForType</key>
         <true/>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
-            <string>pch++</string>
-        </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>h</string>
-        <key>CFBundleTypeName</key>
-        <string>C++ Precompiled Header Source File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <true/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>public.precompiled-c-plus-plus-header</string>
-        </array>
     </dict>
     <dict>
         <key>CFBundleTypeExtensions</key>
@@ -163,7 +127,7 @@
             <string>m</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>m</string>
+        <string>c</string>
         <key>CFBundleTypeName</key>
         <string>Objective-C Source File</string>
         <key>CFBundleTypeRole</key>
@@ -181,7 +145,7 @@
             <string>mm</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>mm</string>
+        <string>c</string>
         <key>CFBundleTypeName</key>
         <string>Objective-C++ Source File</string>
         <key>CFBundleTypeRole</key>
@@ -221,6 +185,8 @@
             <string>s</string>
             <string>asm</string>
         </array>
+        <key>CFBundleTypeIconFile</key>
+        <string>asm</string>
         <key>CFBundleTypeName</key>
         <string>Assembly Source File</string>
         <key>CFBundleTypeRole</key>
@@ -230,22 +196,6 @@
         <key>LSItemContentTypes</key>
         <array>
             <string>public.assembler-source</string>
-        </array>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
-            <string>r</string>
-        </array>
-        <key>CFBundleTypeName</key>
-        <string>Rez Source File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <true/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>public.rez-source</string>
         </array>
     </dict>
     <dict>
@@ -276,6 +226,8 @@
             <string>lpp</string>
             <string>lxx</string>
         </array>
+        <key>CFBundleTypeIconFile</key>
+        <string>l</string>
         <key>CFBundleTypeName</key>
         <string>Lex Source File</string>
         <key>CFBundleTypeRole</key>
@@ -296,6 +248,8 @@
             <string>ypp</string>
             <string>yxx</string>
         </array>
+        <key>CFBundleTypeIconFile</key>
+        <string>y</string>
         <key>CFBundleTypeName</key>
         <string>Yacc Source File</string>
         <key>CFBundleTypeRole</key>
@@ -310,59 +264,10 @@
     <dict>
         <key>CFBundleTypeExtensions</key>
         <array>
-            <string>defs</string>
-        </array>
-        <key>CFBundleTypeName</key>
-        <string>Mig Definition File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <true/>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
-            <string>exp</string>
-        </array>
-        <key>CFBundleTypeName</key>
-        <string>Symbol Export File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <true/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>public.symbol-export</string>
-        </array>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
-            <string>f</string>
-            <string>for</string>
-            <string>fpp</string>
-            <string>f77</string>
-            <string>f90</string>
-            <string>f95</string>
-        </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>f</string>
-        <key>CFBundleTypeName</key>
-        <string>Fortran Source File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <false/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>public.fortran-source</string>
-        </array>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
             <string>pas</string>
         </array>
+        <key>CFBundleTypeIconFile</key>
+        <string>pas</string>
         <key>CFBundleTypeName</key>
         <string>Pascal Source File</string>
         <key>CFBundleTypeRole</key>
@@ -372,24 +277,6 @@
         <key>LSItemContentTypes</key>
         <array>
             <string>public.pascal-source</string>
-        </array>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
-            <string>ada</string>
-            <string>adb</string>
-            <string>ads</string>
-        </array>
-        <key>CFBundleTypeName</key>
-        <string>Ada Source File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>LSIsAppleDefaultForType</key>
-        <false/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>public.ada-source</string>
         </array>
     </dict>
     <dict>
@@ -485,7 +372,7 @@
             <string>perl</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>perl</string>
+        <string>pl</string>
         <key>CFBundleTypeMIMETypes</key>
         <array>
             <string>text/x-perl-script</string>
@@ -586,7 +473,7 @@
             <string>bash_logout</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>bash</string>
+        <string>sh</string>
         <key>CFBundleTypeName</key>
         <string>Shell script</string>
         <key>CFBundleTypeRole</key>
@@ -599,27 +486,11 @@
     <dict>
         <key>CFBundleTypeExtensions</key>
         <array>
-            <string>class</string>
-        </array>
-        <key>CFBundleTypeName</key>
-        <string>Java Class File</string>
-        <key>CFBundleTypeRole</key>
-        <string>Viewer</string>
-        <key>LSIsAppleDefaultForType</key>
-        <false/>
-        <key>LSItemContentTypes</key>
-        <array>
-            <string>com.sun.java-class</string>
-        </array>
-    </dict>
-    <dict>
-        <key>CFBundleTypeExtensions</key>
-        <array>
             <string>patch</string>
             <string>diff</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>patch</string>
+        <string>txt</string>
         <key>CFBundleTypeName</key>
         <string>Patch File</string>
         <key>CFBundleTypeRole</key>
@@ -660,8 +531,6 @@
         <array>
             <string>applescript</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>applescript</string>
         <key>CFBundleTypeName</key>
         <string>AppleScript Source File</string>
         <key>CFBundleTypeRole</key>
@@ -676,8 +545,6 @@
         <array>
             <string>as</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>as</string>
         <key>CFBundleTypeName</key>
         <string>ActionScript Source File</string>
         <key>CFBundleTypeRole</key>
@@ -738,10 +605,20 @@
     <dict>
         <key>CFBundleTypeExtensions</key>
         <array>
-            <string>cfdg</string>
+            <string>fs</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>csfg</string>
+        <string>fs</string>
+        <key>CFBundleTypeName</key>
+        <string>F# Source File</string>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+    </dict>
+    <dict>
+        <key>CFBundleTypeExtensions</key>
+        <array>
+            <string>cfdg</string>
+        </array>
         <key>CFBundleTypeName</key>
         <string>Context Free Design Grammar</string>
         <key>CFBundleTypeRole</key>
@@ -777,8 +654,6 @@
             <string>cgi</string>
             <string>fcgi</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>cgi</string>
         <key>CFBundleTypeName</key>
         <string>CGI script</string>
         <key>CFBundleTypeRole</key>
@@ -817,7 +692,7 @@
             <string>dtd</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>dtd</string>
+        <string>xml</string>
         <key>CFBundleTypeName</key>
         <string>Document Type Definition</string>
         <key>CFBundleTypeRole</key>
@@ -828,8 +703,6 @@
         <array>
             <string>dylan</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>dylan</string>
         <key>CFBundleTypeName</key>
         <string>Dylan Source File</string>
         <key>CFBundleTypeRole</key>
@@ -841,8 +714,6 @@
             <string>erl</string>
             <string>hrl</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>erl</string>
         <key>CFBundleTypeName</key>
         <string>Erlang Source File</string>
         <key>CFBundleTypeRole</key>
@@ -853,8 +724,6 @@
         <array>
             <string>fscript</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>fscript</string>
         <key>CFBundleTypeName</key>
         <string>F-Script Source File</string>
         <key>CFBundleTypeRole</key>
@@ -879,7 +748,7 @@
             <string>inc</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>inc</string>
+        <string>txt</string>
         <key>CFBundleTypeName</key>
         <string>Include file</string>
         <key>CFBundleTypeRole</key>
@@ -891,7 +760,7 @@
             <string>ics</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>ics</string>
+        <string>txt</string>
         <key>CFBundleTypeName</key>
         <string>iCalendar schedule</string>
         <key>CFBundleTypeRole</key>
@@ -914,8 +783,6 @@
         <array>
             <string>io</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>io</string>
         <key>CFBundleTypeName</key>
         <string>Io Source File</string>
         <key>CFBundleTypeRole</key>
@@ -927,7 +794,7 @@
             <string>bsh</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>bsh</string>
+        <string>sh</string>
         <key>CFBundleTypeName</key>
         <string>BeanShell script</string>
         <key>CFBundleTypeRole</key>
@@ -939,7 +806,7 @@
             <string>properties</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>properties</string>
+        <string>txt</string>
         <key>CFBundleTypeName</key>
         <string>Java properties file</string>
         <key>CFBundleTypeRole</key>
@@ -951,7 +818,7 @@
             <string>jsp</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>jsp</string>
+        <string>java</string>
         <key>CFBundleTypeName</key>
         <string>Java Server Page</string>
         <key>CFBundleTypeRole</key>
@@ -994,7 +861,7 @@
             <string>mediawiki</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>wiki</string>
+        <string>md</string>
         <key>CFBundleTypeName</key>
         <string>Mediawiki document</string>
         <key>CFBundleTypeRole</key>
@@ -1019,8 +886,6 @@
             <string>scm</string>
             <string>sch</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>sch</string>
         <key>CFBundleTypeName</key>
         <string>Scheme Source File</string>
         <key>CFBundleTypeRole</key>
@@ -1043,8 +908,6 @@
         <array>
             <string>tcl</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>tcl</string>
         <key>CFBundleTypeName</key>
         <string>Tcl Source File</string>
         <key>CFBundleTypeRole</key>
@@ -1057,7 +920,7 @@
             <string>xslt</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>xsl</string>
+        <string>xml</string>
         <key>CFBundleTypeName</key>
         <string>XSL stylesheet</string>
         <key>CFBundleTypeRole</key>
@@ -1069,8 +932,6 @@
             <string>vcf</string>
             <string>vcard</string>
         </array>
-        <key>CFBundleTypeIconFile</key>
-        <string>vcf</string>
         <key>CFBundleTypeName</key>
         <string>Electronic business card</string>
         <key>CFBundleTypeRole</key>
@@ -1095,7 +956,7 @@
             <string>yml</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>yaml</string>
+        <string>yml</string>
         <key>CFBundleTypeName</key>
         <string>YAML document</string>
         <key>CFBundleTypeRole</key>
@@ -1108,7 +969,7 @@
             <string>gtdlog</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>gtd</string>
+        <string>md</string>
         <key>CFBundleTypeName</key>
         <string>GTD document</string>
         <key>CFBundleTypeRole</key>
@@ -1123,7 +984,7 @@
             <string>md</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>markdown</string>
+        <string>md</string>
         <key>CFBundleTypeName</key>
         <string>Markdown document</string>
         <key>CFBundleTypeRole</key>
@@ -1147,7 +1008,7 @@
             <string>vba</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>vba</string>
+        <string>vim</string>
         <key>CFBundleTypeName</key>
         <string>Vimball Archive</string>
         <key>CFBundleTypeRole</key>
@@ -1160,7 +1021,7 @@
             <string>vhdl</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>generic</string>
+        <string>v</string>
         <key>CFBundleTypeName</key>
         <string>VHDL Source File</string>
         <key>CFBundleTypeRole</key>
@@ -1172,7 +1033,7 @@
             <string>lua</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>generic</string>
+        <string>lua</string>
         <key>CFBundleTypeMIMETypes</key>
         <array>
             <string>text/x-lua-script</string>
@@ -1188,7 +1049,7 @@
             <string>v</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>generic</string>
+        <string>v</string>
         <key>CFBundleTypeName</key>
         <string>Verilog HDL Source File</string>
         <key>CFBundleTypeRole</key>
@@ -1200,7 +1061,7 @@
             <string>vh</string>
         </array>
         <key>CFBundleTypeIconFile</key>
-        <string>generic</string>
+        <string>v</string>
         <key>CFBundleTypeName</key>
         <string>Verilog HDL Header Source File</string>
         <key>CFBundleTypeRole</key>
