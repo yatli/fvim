@@ -100,7 +100,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        let _s = Point(float w, float h)
+        // Snap to device pixels
+        let _s = Point(float w, floor(float h * grid_scale)/grid_scale)
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
