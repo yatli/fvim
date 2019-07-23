@@ -53,8 +53,8 @@ function pack-osx-x64()
     cp lib/Info.plist $PKG_ROOT/Contents/Info.plist
 
     mv $PKG_ROOT FVim.app
-    zip FVim.$VERSION.zip FVim.app
-    rm -rf FVim.app
+    zip -r FVim.$VERSION.zip FVim.app
+    # rm -rf FVim.app
     mv FVim.$VERSION.zip publish/
 }
 
