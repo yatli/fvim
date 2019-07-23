@@ -5,7 +5,7 @@
   <key>CFBundleGetInfoString</key>
   <string>FVim</string>
   <key>CFBundleExecutable</key>
-  <string>FVim</string>
+  <string>fvim-osx-launcher</string>
   <key>CFBundleIdentifier</key>
   <string>com.fvim.www</string>
   <key>CFBundleName</key>

@@ -27,7 +27,7 @@ function pack-linux-x64()
     mv fvim publish/usr/share/
     popd
     chmod +x $PKG_ROOT/usr/share/fvim/FVim
-    cp lib/fvim $PKG_ROOT/usr/bin/fvim
+    cp lib/fvim-linux-launcher $PKG_ROOT/usr/bin/fvim
     cp Assets/fvim.png $PKG_ROOT/usr/share/icons/hicolor/48x48/apps/fvim.png
     cp lib/fvim.desktop $PKG_ROOT/usr/share/applications/fvim.desktop
 
@@ -49,6 +49,7 @@ function pack-osx-x64()
     chmod +x publish/Contents/MacOS/FVim
     mkdir -p publish/Contents/Resources/
     popd
+    cp lib/fvim-osx-launcher $PKG_ROOT/Contents/MacOS/fvim-osx-launcher
     cp images/icon.icns $PKG_ROOT/Contents/Resources/fvim.icns
     cp lib/Info.plist $PKG_ROOT/Contents/Info.plist
 
