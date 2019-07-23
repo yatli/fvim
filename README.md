@@ -5,6 +5,16 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 
 ![Screenshot](https://github.com/yatli/fvim/raw/master/images/screenshot.png)
 
+
+### Installation
+[Download](https://github.com/yatli/fvim/releases) the latest release package for your system, extract and run `FVim`!
+
+- For Windows 7, use the `win7-x64` package.
+- For Windows 10, use the `win-x64` package -- this version has faster startup.
+- For macOS, it's packaged as an app bundle -- unzip and drag it to your applications folder.
+- For Linux, you can either unpack manually, or run `dpkg -i fvim_package_name.deb` to install it with the package manager.
+
+
 ### Features
 
 - HiDPI support -- try dragging it across two screens with different DPIs ;)
@@ -41,9 +51,6 @@ if exists('g:fvim_loaded')
 endif
 ```
 ![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
-
-### Installation
-[Download](https://github.com/yatli/fvim/releases) the latest release package for your system, extract and run `FVim`!
 
 ### Building from source
 We're now targeting `netcoreapp3.0` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.0).
