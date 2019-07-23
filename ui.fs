@@ -1,6 +1,7 @@
 ﻿namespace FVim
 
 open wcwidth
+open log
 
 open ReactiveUI
 open Avalonia
@@ -276,14 +277,16 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
         //  total_padding = padding space 1 + padding space 2
         let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
-        let baseline      = region.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
-        let fontPos       = Point(region.X, floor baseline)
+        (*trace "ui" "fontmetric top = %A bottom = %A" fg.FontMetrics.Top fg.FontMetrics.Bottom*)
+        let baseline      = region.Bottom - floor(float(fg.FontMetrics.Bottom) / scale)
+        // + (total_padding / 2.8)
+        let fontPos       = Point(region.X, baseline)
 
         let skia = ctx :?> ISkiaDrawingContextImpl
 

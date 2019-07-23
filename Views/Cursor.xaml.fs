@@ -131,6 +131,8 @@ type Cursor() as this =
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
 
+        let scale = this.GetVisualRoot().RenderScaling
+
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
@@ -146,18 +148,17 @@ type Cursor() as this =
                     SetOpacity fgpaint this.Opacity
                     SetOpacity bgpaint this.Opacity
                     SetOpacity sppaint this.Opacity
-                    RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                    RenderText(ctx.PlatformImpl, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
                 | _ ->
                     // deferred
-                    let s = this.GetVisualRoot().RenderScaling
                     let redraw = ensure_fb()
                     if redraw then
                         let dc = cursor_fb.CreateDrawingContext(null)
                         dc.PushClip(bounds)
-                        RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                        RenderText(dc, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
                         dc.PopClip()
                         dc.Dispose()
-                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * s, bounds.Height * s), bounds)
+                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
             with
             | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
         | CursorShape.Horizontal, p ->

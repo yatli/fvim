@@ -111,7 +111,7 @@ and Editor() as this =
         let shaping = txt.Length > 1 && issym
 
         try
-            RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+            RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
         with
         | ex -> trace "drawBuffer: %s" <| ex.ToString()
 

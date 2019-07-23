@@ -289,11 +289,13 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         let mutable config_font = true
 
         match opt with
-        | Guifont(FN(name, sz))           -> _guifont     <- name; font_size <- sz
-        | GuifontWide(FN(name, sz))       -> _guifontwide <- name; font_size <- sz
-        | Guifont("+") | GuifontWide("+") -> font_size    <- font_size + 1.0
-        | Guifont("-") | GuifontWide("-") -> font_size    <- font_size - 1.0
-        | _                               -> config_font  <- false
+        | Guifont(FN(name, sz))             -> _guifont     <- name; font_size <- sz
+        | GuifontWide(FN(name, sz))         -> _guifontwide <- name; font_size <- sz
+        | Guifont("+") | GuifontWide("+")   -> font_size    <- font_size + 1.0
+        | Guifont("-") | GuifontWide("-")   -> font_size    <- font_size - 1.0
+        | Guifont(".+") | GuifontWide(".+") -> font_size    <- font_size + 0.1
+        | Guifont(".-") | GuifontWide(".-") -> font_size    <- font_size - 0.1
+        | _                                 -> config_font  <- false
 
         if config_font then fontConfig()
 
