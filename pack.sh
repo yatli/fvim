@@ -13,11 +13,6 @@ VERSION=${VERSION:1}
 PKG_ROOT="bin/Release/netcoreapp3.0/$PKG_TFM/publish"
 dotnet publish -f netcoreapp3.0 -c Release --self-contained -r $PKG_TFM
 
-# references:
-# https://developer.gnome.org/integration-guide/stable/desktop-files.html.en
-# https://developer.gnome.org/integration-guide/stable/icons.html.en
-# https://developer.gnome.org/icon-theme-spec/#file_formats
-# https://wiki.archlinux.org/index.php/desktop_entries#File_example
 function pack-linux-x64()
 {
     rm ./*.deb
@@ -33,7 +28,7 @@ function pack-linux-x64()
     popd
     chmod +x $PKG_ROOT/usr/share/fvim/FVim
     cp lib/fvim $PKG_ROOT/usr/bin/fvim
-    cp Assets/fvim.ico $PKG_ROOT/usr/share/icons/hicolor/48x48/apps/fvim.ico
+    cp Assets/fvim.png $PKG_ROOT/usr/share/icons/hicolor/48x48/apps/fvim.png
     cp lib/fvim.desktop $PKG_ROOT/usr/share/applications/fvim.desktop
 
     fpm -s dir -t deb -n fvim -v $VERSION -C $PKG_ROOT
