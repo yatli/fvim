@@ -1,7 +1,8 @@
-#!/bin/bash
-cd "${0%/*}"
-# TODO Yatao: this is not good -- should retrieve the default path
-# from the system. Currently some paths are missing -- dotnet etc.
-# but I haven't found the file for specifying them!
-export PATH="/usr/local/bin:/usr/bin:/bin/:usr/sbin:/sbin:$PATH"
-./FVim $@
+#!/usr/bin/env bash
+source /etc/profile
+source ~/.bash_profile
+logger "FVim: Starting. env is: $(env)"
+new_bash=$(which bash)
+export SHELL=$new_bash
+logger "FVim: new bash location is: $new_bash"
+exec "`dirname \"$0\"`/FVim" $@
