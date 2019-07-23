@@ -360,8 +360,8 @@ let Start opts =
         Notify "font.subpixel"      (fun [| Bool(v) |] -> ui.subpixel <- v)
         Notify "font.lcdrender"     (fun [| Bool(v) |] -> ui.lcdrender <- v)
         Notify "font.hintLevel"     (fun [| String(v) |] -> ui.setHintLevel v)
-        Notify "font.normal.weight" (fun [| Integer32(v) |] -> ui.normalWeight <- LanguagePrimitives.EnumOfValue(v))
-        Notify "font.bold.weight"   (fun [| Integer32(v) |] -> ui.boldWeight <- LanguagePrimitives.EnumOfValue(v))
+        Notify "font.weight.normal" (fun [| Integer32(v) |] -> ui.SetNormalWeight v)
+        Notify "font.weight.bold"   (fun [| Integer32(v) |] -> ui.SetBoldWeight v)
         Notify "remote.detach"      (fun _ -> Detach())
     ] 
 
@@ -430,6 +430,8 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontSubpixel" 1 (sprintf "call rpcnotify(%d, 'font.subpixel', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLcdRender" 1 (sprintf "call rpcnotify(%d, 'font.lcdrender', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 (sprintf "call rpcnotify(%d, 'font.hindLevel', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.normal', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.bold', <args>)" myChannel))
 
         ()
     }

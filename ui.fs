@@ -70,8 +70,8 @@ module ui =
     let mutable subpixel     = true
     let mutable lcdrender    = true
     let mutable hintLevel    = SKPaintHinting.NoHinting
-    let mutable normalWeight = SKFontStyleWeight.Normal
-    let mutable boldWeight   = SKFontStyleWeight.Bold
+    let mutable private normalWeight = SKFontStyleWeight.Normal
+    let mutable private boldWeight   = SKFontStyleWeight.Bold
 
     let setHintLevel (v: string) = 
         match v.ToLower() with
@@ -210,6 +210,25 @@ module ui =
     let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
     let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
     let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
+
+    let private InvalidateFontCache (bold: bool) =
+        List.ofSeq fontcache.Keys
+        |> List.filter (fun (_,_,bold') -> bold = bold')
+        |> List.iter (fun k ->
+            let font = fontcache.[k]
+            font.Dispose()
+            ignore(fontcache.Remove k)
+        )
+
+    let SetNormalWeight (w: int) =
+        normalWeight <- LanguagePrimitives.EnumOfValue(w)
+        trace "ui" "normalWeight is now: %A" normalWeight
+        InvalidateFontCache false
+
+    let SetBoldWeight (w: int) =
+        boldWeight <- LanguagePrimitives.EnumOfValue(w)
+        trace "ui" "boldWeight is now: %A" boldWeight
+        InvalidateFontCache true
 
     let GetReverseColor (c: Color) =
         let inv = UInt32.MaxValue - c.ToUint32()
