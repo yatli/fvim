@@ -17,3 +17,7 @@ https://developer.gnome.org/icon-theme-spec/#file_formats
 https://wiki.archlinux.org/index.php/desktop_entries#File_example
 
 https://stackoverflow.com/questions/1596945/building-osx-app-bundle
+
+https://scriptingosx.com/2017/04/about-bash_profile-and-bashrc-on-macos/
+
+https://stackoverflow.com/questions/829749/launch-mac-eclipse-with-environment-variables-set
