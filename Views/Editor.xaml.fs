@@ -101,7 +101,7 @@ and Editor() as this =
             | _ -> colend - col
 
         let topLeft      = grid_vm.GetPoint row col
-        let bottomRight  = (topLeft + grid_vm.GetPoint 1 nr_col) |> rounding
+        let bottomRight  = topLeft + grid_vm.GetPoint 1 nr_col
         let bg_region    = Rect(topLeft , bottomRight)
 
         bgpaint.Color <- bg.ToSKColor()

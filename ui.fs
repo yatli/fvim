@@ -303,10 +303,9 @@ module ui =
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
         //  total_padding = padding space 1 + padding space 2
-        let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
-        (*trace "ui" "fontmetric top = %A bottom = %A" fg.FontMetrics.Top fg.FontMetrics.Bottom*)
-        let baseline      = region.Bottom - floor(float(fg.FontMetrics.Bottom) / scale)
-        // + (total_padding / 2.8)
+        let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
+        let baseline      = region.Y + (total_padding / 2.0) - (float fg.FontMetrics.Top )
+        (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
         let fontPos       = Point(region.X, baseline)
 
         let skia = ctx :?> ISkiaDrawingContextImpl
