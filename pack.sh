@@ -43,9 +43,9 @@ function pack-osx-x64()
 
     pushd $PKG_ROOT
     cd ..
-    mv publish fvim
+    mv publish fvim_pkg
     mkdir -p publish/Contents/
-    mv fvim publish/Contents/MacOS
+    mv fvim_pkg publish/Contents/MacOS
     chmod +x publish/Contents/MacOS/FVim
     mkdir -p publish/Contents/Resources/
     popd
