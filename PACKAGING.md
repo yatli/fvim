@@ -15,3 +15,5 @@ https://developer.gnome.org/integration-guide/stable/icons.html.en
 https://developer.gnome.org/icon-theme-spec/#file_formats
 
 https://wiki.archlinux.org/index.php/desktop_entries#File_example
+
+https://stackoverflow.com/questions/1596945/building-osx-app-bundle

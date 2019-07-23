@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+source /etc/profile
+source ~/.bash_profile
+logger "FVim: Starting. env is: $(env)"
+new_bash=$(which bash)
+export SHELL=$new_bash
+logger "FVim: new bash location is: $new_bash"
+exec "`dirname \"$0\"`/FVim" $@

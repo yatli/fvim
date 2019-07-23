@@ -15,7 +15,7 @@ dotnet publish -f netcoreapp3.0 -c Release --self-contained -r $PKG_TFM
 
 function pack-linux-x64()
 {
-    rm ./*.deb
+    rm -f ./*.deb
 
     pushd $PKG_ROOT
     cd ..
@@ -26,11 +26,12 @@ function pack-linux-x64()
     mkdir -p publish/usr/bin
     mv fvim publish/usr/share/
     popd
-    chmod +x $PKG_ROOT/usr/share/fvim/FVim
-    cp lib/fvim $PKG_ROOT/usr/bin/fvim
+    cp lib/fvim-linux-launcher $PKG_ROOT/usr/bin/fvim
     cp Assets/fvim.png $PKG_ROOT/usr/share/icons/hicolor/48x48/apps/fvim.png
     cp lib/fvim.desktop $PKG_ROOT/usr/share/applications/fvim.desktop
 
+    chmod +x $PKG_ROOT/usr/share/fvim/FVim
+    chmod +x $PKG_ROOT/usr/bin/fvim
     fpm -s dir -t deb -n fvim -v $VERSION -C $PKG_ROOT
 
     mv *.deb publish/
@@ -39,22 +40,25 @@ function pack-linux-x64()
 function pack-osx-x64()
 {
     rm -rf ./*.app
-    rm ./*.zip
+    rm -f ./*.zip
 
     pushd $PKG_ROOT
     cd ..
     mv publish fvim_pkg
     mkdir -p publish/Contents/
     mv fvim_pkg publish/Contents/MacOS
-    chmod +x publish/Contents/MacOS/FVim
     mkdir -p publish/Contents/Resources/
     popd
+    cp lib/fvim-osx-launcher $PKG_ROOT/Contents/MacOS/fvim-osx-launcher
     cp images/icon.icns $PKG_ROOT/Contents/Resources/fvim.icns
     cp lib/Info.plist $PKG_ROOT/Contents/Info.plist
 
+    chmod +x $PKG_ROOT/Contents/MacOS/FVim
+    chmod +x $PKG_ROOT/Contents/MacOS/fvim-osx-launcher
+
     mv $PKG_ROOT FVim.app
     zip -r FVim.$VERSION.zip FVim.app
-    # rm -rf FVim.app
+    rm -rf FVim.app
     mv FVim.$VERSION.zip publish/
 }
 

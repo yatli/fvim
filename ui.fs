@@ -299,15 +299,17 @@ module ui =
         ()
 
     let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
+
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
         //  total_padding = padding space 1 + padding space 2
-        let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
-        (*trace "ui" "fontmetric top = %A bottom = %A" fg.FontMetrics.Top fg.FontMetrics.Bottom*)
-        let baseline      = region.Bottom - floor(float(fg.FontMetrics.Bottom) / scale)
-        // + (total_padding / 2.8)
-        let fontPos       = Point(region.X, baseline)
+        let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
+        let baseline      = region.Y + (total_padding / 2.0) - (float fg.FontMetrics.Top )
+        let snappedBaseline = ceil(baseline * scale) / scale
+        let region = region.WithY(region.Y + snappedBaseline - baseline)
+        (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
+        let fontPos       = Point(region.X, snappedBaseline)
 
         let skia = ctx :?> ISkiaDrawingContextImpl
 
