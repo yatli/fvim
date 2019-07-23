@@ -5,4 +5,7 @@ logger "FVim: Starting. env is: $(env)"
 new_bash=$(which bash)
 export SHELL=$new_bash
 logger "FVim: new bash location is: $new_bash"
-exec "`dirname \"$0\"`/FVim" $@
+fvim_exe="$(dirname "$0")/FVim"
+logger "FVim: executable path is: $fvim_exe"
+logger "FVim: arguments are: $@"
+$fvim_exe $@
