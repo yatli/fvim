@@ -65,10 +65,10 @@ module ui =
 
     let mutable antialiased = true
     let mutable drawBounds  = false
-    let mutable autohint    = true
+    let mutable autohint    = false
     let mutable subpixel    = true
     let mutable lcdrender   = true
-    let mutable hintLevel   = SKPaintHinting.Full
+    let mutable hintLevel   = SKPaintHinting.NoHinting
 
     let setHintLevel (v: string) = 
         match v.ToLower() with
