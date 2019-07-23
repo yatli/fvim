@@ -3,8 +3,9 @@
 open getopt
 open log
 open ui
+open Common
 open neovim.def
-open neovim.rpc
+open neovim.proc
 
 open Avalonia.Diagnostics.ViewModels
 open Avalonia.Media
@@ -14,23 +15,29 @@ open Avalonia.Threading
 open Avalonia.Input
 open Avalonia.Input.Raw
 open FSharp.Control.Reactive
+open System.ComponentModel
+open SkiaSharp
 
 #nowarn "0058"
 
 open FSharp.Control.Tasks.V2
 
+let appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
+
+let private trace x = trace "Model" x
+
 [<AutoOpen>]
 module ModelImpl =
 
-    let nvim = Process()
+    let nvim = Nvim()
 
     let ev_redraw     = Event<RedrawCommand[]>()
 
     // request handlers are explicitly registered, 1:1, with no broadcast.
-    let requestHandlers      = Dictionary<string, obj[] -> Response Async>()
+    let requestHandlers      = hashmap[]
     // notification events are broadcasted to all subscribers.
-    let notificationEvents   = Dictionary<string, Event<obj[]>>()
-    let grids                = Dictionary<int, IGridUI>()
+    let notificationEvents   = hashmap[]
+    let grids                = hashmap[]
 
     let getNotificationEvent eventName =
         match notificationEvents.TryGetValue eventName with
@@ -65,11 +72,17 @@ module ModelImpl =
             try event.Trigger req.parameters
             with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
         | Redraw cmd -> redraw cmd 
-        | Exit -> Avalonia.Application.Current.Shutdown()
+        | Exit -> appLifetime.Shutdown()
+        | Crash code ->
+            async {
+                trace "neovim crashed with code %d" code
+                do! FVim.log.flush()
+                do! Async.AwaitTask(Dispatcher.UIThread.InvokeAsync(appLifetime.Shutdown))
+            } |> Async.RunSynchronously
         | _ -> ()
 
     let onGridResize(gridui: IGridUI) =
-        trace "Model" "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
+        trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
     //  notation                                    meaning                                         equivalent                    decimal value(s)      ~
@@ -135,16 +148,19 @@ module ModelImpl =
         let name = x.ToString()
         if c = 1 then name
         else sprintf "%d-%s" c name
-    let DIR (dx: int, dy: int) =
-        match sign dx, sign dy with
-        | -1, _  -> "Right"
-        | 1, _   -> "Left"
-        | _, -1  -> "Down"
-        | _, 1   -> "Up"
-        | _ -> ""
+
+    let mutable accumulatedX = 0.0
+    let mutable accumulatedY = 0.0
+
+    let DIR (dx: float, dy: float, horizontal: bool) =
+        match sign dx, sign dy, horizontal with
+        | -1, _, true  -> "Right"
+        | _, _,  true   -> "Left"
+        | _, -1, false  -> "Down"
+        | _, _, false   -> "Up"
     let suffix (suf: string, r: int, c: int) =
         sprintf "%s><%d,%d" suf r c
-    let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
+    let (|Repeat|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
         | Key(_, Key.Back) 
         | Key(HasFlag(InputModifiers.Control), Key.H)                 -> Special "BS"
@@ -162,8 +178,11 @@ module ModelImpl =
         | Key(HasFlag(InputModifiers.Control), Key.Oem4)              -> Special "Esc"
         | Key(_, Key.Space)                                           -> Special "Space"
         | Key(HasFlag(InputModifiers.Shift), Key.OemComma)            -> Special "LT"
-        | Key(NoFlag(InputModifiers.Shift), Key.OemPipe)              -> Special "Bslash"
-        | Key(HasFlag(InputModifiers.Shift), Key.OemPipe)             -> Special "Bar"
+        // note, on Windows '\' is recognized as OemPipe but on macOS it's OemBackslash
+        | Key(NoFlag(InputModifiers.Shift), 
+             (Key.OemPipe | Key.OemBackslash))                        -> Special "Bslash"
+        | Key(HasFlag(InputModifiers.Shift), 
+             (Key.OemPipe | Key.OemBackslash))                        -> Special "Bar"
         | Key(_, Key.Delete)                                          -> Special "Del"
         | Key(HasFlag(InputModifiers.Alt), Key.Escape)                -> Special "xCSI"
         | Key(_, Key.Up)                                              -> Special "Up"
@@ -221,30 +240,48 @@ module ModelImpl =
            Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
         |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
         |  Key(NoFlag(InputModifiers.Shift), x)                       -> Normal (x.ToString().ToLowerInvariant())
+        |  Key(_, Key.None)                                           -> Unrecognized
         |  Key(_, x)                                                  -> Normal (x.ToString())
         |  MousePress(_, r, c, but, cnt)                              -> Special(MB(but, cnt) + suffix("Mouse", c, r))
         |  MouseRelease(_, r, c, but)                                 -> Special(MB(but, 1) + suffix("Release", c, r))
         |  MouseDrag(_, r, c, but   )                                 -> Special(MB(but, 1) + suffix("Drag", c, r))
-        |  MouseWheel(_, r, c, dx, dy)                                -> Special("ScrollWheel" + suffix(DIR(dx, dy), c, r))
+        |  MouseWheel(_, r, c, dx, dy)                                -> 
+            // duh! don't like this
+            accumulatedX <- accumulatedX + dx
+            accumulatedY <- accumulatedY + dy
+            let ax, ay = abs accumulatedX, abs accumulatedY
+            let rpt = max ax ay
+            let dir = DIR(dx, dy, ax >= ay)
+            if rpt >= 1.0 then
+                if ax >= ay then
+                    accumulatedX <- accumulatedX - truncate accumulatedX
+                else
+                    accumulatedY <- accumulatedY - truncate accumulatedY
+                Repeat(int rpt, "ScrollWheel" + suffix(dir, c, r))
+            else
+                Unrecognized
         |  TextInput txt                                              -> TextInput txt
         |  _                                                          -> Unrecognized
     //| Key.Oem
     let rec (|ModifiersPrefix|_|) (x: InputEvent) =
         match x with
+        // -------------- keys with special form do not carry shift modifiers
         |  Key(m & HasFlag(InputModifiers.Shift), x &
-          (Key.OemComma | Key.OemPipe | Key.OemPeriod | Key.Oem2 | Key.OemSemicolon | Key.OemQuotes
+          (Key.OemComma | Key.OemPipe | Key.OemBackslash | Key.OemPeriod | Key.Oem2 | Key.OemSemicolon | Key.OemQuotes
         |  Key.Oem4 | Key.OemCloseBrackets | Key.OemMinus | Key.OemPlus | Key.OemTilde
         |  Key.D0 | Key.D1 | Key.D2 | Key.D3 
         |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
-        |  Key.D8 | Key.D9)) -> 
-            (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
-        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.M)) ->
-            (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Control), x)
+        |  Key.D8 | Key.D9)) 
+            -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
+        // -------------- C-x special forms do not carry control modifiers
+        | Key(m & HasFlag(InputModifiers.Control), x & (Key.H | Key.I | Key.J | Key.M)) 
+            -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Control), x)
         | Key(m, _)
         | MousePress(m, _, _, _, _) 
         | MouseRelease(m, _, _, _) 
         | MouseDrag(m, _, _, _) 
-        | MouseWheel(m, _, _, _, _) ->
+        | MouseWheel(m, _, _, _, _) 
+            ->
             let c = if m.HasFlag(InputModifiers.Control) then "C-" else ""
             let a = if m.HasFlag(InputModifiers.Alt)     then "A-" else ""
             let d = if m.HasFlag(InputModifiers.Windows) then "D-" else ""
@@ -257,16 +294,16 @@ module ModelImpl =
 
     let mutable _imeArmed = false
 
-    let onInput: (IEvent<InputEvent> -> unit) =
+    let onInput: (IObservable<int*InputEvent> -> IDisposable) =
         // filter out pure modifiers
-        Observable.filter (fun x -> 
+        Observable.filter (fun (_, x) -> 
             match x with
             | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin))
                 -> false
             | _ -> true) >>
         // translate to nvim keycode
-        Observable.choose (fun x ->
-            trace "Model" "OnInput: %A" x
+        Observable.map(fun (gridid, x) ->
+            trace "grid #%d: OnInput: %A" gridid x
 
             match x with
             | ImeEvent    -> _imeArmed <- true
@@ -275,18 +312,21 @@ module ModelImpl =
             // TODO anything that cancels ime input state?
 
             match x with
-            | (Special sp) & (ModifiersPrefix pref) -> Some <| sprintf "<%s-%s>" pref sp
-            | (Special sp)                          -> Some <| sprintf "<%s>" sp
-            | (Normal n) & (ModifiersPrefix pref)   -> Some <| sprintf "<%s-%s>" pref n
-            | (Normal n)                            -> Some <| n
-            | ImeEvent                              -> None
-            | TextInput txt when _imeArmed          -> Some txt
-            | x                                     -> trace "input" "rejected: %A" x; None
+            | (Repeat(n, sp)) & (ModifiersPrefix pref) -> List.replicate n (sprintf "<%s-%s>" pref sp)
+            | (Special sp) & (ModifiersPrefix pref) -> [ sprintf "<%s-%s>" pref sp ]
+            | (Special sp)                          -> [ sprintf "<%s>" sp ]
+            | (Repeat(n, sp))                       -> List.replicate n (sprintf "<%s>" sp)
+            | (Normal n) & (ModifiersPrefix pref)   -> [ sprintf "<%s-%s>" pref n ]
+            | (Normal n)                            -> [ n ]
+            | ImeEvent                              -> []
+            | TextInput txt when _imeArmed          -> [ txt ]
+            | x                                     -> trace "rejected: %A" x; []
         ) >>
         // hook up nvim_input
-        // TODO dispose the subscription when grid is destroyed
-        Observable.add (fun key ->
-            ignore <| nvim.input [|key|]
+        // TODO dispose the subscription when nvim is stopped
+        Observable.subscribe (fun keys ->
+            for k in keys do
+                ignore <| nvim.input [|k|]
         )
 
 let Request name fn = requestHandlers.Add(name, fn)
@@ -296,35 +336,107 @@ let Notify name (fn: obj[] -> unit) =
         with | x -> error "Notify" "exception thrown: %A" <| x.ToString())
 let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish |> Observable.subscribe(fn)
 
+let Detach() =
+    nvim.stop(0)
+    appLifetime.Shutdown(0)
+
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
 let Start opts =
 
-    trace "Model" "starting neovim instance..."
-    trace "Model" "opts = %A" opts
+    trace "starting neovim instance..."
+    trace "opts = %A" opts
     nvim.start opts
-    ignore <|
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
         (msg_dispatch)
 
-    [
-        Notify "font.antialias"   (fun [| Bool(v) |] -> ui.antialiased <- v)
-        Notify "font.bounds"      (fun [| Bool(v) |] -> ui.drawBounds <- v)
-        Notify "font.autohint"    (fun [| Bool(v) |] -> ui.autohint <- v)
-        Notify "font.subpixel"    (fun [| Bool(v) |] -> ui.subpixel <- v)
-        Notify "font.lcdrender"   (fun [| Bool(v) |] -> ui.lcdrender <- v)
-        Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
-    ] |> List.iter ignore
+    // rpc handlers
+    List.iter ignore [
+        Notify "font.antialias"     (fun [| Bool(v) |] -> ui.antialiased <- v)
+        Notify "font.bounds"        (fun [| Bool(v) |] -> ui.drawBounds <- v)
+        Notify "font.autohint"      (fun [| Bool(v) |] -> ui.autohint <- v)
+        Notify "font.subpixel"      (fun [| Bool(v) |] -> ui.subpixel <- v)
+        Notify "font.lcdrender"     (fun [| Bool(v) |] -> ui.lcdrender <- v)
+        Notify "font.hintLevel"     (fun [| String(v) |] -> ui.setHintLevel v)
+        Notify "font.weight.normal" (fun [| Integer32(v) |] -> ui.SetNormalWeight v)
+        Notify "font.weight.bold"   (fun [| Integer32(v) |] -> ui.SetBoldWeight v)
+        Notify "remote.detach"      (fun _ -> Detach())
+    ] 
 
-    trace "Model" "commencing early initialization..."
-    task {
-        let! _ = nvim.set_var "fvim_loaded" 1
-        let! _ = nvim.set_var "gui_running" 1
+    trace "commencing early initialization..."
+    async {
+        // for remote, send open file args as edit commands
+        if nvim.isRemote then
+            for file in opts.args do
+                let! _ = Async.AwaitTask(nvim.edit file)
+                in ()
+
+        let clientId = nvim.Id.ToString()
+        let clientName = "FVim"
+        let clientVersion = 
+            hashmap [
+                "major", "0"
+                "minor", "1"
+                "prerelease", "dev"
+            ]
+        let clientType = "ui"
+        let clientMethods = hashmap []
+        let clientAttributes = 
+            hashmap [
+                "InstanceId", clientId
+            ]
+
+        let! _ = Async.AwaitTask(nvim.set_var "fvim_loaded" 1)
+        let! _ = Async.AwaitTask(nvim.set_client_info clientName clientVersion clientType clientMethods clientAttributes)
+        let! channels = Async.AwaitTask(nvim.list_chans())
+
+        let ch_finder ch =
+            FindKV("id") ch 
+            >>= Integer32
+            >>= fun chid ->
+            FindKV("client")ch
+            >>= fun client -> 
+                match client with
+                | FindKV("name")(String name) when name = clientName -> Some client
+                | _ -> None
+            >>= FindKV("attributes")
+            >>= FindKV("InstanceId")
+            >>= IsString
+            >>= (fun iid -> Some(iid, chid))
+        
+        let fvimChannels = Seq.choose ch_finder channels |> List.ofSeq
+        let _, myChannel = List.find (fun (iid, _) -> iid = clientId) fvimChannels
+
+        trace "FVim connected clients: %A" fvimChannels
+        trace "FVim client channel is: %d" myChannel
+
+        // Another instance is already up
+        if fvimChannels.Length > 1 then
+            Environment.Exit(0)
+
+        let! _ = Async.AwaitTask(nvim.set_var "fvim_channel" myChannel)
+
+        let! _ = Async.AwaitTask(nvim.``command!`` "FVimToggleFullScreen" 0 (sprintf "call rpcnotify(%d, 'ToggleFullScreen', 1)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothmove', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothblink', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "FVimDetach" 0 (sprintf "call rpcnotify(%d, 'remote.detach')" myChannel))
+
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.bounds', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutohint" 1 (sprintf "call rpcnotify(%d, 'font.autohint', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontSubpixel" 1 (sprintf "call rpcnotify(%d, 'font.subpixel', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLcdRender" 1 (sprintf "call rpcnotify(%d, 'font.lcdrender', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 (sprintf "call rpcnotify(%d, 'font.hindLevel', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.normal', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.bold', <args>)" myChannel))
+
         ()
-    } |> ignore
+    }
 
+    
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
     gridui.Resized 
@@ -333,33 +445,46 @@ let OnGridReady(gridui: IGridUI) =
 
     add_grid gridui
 
-    gridui.Input |> onInput
+    gridui.Input 
+    |> Observable.filter (fun _ -> not gridui.HasChildren)
+    |> onInput
+    |> nvim.pushSubscription
 
     if gridui.Id = 1 then
         // Grid #1 is the main grid.
         // When ready, the UI should be ready for events now. 
         // Notify nvim about its presence
-        trace "Model" 
+        trace 
               "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
         task {
             let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
+            // TODO ideally this should be triggered in `nvim_command("autocmd VimEnter * call rpcrequest(1, 'vimenter')")`
+            // as per :help ui-start
             let! _ = nvim.command "runtime! ginit.vim"
-            ()
+            in ()
         } |> ignore
 
 let OnTerminated (args) =
-    trace "Model" "terminating nvim..."
+    trace "terminating nvim..."
     nvim.stop 1
 
-let OnTerminating(args) =
-    //TODO send closing request to neovim
+let OnTerminating(args: CancelEventArgs) =
+    args.Cancel <- true
+    trace "window is closing"
+    task {
+        if nvim.isRemote then
+            Detach()
+        else
+            let! _ = nvim.quitall()
+            ()
+    } |> ignore
     ()
 
 let EditFiles (files: string seq) =
     task {
         for file in files do
-            let! _ = nvim.command <| "edit " + file
+            let! _ = nvim.edit file
             ()
     } |> ignore
 

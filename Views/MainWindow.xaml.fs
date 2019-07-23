@@ -1,6 +1,6 @@
 ﻿namespace FVim
 
-open neovim.rpc
+open neovim.def
 open log
 
 open ReactiveUI
@@ -27,7 +27,7 @@ type MainWindow() as this =
         DragDrop.SetAllowDrop(this, true)
 
         this.Watch [
-            this.Closing.Subscribe (fun _ -> Model.OnTerminating())
+            this.Closing.Subscribe (fun e -> Model.OnTerminating e)
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
             this.Bind(XProp, Binding("WindowX", BindingMode.TwoWay))
             this.Bind(YProp, Binding("WindowY", BindingMode.TwoWay))
@@ -38,7 +38,7 @@ type MainWindow() as this =
 
             Model.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "Model" "DrawFPS: %A" v
-                Avalonia.Application.Current.MainWindow.Renderer.DrawFps <- v)
+                this.Renderer.DrawFps <- v)
 
             this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
                 if e.Data.Contains(DataFormats.FileNames) then

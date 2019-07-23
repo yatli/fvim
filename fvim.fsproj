@@ -1,10 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationIcon>fvim.ico</ApplicationIcon>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -14,15 +15,27 @@
     <Authors>Yatao Li</Authors>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputType>WinExe</OutputType>
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(RuntimeIdentifier)' == 'win-x64' ">
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
   <ItemGroup>
+    <Compile Include="common.fs" />
     <Compile Include="config.fs" />
     <Compile Include="getopt.fs" />
     <Compile Include="log.fs" />
     <Compile Include="wcwidth.fs" />
     <Compile Include="ui.fs" />
+    <Compile Include="shell.fs" />
     <Compile Include="neovim\neovim.def.fs" />
-    <Compile Include="neovim\neovim.rpc.fs" />
+    <Compile Include="neovim\neovim.process.fs" />
     <Compile Include="neovim\neovim.model.fs" />
+    <Compile Include="ViewModels\GridVisualViewModel.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />
     <Compile Include="ViewModels\EditorViewModel.fs" />
     <Compile Include="ViewModels\MainWindowViewModel.fs" />
@@ -45,28 +58,35 @@
     </AvaloniaResource>
     <EmbeddedResource Include="nerd.ttf" />
     <Content Include="Assets\*" />
+    <None Include="icons\*.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.8.1-cibuild0002788-beta" />
+    <PackageReference Include="Avalonia" Version="0.8.999-cibuild0003188-beta" />
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2019013001" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.8.1-cibuild0002788-beta" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.1-cibuild0002788-beta" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.8.999-cibuild0003188-beta" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.999-cibuild0003188-beta" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
     <PackageReference Include="GitInfo" Version="2.0.20">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="HarfBuzzSharp" Version="1.4.6.2" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="1.4.6.2" />
     <PackageReference Include="MessagePack" Version="1.7.3.7" />
+    <PackageReference Include="MessagePack.FSharpExtensions" Version="1.4.1" />
+    <PackageReference Include="MessagePack.ImmutableCollection" Version="1.7.3.7" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="4.5.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="ReactiveUI" Version="9.16.6" />
+    <PackageReference Include="ReactiveUI" Version="9.18.2" />
     <PackageReference Include="SkiaSharp.HarfBuzz" Version="1.68.0" />
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
     <PackageReference Update="FSharp.Core" Version="4.6.2" />
+    <PackageReference Include="UACHelper" Version="1.3.0.5" />
   </ItemGroup>
 
 </Project>

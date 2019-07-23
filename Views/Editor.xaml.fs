@@ -14,8 +14,8 @@ open Avalonia.Platform
 open Avalonia.Skia
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
-open System.Reactive.Linq
 open System
+open FSharp.Control.Reactive
 
 type EmbeddedEditor() as this =
     inherit UserControl()
@@ -25,12 +25,15 @@ type EmbeddedEditor() as this =
 and Editor() as this =
     inherit Canvas()
 
+    static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
+
     let mutable m_saved_size  = Size(100.0,100.0)
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
+    let mutable (m_visualroot: IVisual) = this :> IVisual
 
     let trace fmt = 
         let nr =
@@ -98,7 +101,7 @@ and Editor() as this =
             | _ -> colend - col
 
         let topLeft      = grid_vm.GetPoint row col
-        let bottomRight  = (topLeft + grid_vm.GetPoint 1 nr_col) |> rounding
+        let bottomRight  = topLeft + grid_vm.GetPoint 1 nr_col
         let bg_region    = Rect(topLeft , bottomRight)
 
         bgpaint.Color <- bg.ToSKColor()
@@ -107,7 +110,10 @@ and Editor() as this =
         let txt = String.Concat str
         let shaping = txt.Length > 1 && issym
 
-        RenderText(ctx, bg_region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+        try
+            RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+        with
+        | ex -> trace "drawBuffer: %s" <| ex.ToString()
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -173,7 +179,7 @@ and Editor() as this =
         match this.DataContext with
         | :? EditorViewModel as viewModel ->
             fn viewModel
-        | _ -> ()
+        | _ -> Unchecked.defaultof<_>
 
     let redraw tick =
         trace "render tick %d" tick
@@ -181,85 +187,88 @@ and Editor() as this =
 
     let onViewModelConnected (vm:EditorViewModel) =
         grid_vm <- vm
-        [
+        trace "viewmodel connected"
+        vm.Watch [
             vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun tick -> redraw <| tick.GetValue())
             vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.merge
-                <| vm.ObservableForProperty(fun x -> x.BufferWidth)
-                <| vm.ObservableForProperty(fun x -> x.BufferHeight)
-            |> Observable.subscribe(fun _ -> resizeFrameBuffer())
-            Observable.Interval(TimeSpan.FromMilliseconds(100.0))
-                      .FirstAsync(fun _ -> this.IsInitialized)
-                      .Subscribe(fun _ -> 
-                        Model.OnGridReady(vm :> IGridUI)
-                        ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
-                    )
-        ] |> vm.Watch 
-        
+                (vm.ObservableForProperty(fun x -> x.BufferWidth))
+                (vm.ObservableForProperty(fun x -> x.BufferHeight))
+            |> Observable.subscribe(fun _ -> 
+                if this.GetVisualRoot() <> null then resizeFrameBuffer())
+
+            Observable.interval(TimeSpan.FromMilliseconds 100.0)
+            |> Observable.firstIf(fun _ -> this.IsInitialized)
+            |> Observable.subscribe(fun _ -> 
+                Model.OnGridReady(vm :> IGridUI)
+                ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
+               )
+        ]
+
+    let subscribeAndHandle fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
+        ob.Subscribe(fun e ->
+            e.Handled <- true
+            doWithDataContext (fn e))
+
     do
         this.Watch [
-
-            this.TextInput.Subscribe(fun e -> doWithDataContext(fun vm -> vm.OnTextInput e))
-
+            this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root)
+            this.TextInput |> subscribeAndHandle(fun e vm -> vm.OnTextInput e)
+            this.KeyDown   |> subscribeAndHandle(fun e vm -> vm.OnKey e)
+            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e m_visualroot)
+            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e m_visualroot)
+            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e m_visualroot)
+            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e m_visualroot)
             this.GetObservable(Editor.DataContextProperty)
-                          .OfType<EditorViewModel>()
-                          .Subscribe(onViewModelConnected)
+            |> Observable.ofType<EditorViewModel>
+            |> Observable.subscribe onViewModelConnected
 
         ]
         AvaloniaXamlLoader.Load(this)
 
-    static member RenderTickProp = AvaloniaProperty.Register<Editor, int>("RenderTick")
-    static member FullscreenProp = AvaloniaProperty.Register<Editor, bool>("Fullscreen")
-    static member ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
-
     override this.Render ctx =
+        (*trace "render begin"*)
         if grid_fb <> null then
             let dirty = grid_vm.Dirty
-            if dirty.height > 0 then
-                trace "render begin, dirty = %A" dirty
+            if not <| dirty.Empty() then
+                let regions = dirty.Regions()
+                trace "drawing %d regions"  regions.Count
+                let timer = System.Diagnostics.Stopwatch.StartNew()
                 use grid_dc = grid_fb.CreateDrawingContext(null)
                 grid_dc.PushClip(Rect this.Bounds.Size)
-                for row = dirty.row to dirty.row_end - 1 do
-                    drawBufferLine grid_dc row dirty.col dirty.col_end
+                for r in regions do
+                    for row = r.row to r.row_end - 1 do
+                        drawBufferLine grid_dc row r.col r.col_end
+
                 grid_dc.PopClip()
-                trace "render end"
+                timer.Stop()
+                trace "drawing end, time = %dms." timer.ElapsedMilliseconds
                 grid_vm.markClean()
+        (*trace "base rendering"*)
         base.Render ctx
+        (*trace "render end"*)
 
     override this.MeasureOverride(size) =
+        trace "MeasureOverride: %A" size
         doWithDataContext (fun vm ->
-            if vm.TopLevel then
-                vm.MeasuredSize <- size
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
+            let sz  =
+                if vm.TopLevel then size
+                // multigrid: size is top-down managed, which means that
+                // the measurement of the view should be consistent with
+                // the buffer size calculated from the viewmodel.
+                else Size(vm.BufferWidth, vm.BufferHeight)
+            vm.MeasuredSize <- sz
+            sz
         )
-        size
 
     (*each event repeats 4 times... use the event instead *)
-    (*override this.OnTextInput(e) =*)
-
-    override __.OnKeyDown(e) =
-        doWithDataContext(fun vm -> vm.OnKey e)
-
-    override __.OnKeyUp(e) =
-        e.Handled <- true
-
-    override this.OnPointerPressed(e) =
-        doWithDataContext(fun vm -> vm.OnMouseDown e this)
-
-    override this.OnPointerReleased(e) =
-        doWithDataContext(fun vm -> vm.OnMouseUp e this)
-
-    override this.OnPointerMoved(e) =
-        doWithDataContext(fun vm -> vm.OnMouseMove e this)
-
-    override this.OnPointerWheelChanged(e) =
-        doWithDataContext(fun vm -> vm.OnMouseWheel e this)
 
     interface IViewFor<EditorViewModel> with
         member this.ViewModel
-            with get (): EditorViewModel = this.GetValue(Editor.ViewModelProp)
-            and set (v: EditorViewModel): unit = this.SetValue(Editor.ViewModelProp, v)
+            with get (): EditorViewModel = this.GetValue(ViewModelProp)
+            and set (v: EditorViewModel): unit = this.SetValue(ViewModelProp, v)
         member this.ViewModel
-            with get (): obj = this.GetValue(Editor.ViewModelProp) :> obj
-            and set (v: obj): unit = this.SetValue(Editor.ViewModelProp, v)
+            with get (): obj = this.GetValue(ViewModelProp) :> obj
+            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
 

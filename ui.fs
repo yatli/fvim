@@ -1,6 +1,7 @@
 ﻿namespace FVim
 
 open wcwidth
+open log
 
 open ReactiveUI
 open Avalonia
@@ -63,12 +64,14 @@ type ViewLocator() =
 
 module ui =
 
-    let mutable antialiased = true
-    let mutable drawBounds  = false
-    let mutable autohint    = true
-    let mutable subpixel    = true
-    let mutable lcdrender   = true
-    let mutable hintLevel   = SKPaintHinting.Full
+    let mutable antialiased  = true
+    let mutable drawBounds   = false
+    let mutable autohint     = false
+    let mutable subpixel     = true
+    let mutable lcdrender    = true
+    let mutable hintLevel    = SKPaintHinting.NoHinting
+    let mutable private normalWeight = SKFontStyleWeight.Normal
+    let mutable private boldWeight   = SKFontStyleWeight.Bold
 
     let setHintLevel (v: string) = 
         match v.ToLower() with
@@ -83,7 +86,7 @@ module ui =
     | MousePress   of mods: InputModifiers * row: int * col: int * button: MouseButton * combo: int
     | MouseRelease of mods: InputModifiers * row: int * col: int * button: MouseButton
     | MouseDrag    of mods: InputModifiers * row: int * col: int * button: MouseButton
-    | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: int * dy: int
+    | MouseWheel   of mods: InputModifiers * row: int * col: int * dx: float * dy: float
     | TextInput    of text: string
 
 
@@ -102,6 +105,9 @@ module ui =
             cols: int32
         }
 
+    let inline private (<<->) a b = fun x -> a <= x && x < b
+    let inline private (<->>) a b = fun x -> a < x && x <= b
+
     [<Struct>]
     type GridRect =
         {
@@ -115,6 +121,60 @@ module ui =
         with 
         member x.row_end = x.row + x.height
         member x.col_end = x.col + x.width
+        member x.Contains (y: GridRect) =
+            y.row     |> (x.row <<-> x.row_end) &&
+            y.col     |> (x.col <<-> x.col_end) &&
+            y.row_end |> (x.row <->> x.row_end) &&
+            y.col_end |> (x.col <->> x.col_end)
+
+
+        static member Compare (x: GridRect) (y: GridRect) =
+            let row = x.row - y.row
+            if row <> 0 then row
+            else
+
+            let col = x.col - y.col
+            if col <> 0 then col
+            else
+
+            let height = x.height - y.height
+            if height <> 0 then height
+            else
+
+            x.width - y.width
+
+    type GridRegion() =
+        let rects = ResizeArray<GridRect>()
+        member x.Empty() = rects.Count = 0
+        member x.Clear = rects.Clear
+        member x.Union = rects.Add
+        member x.Regions() = 
+            let region = ResizeArray()
+            let rects = ResizeArray<_>(rects)
+            for x in rects do
+                region
+                |> Seq.indexed
+                |> Seq.tryPick (fun (i, y) ->
+                    // case 1: containment
+                    if x.Contains y then Some(i, x)
+                    elif y.Contains x then Some(i, y)
+                    elif x.row = y.row && 
+                        x.height = y.height &&
+                        (x.col = y.col_end || x.col_end = y.col) then
+                            Some(i, { x with col = min x.col y.col
+                                             width = x.width + y.width })
+                    elif x.col = y.col && 
+                        x.width = y.width &&
+                        (x.row = y.row_end || x.row_end = y.row) then
+                            Some(i, { x with row = min x.row y.row
+                                             height = x.height + y.height })
+                    else None
+                )
+                |> function
+                | Some(i, x) -> region.[i] <- x
+                | None -> region.Add x
+            region
+
 
     /// Represents a grid in neovim
     type IGridUI =
@@ -124,7 +184,8 @@ module ui =
         /// Number of columns
         abstract GridWidth: int
         abstract Resized: IEvent<IGridUI>
-        abstract Input: IEvent<InputEvent>
+        abstract Input: IEvent<int*InputEvent>
+        abstract HasChildren: bool
 
     open System.Runtime.InteropServices
 
@@ -150,6 +211,25 @@ module ui =
     let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
     let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
 
+    let private InvalidateFontCache (bold: bool) =
+        List.ofSeq fontcache.Keys
+        |> List.filter (fun (_,_,bold') -> bold = bold')
+        |> List.iter (fun k ->
+            let font = fontcache.[k]
+            font.Dispose()
+            ignore(fontcache.Remove k)
+        )
+
+    let SetNormalWeight (w: int) =
+        normalWeight <- LanguagePrimitives.EnumOfValue(w)
+        trace "ui" "normalWeight is now: %A" normalWeight
+        InvalidateFontCache false
+
+    let SetBoldWeight (w: int) =
+        boldWeight <- LanguagePrimitives.EnumOfValue(w)
+        trace "ui" "boldWeight is now: %A" boldWeight
+        InvalidateFontCache true
+
     let GetReverseColor (c: Color) =
         let inv = UInt32.MaxValue - c.ToUint32()
         Color.FromUInt32(inv ||| 0xFF000000u)
@@ -161,7 +241,7 @@ module ui =
             match fontcache.TryGetValue((fname, italic, bold)) with
             | true, typeface -> typeface
             | _ ->
-                let weight   = if bold then SKFontStyleWeight.Bold else SKFontStyleWeight.Normal
+                let weight   = if bold then boldWeight else normalWeight
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)
@@ -218,14 +298,18 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
+
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
         //  total_padding = padding space 1 + padding space 2
-        let total_padding = h + float fg.FontMetrics.Top - float fg.FontMetrics.Bottom
-        let baseline      = region.Y - float fg.FontMetrics.Top + (total_padding / 2.8)
-        let fontPos       = Point(region.X, baseline)
+        let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
+        let baseline      = region.Y + (total_padding / 2.0) - (float fg.FontMetrics.Top )
+        let snappedBaseline = ceil(baseline * scale) / scale
+        let region = region.WithY(region.Y + snappedBaseline - baseline)
+        (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
+        let fontPos       = Point(region.X, snappedBaseline)
 
         let skia = ctx :?> ISkiaDrawingContextImpl
 

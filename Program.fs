@@ -2,16 +2,22 @@
 
 open Avalonia
 open Avalonia.Logging.Serilog
-open System.Reflection
 open FSharp.Data
 open Avalonia.ReactiveUI
+open System.Threading
+open Avalonia.Controls.ApplicationLifetimes
+
+open MessagePack
+open MessagePack.Resolvers
+open MessagePack.FSharp
+open MessagePack.ImmutableCollection
 
 module Program =
 
     open System
     open System.IO
-    open System.Diagnostics
     open getopt
+    open Shell
 
     // Avalonia configuration, don't remove; also used by visual designer.
     [<CompiledName "BuildAvaloniaApp">]
@@ -26,27 +32,47 @@ module Program =
             .With(new MacOSPlatformOptions(ShowInDock=true))
             .LogToDebug()
 
-    // Your application's entry point.
-    [<CompiledName "AppMain">]
-    let appMain (app: Application) (args: string[]) =
+    [<EntryPoint>]
+    [<CompiledName "Main">]
+    let main(args: string[]) =
+
+        let _ = Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
+
+        CompositeResolver.RegisterAndSetAsDefault(
+            ImmutableCollectionResolver.Instance,
+            FSharpResolver.Instance,
+            StandardResolver.Instance
+        )
+        AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
+            let filename = Path.Combine(config.configdir, sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")))
+            use dumpfile = new StreamWriter(filename)
+            dumpfile.WriteLine(sprintf "Unhandled exception: (terminating:%A)" exArgs.IsTerminating)
+            dumpfile.WriteLine(exArgs.ExceptionObject.ToString())
+        )
         System.Console.OutputEncoding <- System.Text.Encoding.Unicode
+
         let opts = parseOptions args
         FVim.log.init opts
-        Model.Start opts
+        match opts.intent with
+        | Setup -> setup()
+        | Daemon(port, pipe) -> daemon port pipe opts
+        | Start -> 
+
+        // Avalonia initialization
+        let builder = buildAvaloniaApp()
+        let lifetime = new ClassicDesktopStyleApplicationLifetime(builder.Instance)
+        lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
+        builder.Instance.ApplicationLifetime <- lifetime
+        let _ = builder.SetupWithoutStarting()
+        // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
+
+        Async.RunSynchronously(Model.Start opts)
         let cfg = config.load()
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
         let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
         let mainwin = new MainWindowViewModel(workspace)
-        app.Run(MainWindow(DataContext = mainwin)) |> ignore
+        lifetime.MainWindow <- MainWindow(DataContext = mainwin)
+        let ret = lifetime.Start(args)
+
         config.save cfg mainwin.WindowX mainwin.WindowY mainwin.WindowWidth mainwin.WindowHeight mainwin.WindowState
-
-
-
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
-    [<EntryPoint>]
-    [<CompiledName "Main">]
-    let main(args: string[]) =
-        buildAvaloniaApp().Start(appMain, args)
-        0
+        ret

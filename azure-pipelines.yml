@@ -1,0 +1,78 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+jobs:
+- job: Windows_builds
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: true
+      version: 3.0.100-preview6-012264
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: NuGetToolInstaller@1
+  - task: PowerShell@2
+    inputs:
+      filePath: 'pack.ps1'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-windows'
+      publishLocation: 'Container'
+
+
+- job: Linux_builds
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: true
+      version: 3.0.100-preview6-012264
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        sudo apt-get install ruby ruby-dev rubygems build-essential
+        sudo gem install --no-ri --no-rdoc fpm
+  - task: Bash@3
+    inputs:
+      filePath: 'pack.sh'
+      arguments: 'linux-x64'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-linux'
+      publishLocation: 'Container'
+
+- job: OSX_builds
+  pool:
+    vmImage: 'macOS-10.14'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: true
+      version: 3.0.100-preview6-012264
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: Bash@3
+    inputs:
+      filePath: 'pack.sh'
+      arguments: 'osx-x64'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-osx'
+      publishLocation: 'Container'

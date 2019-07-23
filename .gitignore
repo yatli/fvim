@@ -5,3 +5,8 @@ bin/
 publish/
 .paket
 packages
+desktop.ini
+.netrwhist
+*.deb
+*.app
+*.zip

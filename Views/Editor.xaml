@@ -10,12 +10,40 @@
 
     <Canvas.Styles>
       <Style Selector="ItemsControl > ContentPresenter">
-        <Setter Property="Canvas.Left" Value="{Binding X, Mode=OneWay}"/>
-        <Setter Property="Canvas.Top" Value="{Binding Y, Mode=OneWay}"/>
-        <Setter Property="ZIndex" Value="10" />
+        <Setter Property="Canvas.Left" Value="{Binding AnchorX, Mode=OneWay}"/>
+        <Setter Property="Canvas.Top" Value="{Binding AnchorY, Mode=OneWay}"/>
       </Style>
     </Canvas.Styles>
-  
+
+    <ItemsControl 
+        Items               = "{Binding ChildGrids, Mode=OneWay}"
+        Width               = "{Binding BufferWidth,  Mode=OneWay}"
+        Height              = "{Binding BufferHeight, Mode=OneWay}"
+        HorizontalAlignment = "Left"
+        VerticalAlignment   = "Top"
+        ZIndex              = "3"
+        >
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <Canvas 
+                Width       = "{Binding $parent[1].Width,   Mode=OneWay}"
+                Height      = "{Binding $parent[1].Height,  Mode=OneWay}"
+            />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <fvim:Editor 
+                HorizontalAlignment        = "Stretch"
+                VerticalAlignment          = "Stretch"
+                Width                      = "{Binding W,  Mode=OneWay}"
+                Height                     = "{Binding H,  Mode=OneWay}"
+            />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
     <Image 
         Name                = "FrameBuffer"
         Source              = "{Binding FrameBuffer,  Mode=OneWay}"
@@ -40,33 +68,4 @@
         IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
         >
     </fvim:Cursor>
-    <ItemsControl 
-        Items               = "{Binding ChildGrids, Mode=OneWay}"
-        Width               = "{Binding BufferWidth,  Mode=OneWay}"
-        Height              = "{Binding BufferHeight, Mode=OneWay}"
-        HorizontalAlignment = "Left"
-        VerticalAlignment   = "Top"
-        >
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <Canvas 
-                Width       = "{Binding $parent[1].Width,   Mode=OneWay}"
-                Height      = "{Binding $parent[1].Height,  Mode=OneWay}"
-            />
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-
-      <ItemsControl.ItemTemplate>
-        <DataTemplate>
-            <fvim:EmbeddedEditor 
-                HorizontalAlignment        = "Stretch"
-                VerticalAlignment          = "Stretch"
-                HorizontalContentAlignment = "Stretch"
-                VerticalContentAlignment   = "Stretch"
-                Width                      = "{Binding W,  Mode=OneWay}"
-                Height                     = "{Binding H,  Mode=OneWay}"
-            />
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
 </Canvas>

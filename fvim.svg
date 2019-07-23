@@ -16,7 +16,7 @@
    id="svg3728"
    inkscape:version="0.92.3 (2405546, 2018-03-11)"
    sodipodi:docname="fvim.svg"
-   inkscape:export-filename="F:\git\fvim\fvim.png"
+   inkscape:export-filename="F:\git\fvim\Assets\fvim.png"
    inkscape:export-xdpi="200.12122"
    inkscape:export-ydpi="200.12122">
   <defs
@@ -28,22 +28,27 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.979899"
-     inkscape:cx="-218.01434"
-     inkscape:cy="364.67808"
+     inkscape:zoom="2"
+     inkscape:cx="76.320466"
+     inkscape:cy="206.74762"
      inkscape:document-units="mm"
-     inkscape:current-layer="g3796"
+     inkscape:current-layer="layer1"
      showgrid="false"
      fit-margin-top="2"
      fit-margin-left="2"
      fit-margin-right="2"
      fit-margin-bottom="2"
      inkscape:pagecheckerboard="false"
-     inkscape:window-width="3840"
-     inkscape:window-height="2050"
-     inkscape:window-x="-12"
-     inkscape:window-y="-12"
-     inkscape:window-maximized="1" />
+     inkscape:window-width="3360"
+     inkscape:window-height="1780"
+     inkscape:window-x="3768"
+     inkscape:window-y="1878"
+     inkscape:window-maximized="1"
+     showguides="false">
+    <inkscape:grid
+       type="xygrid"
+       id="grid21" />
+  </sodipodi:namedview>
   <metadata
      id="metadata3725">
     <rdf:RDF>
@@ -52,7 +57,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -63,10 +68,10 @@
      transform="translate(-23.068173,-67.465563)">
     <g
        id="g3796"
-       transform="translate(0,-9.5250003)">
+       transform="translate(1.0583333,-9.9922053)">
       <g
          id="g8"
-         transform="matrix(0.26458333,0,0,0.26458333,39.763095,89.83125)">
+         transform="matrix(0.26458333,0,0,0.26458333,34.676849,93.233698)">
         <path
            id="path2"
            style="fill:#378bba"
@@ -80,22 +85,28 @@
         <path
            id="path6"
            style="fill:#30b9db"
-           d="M 123,63 65,7 V 35 L 93,63 65,91 v 28 z"
-           inkscape:connector-curvature="0" />
+           d="M 123,62.53125 65,7 V 35 L 93,63 65,91 v 28 z"
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="ccccccc" />
       </g>
-      <flowRoot
-         transform="matrix(1.3840663,0,0,0.49692946,2.2598914,91.149001)"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:67.34535217px;line-height:1.25;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#441650;fill-opacity:1;stroke:none;"
-         id="flowRoot3754-1"
-         xml:space="preserve"><flowRegion
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:67.34535217px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#441650;"
-           id="flowRegion3756-5"><rect
-             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:67.34535217px;font-family:Arial;-inkscape-font-specification:'Arial, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#441650;"
-             y="18.189531"
-             x="16.785715"
-             height="101.42857"
-             width="109.64286"
-             id="rect3758-5" /></flowRegion><flowPara
-           id="flowPara3762-0">V</flowPara></flowRoot>    </g>
+    </g>
+    <path
+       style="fill:#30b9db;stroke-width:1.97413778"
+       d="M 112.75,12.074219 113.5,41.599609 193.66406,118 h 29.26367 z M 194.01562,126 112.75,203.90234 v 29.27539 L 223.28516,126 Z"
+       transform="matrix(0.26458333,0,0,0.26458333,23.068173,67.465563)"
+       id="path6-7"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:#88aa00;stroke-width:0.35355338"
+       d="M 153.89393,79.895058 C 123.35016,50.792204 113.90828,41.60228 113.73682,40.809576 c -0.12328,-0.570011 -0.34255,-7.193242 -0.48726,-14.718292 l -0.2631,-13.681909 8.97254,8.68143 c 4.9349,4.774787 29.53609,28.446041 54.66932,52.602788 25.13323,24.156748 45.69678,43.995427 45.69678,44.085957 0,0.0905 -6.4121,0.16461 -14.24912,0.16461 h -14.24911 z"
+       id="path4608"
+       inkscape:connector-curvature="0"
+       transform="matrix(0.26458333,0,0,0.26458333,23.068173,67.465563)" />
+    <path
+       style="fill:#aad400;stroke-width:0.35355338"
+       d="m 112.80796,218.47367 0.0924,-14.51109 40.62464,-38.94335 40.62464,-38.94334 h 14.26452 c 7.84549,0 14.26453,0.0696 14.26453,0.15477 0,0.0851 -23.34778,22.7883 -51.88396,50.4515 -28.53618,27.6632 -53.27787,51.64805 -54.98153,53.29966 l -3.09757,3.00294 z"
+       id="path4610"
+       inkscape:connector-curvature="0"
+       transform="matrix(0.26458333,0,0,0.26458333,23.068173,67.465563)" />
   </g>
 </svg>

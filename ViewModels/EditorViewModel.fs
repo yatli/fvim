@@ -4,7 +4,6 @@ open log
 open ui
 open wcwidth
 open neovim.def
-open neovim.rpc
 
 open ReactiveUI
 open Avalonia
@@ -25,22 +24,8 @@ open SkiaSharp
 module private helpers =
     let _d x = Option.defaultValue x
 
-type EmbeddedEditorViewModel(child, X, Y, W, H) = 
-    inherit ViewModelBase()
-
-    let mutable m_x = X
-    let mutable m_y = Y
-    let mutable m_w = W
-    let mutable m_h = H
-
-    member this.child: EditorViewModel = child
-    member this.X with get(): float = m_x and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_x, v)
-    member this.Y with get(): float = m_y and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_y, v)
-    member this.W with get(): float = m_w and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_w, v)
-    member this.H with get(): float = m_h and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_h, v)
-
-and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
-                    ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int) as this =
+type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
+                    ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase()
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
@@ -80,13 +65,15 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let mutable grid_rendertick  = 0
     let mutable measured_size    = _d (Size(100.0, 100.0)) _measuredsize
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
-    let mutable grid_dirty       = { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
-    let mutable _fb_h = 10.0
-    let mutable _fb_w = 10.0
+    let mutable grid_dirty       = GridRegion()
+    let mutable _fb_h            = 10.0
+    let mutable _fb_w            = 10.0
+    let mutable anchor_x         = _d 0.0 _anchorX
+    let mutable anchor_y         = _d 0.0 _anchorY
 
-    let child_grids = ObservableCollection<EmbeddedEditorViewModel>()
+    let child_grids = ObservableCollection<EditorViewModel>()
     let resizeEvent = Event<IGridUI>()
-    let inputEvent  = Event<InputEvent>()
+    let inputEvent  = Event<int*InputEvent>()
     let hlchangeEvent = Event<unit>()
 
     let toggleFullScreen(gridid: int) =
@@ -97,21 +84,11 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let getPos (p: Point) =
         int(p.X / glyph_size.Width), int(p.Y / glyph_size.Height)
 
-    let markDirty (region: GridRect) =
-        if grid_dirty.height < 1 || grid_dirty.width < 1 
-        then
-            // was not dirty
-            grid_dirty <- region
-        else
-            // calculate union
-            let top  = min grid_dirty.row region.row
-            let left = min grid_dirty.col region.col
-            let bottom = max grid_dirty.row_end region.row_end
-            let right = max grid_dirty.col_end region.col_end
-            grid_dirty <- { row = top; col = left; height = bottom - top; width = right - left }
+    let markDirty = grid_dirty.Union
 
     let markAllDirty () =
-        grid_dirty   <- { row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
+        grid_dirty.Clear()
+        grid_dirty.Union{ row = 0; col = 0; height = grid_size.rows; width = grid_size.cols }
 
     let flush() = 
         trace "flush."
@@ -122,7 +99,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // It turns out the space " " advances farest...
         // So we measure it as the width.
         let w, h = MeasureText(" ", _guifont, _guifontwide, font_size)
-        let _s = Point(float w, Rounding (float h) grid_scale)
+        // Snap to device pixels
+        let _s = Point(float w, floor(float h * grid_scale)/grid_scale)
         glyph_size <- Size(_s.X, _s.Y)
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" _guifont _guifontwide glyph_size
         this.cursorConfig()
@@ -141,6 +119,11 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         hlchangeEvent.Trigger()
 
     let setDefaultColors fg bg sp = 
+
+        let bg = 
+            if fg = bg && bg = sp then GetReverseColor bg
+            else bg
+
         setHighlight {
             id = 0
             info = [||]
@@ -170,12 +153,12 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
     let putBuffer (line: GridLine) =
         let         row  = line.row
         let mutable col  = line.col_start
-        let mutable hlid = -1
+        let mutable hlid = 0
         let mutable rep = 1
         for cell in line.cells do
             hlid <- Option.defaultValue hlid cell.hl_id
             rep  <- Option.defaultValue 1 cell.repeat
-            for i = 1 to rep do
+            for _i = 1 to rep do
                 grid_buffer.[row, col].hlid <- hlid
                 grid_buffer.[row, col].text <- cell.text
                 col <- col + 1
@@ -188,14 +171,28 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         // workaround: extend the dirty region one cell further towards the end
 
         // italic font artifacts II: when inserting on an italic line, later glyphs cover earlier with the background.
-        // potential workaround 1: redraw the whole line...
-        // potential workaround 2: do not draw the background for the latest glyph
+        // workaround: if italic, extend the dirty region towards the beginning, until not italic
 
         // italic font artifacts III: block cursor may not have italic style. 
         // how to fix this? curious about how the original GVim handles this situation.
 
+        // ligature artifacts I: ligatures do not build as characters are laid down.
+        // workaround: like italic, case II.
+
         // apply workaround I:
-        let dirty = {dirty with width = min (dirty.width + 1) grid_size.cols}
+        let dirty = {dirty with width = min (dirty.width + 1) grid_size.cols }
+        // apply workaround II:
+        col  <- dirty.col - 1
+        let mutable italic = true
+        let mutable ligature = true
+        while col > 0 && (italic || ligature) do
+            hlid <- grid_buffer.[row, col].hlid
+            col <- col - 1
+            ligature <- isProgrammingSymbol grid_buffer.[row, col].text
+            italic <- hi_defs.[hlid].rgb_attr.italic 
+        let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
+        
+
         markDirty dirty
 
     let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
@@ -325,11 +322,13 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         let mutable config_font = true
 
         match opt with
-        | Guifont(FN(name, sz))           -> _guifont     <- name; font_size <- sz
-        | GuifontWide(FN(name, sz))       -> _guifontwide <- name; font_size <- sz
-        | Guifont("+") | GuifontWide("+") -> font_size    <- font_size + 1.0
-        | Guifont("-") | GuifontWide("-") -> font_size    <- font_size - 1.0
-        | _                               -> config_font  <- false
+        | Guifont(FN(name, sz))             -> _guifont     <- name; font_size <- sz
+        | GuifontWide(FN(name, sz))         -> _guifontwide <- name; font_size <- sz
+        | Guifont("+") | GuifontWide("+")   -> font_size    <- font_size + 1.0
+        | Guifont("-") | GuifontWide("-")   -> font_size    <- font_size - 1.0
+        | Guifont(".+") | GuifontWide(".+") -> font_size    <- font_size + 0.1
+        | Guifont(".-") | GuifontWide(".-") -> font_size    <- font_size - 0.1
+        | _                                 -> config_font  <- false
 
         if config_font then fontConfig()
 
@@ -343,20 +342,20 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         trace "setWinPos: grid = %A, win = %A, startrow = %A, startcol = %A, w = %A, h = %A" grid win startrow startcol w h
         let existing =  child_grids 
                      |> Seq.indexed
-                     |> Seq.tryPick (function | (i, a) when (a.child :> IGridUI).Id = grid  -> Some(i, a.child)
+                     |> Seq.tryPick (function | (i, a) when (a :> IGridUI).Id = grid  -> Some(i, a)
                                               | _ -> None)
         let origin: Point = this.GetPoint startrow startcol
         let child_size    = this.GetPoint h w
         trace "setWinPos: child will be positioned at %A" origin
         match existing with
         | Some(i, child) -> 
-            (* manually resize the child grid as per neovim docs *)
+            (* manually resize and position the child grid as per neovim docs *)
             child.initBuffer h w
-            child_grids.[i] <- new EmbeddedEditorViewModel(child,origin.X,origin.Y, child_size.X, child_size.Y)
+            child.AnchorX <- origin.X
+            child.AnchorY <- origin.Y
         | None -> 
-            let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx)
-            let anchor = new EmbeddedEditorViewModel(child, origin.X,origin.Y, child_size.X, child_size.Y)
-            child_grids.Add <| anchor
+            let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx, origin.X, origin.Y)
+            child_grids.Add child
             //let wnd = Window()
             //wnd.Height  <- child_size.Y
             //wnd.Width   <- child_size.X
@@ -380,12 +379,15 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         | Bell                                                               -> bell false
         | VisualBell                                                         -> bell true
         | Busy is_busy                                                       -> setBusy is_busy
-        | SetTitle title                                                     -> Application.Current.MainWindow.Title <- title
+        | SetTitle title                                                     -> Model.appLifetime.MainWindow.Title <- title
         | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
         | _ -> ()
+
+    let raiseInputEvent e =
+        inputEvent.Trigger(GridId, e)
 
     do
         let fg,bg,sp,_ = this.GetDrawAttrs 0
@@ -440,9 +442,9 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
         member __.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
+        member __.HasChildren = child_grids.Count <> 0
 
-    member __.markClean () =
-        grid_dirty <- { row = 0; col = 0; height = 0; width = 0}
+    member __.markClean = grid_dirty.Clear
 
     //  converts grid position to UI Point
     member __.GetPoint row col =
@@ -468,9 +470,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             | _ -> 0,0,0
 
         // do not use the default colors for cursor
-        let fg, bg, sp = if hlid = 0 then GetReverseColor fg, GetReverseColor bg, GetReverseColor sp
-                         else fg, bg, sp
-
+        let colorf = if hlid = 0 then GetReverseColor else id
+        let fg, bg, sp = colorf fg, colorf bg, colorf sp
         cursor_info.typeface       <- _guifont
         cursor_info.wtypeface      <- _guifontwide
         cursor_info.fontSize       <- font_size
@@ -527,7 +528,17 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     member __.BufferHeight with get(): float = _fb_h
     member __.BufferWidth  with get(): float = _fb_w
+    member __.GlyphHeight with get(): float = glyph_size.Height
+    member __.GlyphWidth with get(): float = glyph_size.Width
     member __.TopLevel     with get(): bool  = parent.IsNone
+
+    member __.AnchorX
+        with get() : float = anchor_x
+        and set(v) = anchor_x <- v
+
+    member __.AnchorY
+        with get() : float = anchor_y
+        and set(v) = anchor_y <- v
 
     member this.MeasuredSize
         with get() : Size = measured_size
@@ -538,7 +549,8 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
             measured_size <- v
             let gw', gh' = gridui.GridWidth, gridui.GridHeight
             if gw <> gw' || gh <> gh' then 
-                resizeEvent.Trigger(this)
+                if this.TopLevel then
+                    resizeEvent.Trigger(this)
 
     member __.ChildGrids = child_grids
 
@@ -546,37 +558,37 @@ and EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize,
 
     member __.OnKey (e: KeyEventArgs) = 
         e.Handled <- true
-        inputEvent.Trigger <| InputEvent.Key(e.Modifiers, e.Key)
+        raiseInputEvent <| InputEvent.Key(e.Modifiers, e.Key)
 
-    member __.OnMouseDown (e: PointerPressedEventArgs) (view: Visual) = 
+    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             e.Handled <- true
             mouse_pressed <- e.MouseButton
-            inputEvent.Trigger <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
+            raiseInputEvent <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
 
-    member __.OnMouseUp (e: PointerReleasedEventArgs) (view: Visual) = 
+    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             e.Handled <- true
             mouse_pressed <- MouseButton.None
-            inputEvent.Trigger <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
+            raiseInputEvent <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
 
-    member __.OnMouseMove (e: PointerEventArgs) (view: Visual) = 
+    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en && mouse_pressed <> MouseButton.None then
-            let x, y = e.GetPosition view |> getPos
+            let x, y = e.GetPosition root |> getPos
             e.Handled <- true
             if (x,y) <> mouse_pos then
                 mouse_pos <- x,y
-                inputEvent.Trigger <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
+                raiseInputEvent <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
 
-    member __.OnMouseWheel (e: PointerWheelEventArgs) (view: Visual) = 
+    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
-            let x, y = e.GetPosition view |> getPos
-            let col, row = int(e.Delta.X), int(e.Delta.Y)
+            let x, y = e.GetPosition root |> getPos
+            let dx, dy = e.Delta.X, e.Delta.Y
             e.Handled <- true
-            inputEvent.Trigger <| InputEvent.MouseWheel(e.InputModifiers, y, x, col, row)
+            raiseInputEvent <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
-        inputEvent.Trigger <| InputEvent.TextInput(e.Text)
+        raiseInputEvent <| InputEvent.TextInput(e.Text)
 

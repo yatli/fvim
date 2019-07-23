@@ -1,8 +1,8 @@
 ﻿namespace FVim
 
-open neovim.def
-open neovim.rpc
 open log
+open ui
+open neovim.def
 
 open ReactiveUI
 open Avalonia
@@ -20,7 +20,6 @@ open System
 open System.Collections.Generic
 open System.Reactive.Disposables
 open System.Reactive.Linq
-open ui
 open Avalonia.Visuals.Media.Imaging
 open System.Runtime.InteropServices
 
@@ -36,6 +35,9 @@ type Cursor() as this =
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel()
     let mutable cursor_fb_s = 1.0
+
+    let mutable smooth_blink = false
+    let mutable smooth_move = false
 
     let ensure_fb() =
         let s = this.GetVisualRoot().RenderScaling
@@ -89,15 +91,15 @@ type Cursor() as this =
             cursorTimerRun blinkon this.ViewModel.blinkwait
             this.InvalidateVisual()
 
-    let setCursorAnimation (blink_en: bool) (move_en: bool) =
+    let setCursorAnimation() =
         let transitions = Transitions()
-        if blink_en then 
+        if smooth_blink then 
             let blink_transition = DoubleTransition()
             blink_transition.Property <- Cursor.OpacityProperty
             blink_transition.Duration <- TimeSpan.FromMilliseconds(150.0)
             blink_transition.Easing   <- Easings.LinearEasing()
             transitions.Add(blink_transition)
-        if move_en then
+        if smooth_move then
             let x_transition = DoubleTransition()
             x_transition.Property <- Canvas.LeftProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
@@ -112,11 +114,12 @@ type Cursor() as this =
 
     do
         this.Watch [
-            Model.Notify "SetCursorAnimation" 
-                (function 
-                 | [| Bool(blink) |] -> setCursorAnimation blink false
-                 | [| Bool(blink); Bool(move) |] -> setCursorAnimation blink move
-                 | _ -> setCursorAnimation false false) 
+            Model.Notify "cursor.smoothblink" (fun [| Bool(blink) |] -> 
+                     smooth_blink <- blink
+                     setCursorAnimation())
+            Model.Notify "cursor.smoothmove" (fun [| Bool(move) |] -> 
+                     smooth_move <- move
+                     setCursorAnimation())
 
             this.GetObservable(RenderTickProperty).Subscribe(cursorConfig)
         ] 
@@ -127,6 +130,8 @@ type Cursor() as this =
 
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
+
+        let scale = this.GetVisualRoot().RenderScaling
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
@@ -143,18 +148,17 @@ type Cursor() as this =
                     SetOpacity fgpaint this.Opacity
                     SetOpacity bgpaint this.Opacity
                     SetOpacity sppaint this.Opacity
-                    RenderText(ctx.PlatformImpl, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                    RenderText(ctx.PlatformImpl, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
                 | _ ->
                     // deferred
-                    let s = this.GetVisualRoot().RenderScaling
                     let redraw = ensure_fb()
                     if redraw then
                         let dc = cursor_fb.CreateDrawingContext(null)
                         dc.PushClip(bounds)
-                        RenderText(dc, bounds, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                        RenderText(dc, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
                         dc.PopClip()
                         dc.Dispose()
-                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * s, bounds.Height * s), bounds)
+                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
             with
             | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
         | CursorShape.Horizontal, p ->
