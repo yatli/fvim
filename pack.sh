@@ -38,7 +38,24 @@ function pack-linux-x64()
 
 function pack-osx-x64()
 {
-    echo "not supported"
+    rm -rf ./*.app
+    rm ./*.zip
+
+    pushd $PKG_ROOT
+    cd ..
+    mv publish fvim
+    mkdir -p publish/Contents/
+    mv fvim publish/Contents/MacOS
+    chmod +x publish/Contents/MacOS/FVim
+    mkdir -p publish/Contents/Resources/
+    popd
+    cp images/icon.icns $PKG_ROOT/Contents/Resources/fvim.icns
+    cp lib/Info.plist $PKG_ROOT/Contents/Info.plist
+
+    mv $PKG_ROOT FVim.app
+    zip FVim.$VERSION.zip FVim.app
+    rm -rf FVim.app
+    mv FVim.$VERSION.zip publish/
 }
 
 pack-$PKG_TFM

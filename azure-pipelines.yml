@@ -55,3 +55,24 @@ jobs:
       PathtoPublish: 'publish'
       ArtifactName: 'drop-linux'
       publishLocation: 'Container'
+
+- job: OSX_builds
+  pool:
+    vmImage: 'macOS-10.14'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: true
+      version: 3.0.100-preview6-012264
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: Bash@3
+    inputs:
+      filePath: 'pack.sh'
+      arguments: 'osx-x64'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-osx'
+      publishLocation: 'Container'
