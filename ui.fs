@@ -64,12 +64,14 @@ type ViewLocator() =
 
 module ui =
 
-    let mutable antialiased = true
-    let mutable drawBounds  = false
-    let mutable autohint    = false
-    let mutable subpixel    = true
-    let mutable lcdrender   = true
-    let mutable hintLevel   = SKPaintHinting.NoHinting
+    let mutable antialiased  = true
+    let mutable drawBounds   = false
+    let mutable autohint     = false
+    let mutable subpixel     = true
+    let mutable lcdrender    = true
+    let mutable hintLevel    = SKPaintHinting.NoHinting
+    let mutable normalWeight = SKFontStyleWeight.Normal
+    let mutable boldWeight   = SKFontStyleWeight.Bold
 
     let setHintLevel (v: string) = 
         match v.ToLower() with
@@ -220,7 +222,7 @@ module ui =
             match fontcache.TryGetValue((fname, italic, bold)) with
             | true, typeface -> typeface
             | _ ->
-                let weight   = if bold then SKFontStyleWeight.Bold else SKFontStyleWeight.Normal
+                let weight   = if bold then boldWeight else normalWeight
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)

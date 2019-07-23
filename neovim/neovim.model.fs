@@ -16,6 +16,7 @@ open Avalonia.Input
 open Avalonia.Input.Raw
 open FSharp.Control.Reactive
 open System.ComponentModel
+open SkiaSharp
 
 #nowarn "0058"
 
@@ -353,13 +354,15 @@ let Start opts =
 
     // rpc handlers
     List.iter ignore [
-        Notify "font.antialias"   (fun [| Bool(v) |] -> ui.antialiased <- v)
-        Notify "font.bounds"      (fun [| Bool(v) |] -> ui.drawBounds <- v)
-        Notify "font.autohint"    (fun [| Bool(v) |] -> ui.autohint <- v)
-        Notify "font.subpixel"    (fun [| Bool(v) |] -> ui.subpixel <- v)
-        Notify "font.lcdrender"   (fun [| Bool(v) |] -> ui.lcdrender <- v)
-        Notify "font.hintLevel"   (fun [| String(v) |] -> ui.setHintLevel v)
-        Notify "remote.detach"    (fun _ -> Detach())
+        Notify "font.antialias"     (fun [| Bool(v) |] -> ui.antialiased <- v)
+        Notify "font.bounds"        (fun [| Bool(v) |] -> ui.drawBounds <- v)
+        Notify "font.autohint"      (fun [| Bool(v) |] -> ui.autohint <- v)
+        Notify "font.subpixel"      (fun [| Bool(v) |] -> ui.subpixel <- v)
+        Notify "font.lcdrender"     (fun [| Bool(v) |] -> ui.lcdrender <- v)
+        Notify "font.hintLevel"     (fun [| String(v) |] -> ui.setHintLevel v)
+        Notify "font.normal.weight" (fun [| Integer32(v) |] -> ui.normalWeight <- LanguagePrimitives.EnumOfValue(v))
+        Notify "font.bold.weight"   (fun [| Integer32(v) |] -> ui.boldWeight <- LanguagePrimitives.EnumOfValue(v))
+        Notify "remote.detach"      (fun _ -> Detach())
     ] 
 
     trace "commencing early initialization..."
