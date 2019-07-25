@@ -305,7 +305,7 @@ module ui =
         let h = region.Bottom - region.Y
         //  total_padding = padding space 1 + padding space 2
         let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
-        let baseline      = region.Y + (total_padding / 2.0) - (float fg.FontMetrics.Top )
+        let baseline      = region.Y + floor((total_padding / 2.0) - (float fg.FontMetrics.Top))
         let snappedBaseline = ceil(baseline * scale) / scale
         let region = region.WithY(region.Y + snappedBaseline - baseline)
         (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
