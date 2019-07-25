@@ -13,6 +13,8 @@
   <key>CFBundleIconFile</key>
   <string>fvim.icns</string>
   <key>CFBundleDocumentTypes</key>
+  <key>NSHighResolutionCapable</key>
+  <string>True</string>
   <array>
     <dict>
         <key>CFBundleTypeExtensions</key>
