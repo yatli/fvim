@@ -244,6 +244,7 @@ and Editor() as this =
                 timer.Stop()
                 trace "drawing end, time = %dms." timer.ElapsedMilliseconds
                 grid_vm.markClean()
+            (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
         (*trace "base rendering"*)
         base.Render ctx
         (*trace "render end"*)

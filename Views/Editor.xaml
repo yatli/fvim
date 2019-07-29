@@ -49,7 +49,6 @@
         Source              = "{Binding FrameBuffer,  Mode=OneWay}"
         Width               = "{Binding BufferWidth,  Mode=OneWay}"
         Height              = "{Binding BufferHeight, Mode=OneWay}"
-        Stretch             = "Fill"
         HorizontalAlignment = "Left"
         VerticalAlignment   = "Top"
         Focusable           = "False"
