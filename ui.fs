@@ -257,7 +257,7 @@ module ui =
         | CharType.Powerline -> nerd_typeface
         | _              -> _get font
 
-    let MeasureText (str: string, font: string, wfont: string, fontSize: float) =
+    let MeasureText (str: string, font: string, wfont: string, fontSize: float, scaling: float) =
         use paint = new SKPaint()
         paint.Typeface <- GetTypeface(str, false, false, font, wfont)
         paint.TextSize <- single fontSize
@@ -271,10 +271,30 @@ module ui =
         paint.DeviceKerningEnabled <- false
         paint.TextEncoding <- SKTextEncoding.Utf16
 
-        let w = paint.MeasureText str
-        let h = paint.FontSpacing
+        let mutable score = 999999999999.0
+        let mutable s = fontSize
+        let mutable w = 0.0
+        let mutable h = 0.0
 
-        w, h
+        for sizeStep = -50 to 50 do
+            let s' = fontSize + float(sizeStep) * 0.01
+            paint.TextSize <- single s'
+
+            let w' = float(paint.MeasureText str)
+            let h' = round(float(paint.FontSpacing) * scaling) / scaling
+
+            // calculate score
+            let score' = 
+                abs(w' * scaling - round(w' * scaling)) +
+                abs(h' * scaling - round(float(paint.FontSpacing) * scaling))
+
+            if score' < score then
+                score <- score'
+                w <- w'
+                h <- h'
+                s <- s'
+
+        s, w, h
          
     let AllocateFramebuffer w h scale =
         let pxsize        = PixelSize(int <| (w * scale), int <| (h * scale))
