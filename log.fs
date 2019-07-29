@@ -37,18 +37,18 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
         match intent with
         | Daemon _ -> "fvim-daemon"
         | _ -> "fvim"
-    let logname = sprintf "%s-%s.log" fprefix ftime
-    let logToFile = Option.defaultValue (System.IO.Path.Combine(config.configdir, logname)) logToFile
-    try System.IO.File.Delete logToFile
-    with _ -> ()
-    _logsSink
-    |> Observable.bufferSpan (System.TimeSpan.FromMilliseconds 1000.0)
-    |> Observable.add (fun strs -> 
-            let strs = strs |> Array.ofSeq
-            if strs.Length > 0 then
-                try System.IO.File.AppendAllLines(logToFile, strs)
-                with _ -> ()
-        )
+    if logToFile then
+        let logname = sprintf "%s-%s.log" fprefix ftime
+        let logToFile = System.IO.Path.Combine(config.configdir, logname)
+        try System.IO.File.Delete logToFile
+        with _ -> ()
+        _logsSink
+        |> Observable.bufferSpan (System.TimeSpan.FromMilliseconds 1000.0)
+        |> Observable.add (fun strs -> 
+                let strs = strs |> Array.ofSeq
+                if strs.Length > 0 then
+                    try System.IO.File.AppendAllLines(logToFile, strs)
+                    with _ -> ())
 
     if logPatterns.IsSome then
         let patterns = logPatterns.Value.Split(",")

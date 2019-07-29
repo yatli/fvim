@@ -18,7 +18,7 @@ type Options =
     {
         intent: Intent
         logToStdout: bool
-        logToFile: string option
+        logToFile: bool
         logPatterns: string option
         args: string list
         program: string
@@ -44,7 +44,7 @@ let parseOptions (args: string[]) =
         else None
 
     let trace_to_stdout     = eat1 "--trace-to-stdout"
-    let trace_to_file       = eat2 "--trace-to-file"
+    let trace_to_file       = eat1 "--trace-to-file"
     let trace_patterns      = eat2 "--trace-patterns"
     let ssh                 = eat2 "--ssh"
     let wsl                 = eat1 "--wsl"
