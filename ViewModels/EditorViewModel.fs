@@ -318,11 +318,15 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         match existing with
         | Some(i, child) -> 
             (* manually resize and position the child grid as per neovim docs *)
+            trace "setWinPos: update parameters: h = %d w = %d X = %f Y = %f" h w origin.X origin.Y
             child.initBuffer h w
             child.AnchorX <- origin.X
             child.AnchorY <- origin.Y
         | None -> 
-            let child = new EditorViewModel(grid, this, {rows=h; cols=w}, glyph_size, Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, _guifont, _guifontwide, cursor_modeidx, origin.X, origin.Y)
+            let child = new EditorViewModel(
+                            grid, this, {rows=h; cols=w}, glyph_size, 
+                            Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, 
+                            _guifont, _guifontwide, cursor_modeidx, origin.X, origin.Y)
             child_grids.Add child
             //let wnd = Window()
             //wnd.Height  <- child_size.Y
@@ -502,11 +506,14 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     member __.AnchorX
         with get() : float = anchor_x
-        and set(v) = anchor_x <- v
+        and set(v) = ignore <| this.RaiseAndSetIfChanged(&anchor_x, v, "AnchorX")
 
     member __.AnchorY
         with get() : float = anchor_y
-        and set(v) = anchor_y <- v
+        and set(v) = ignore <| this.RaiseAndSetIfChanged(&anchor_y, v, "AnchorY")
+
+    member __.GridId
+        with get() = GridId
 
     member this.MeasuredSize
         with get() : Size = measured_size

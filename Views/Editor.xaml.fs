@@ -26,6 +26,8 @@ and Editor() as this =
     inherit Canvas()
 
     static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
+    static let AnchorXProp    = AvaloniaProperty.Register<Editor, float>("AnchorX")
+    static let AnchorYProp    = AvaloniaProperty.Register<Editor, float>("AnchorY")
 
     let mutable m_saved_size  = Size(100.0,100.0)
     let mutable m_saved_pos   = PixelPoint(300, 300)
@@ -34,6 +36,8 @@ and Editor() as this =
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
     let mutable (m_visualroot: IVisual) = this :> IVisual
+
+    let mutable m_debug = false
 
     let trace fmt = 
         let nr =
@@ -203,12 +207,30 @@ and Editor() as this =
                 Model.OnGridReady(vm :> IGridUI)
                 ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
                )
+
+            vm.ObservableForProperty(fun x -> x.AnchorX).Subscribe(fun x -> this.AnchorX <- x.GetValue())
+            vm.ObservableForProperty(fun x -> x.AnchorY).Subscribe(fun y -> this.AnchorY <- y.GetValue())
         ]
 
     let subscribeAndHandle fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
         ob.Subscribe(fun e ->
             e.Handled <- true
             doWithDataContext (fn e))
+
+    let drawDebug (dc: IDrawingContextImpl) =
+        let txt = Media.FormattedText()
+        txt.Text <- sprintf "Grid #%d, Z=%d" grid_vm.GridId this.ZIndex
+        txt.Typeface <- Media.Typeface("Iosevka Slab", 16.0)
+
+        dc.DrawText(Media.Brushes.Tan, Point(10.0, 10.0), txt.PlatformImpl)
+        dc.DrawText(Media.Brushes.Tan, Point(this.Bounds.Width - 60.0, 10.0), txt.PlatformImpl)
+        dc.DrawText(Media.Brushes.Tan, Point(10.0, this.Bounds.Height - 60.0), txt.PlatformImpl)
+        dc.DrawText(Media.Brushes.Tan, Point(this.Bounds.Width - 60.0, this.Bounds.Height - 60.0), txt.PlatformImpl)
+
+        dc.DrawRectangle(Media.Pen(Media.Brushes.Red, 3.0), this.Bounds)
+        dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(this.Bounds.Width, this.Bounds.Height))
+        dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
+
 
     do
         this.Watch [
@@ -222,7 +244,6 @@ and Editor() as this =
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType<EditorViewModel>
             |> Observable.subscribe onViewModelConnected
-
         ]
         AvaloniaXamlLoader.Load(this)
 
@@ -240,10 +261,14 @@ and Editor() as this =
                     for row = r.row to r.row_end - 1 do
                         drawBufferLine grid_dc row r.col r.col_end
 
+                if m_debug then
+                    drawDebug grid_dc
+
                 grid_dc.PopClip()
                 timer.Stop()
                 trace "drawing end, time = %dms." timer.ElapsedMilliseconds
                 grid_vm.markClean()
+
             (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
         (*trace "base rendering"*)
         base.Render ctx
@@ -263,8 +288,6 @@ and Editor() as this =
             sz
         )
 
-    (*each event repeats 4 times... use the event instead *)
-
     interface IViewFor<EditorViewModel> with
         member this.ViewModel
             with get (): EditorViewModel = this.GetValue(ViewModelProp)
@@ -273,3 +296,10 @@ and Editor() as this =
             with get (): obj = this.GetValue(ViewModelProp) :> obj
             and set (v: obj): unit = this.SetValue(ViewModelProp, v)
 
+    member this.AnchorX
+        with get(): float = this.GetValue(AnchorXProp)
+        and set(v: float) = this.SetValue(AnchorXProp, v)
+
+    member this.AnchorY
+        with get(): float = this.GetValue(AnchorYProp)
+        and set(v: float) = this.SetValue(AnchorYProp, v)

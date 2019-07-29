@@ -177,7 +177,7 @@ type Nvim() =
         let rec _startRead() =
             System.Reactive.Linq.Observable.Create(read)
             |> Observable.map       parse
-            |> Observable.catchWith exhandler
+            (*|> Observable.catchWith exhandler*)
 
         and exhandler (ex: exn) = 
             trace "exhandler: %A" ex
