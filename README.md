@@ -86,11 +86,21 @@ FVimDrawFPS v:true
 
 " Font tweaks
 FVimFontAntialias v:true
-FVimFontDrawBounds v:true
 FVimFontAutohint v:true
 FVimFontSubpixel v:true
 FVimFontLcdRender v:true
 FVimFontHintLevel 'full'
+
+" Try to snap the fonts to the pixels, reduces blur
+" in some situations (e.g. 100% DPI).
+FVimFontAutoSnap v:true 
+
+" Font weight tuning, possible valuaes are 100..900
+FVimFontNormalWeight 400
+FVimFontBoldWeight 700
+
+" Font debugging -- draw bounds around each glyph
+FVimFontDrawBounds v:true
 
 " Detach from a remote session without killing the server
 " If this command is executed on a standalone instance,

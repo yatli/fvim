@@ -69,6 +69,7 @@ module ui =
     let mutable autohint     = false
     let mutable subpixel     = true
     let mutable lcdrender    = true
+    let mutable autosnap     = true
     let mutable hintLevel    = SKPaintHinting.NoHinting
     let mutable private normalWeight = SKFontStyleWeight.Normal
     let mutable private boldWeight   = SKFontStyleWeight.Bold
@@ -276,7 +277,7 @@ module ui =
         let mutable w = 0.0
         let mutable h = 0.0
 
-        for sizeStep = -50 to 50 do
+        let search (sizeStep: int) =
             let s' = fontSize + float(sizeStep) * 0.01
             paint.TextSize <- single s'
 
@@ -293,6 +294,9 @@ module ui =
                 w <- w'
                 h <- h'
                 s <- s'
+
+        if autosnap then [-50 .. 50] else [0] 
+        |> List.iter search
 
         s, w, h
          
@@ -326,7 +330,7 @@ module ui =
         //  total_padding = padding space 1 + padding space 2
         let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
         let baseline      = region.Y + floor((total_padding / 2.0) - (float fg.FontMetrics.Top))
-        let snappedBaseline = ceil(baseline * scale) / scale
+        let snappedBaseline = floor(baseline * scale) / scale
         let region = region.WithY(region.Y + snappedBaseline - baseline)
         (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
         let fontPos       = Point(region.X, snappedBaseline)

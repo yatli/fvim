@@ -354,6 +354,7 @@ let Start opts =
 
     // rpc handlers
     List.iter ignore [
+        Notify "font.autosnap"      (fun [| Bool(v) |] -> ui.autosnap <- v)
         Notify "font.antialias"     (fun [| Bool(v) |] -> ui.antialiased <- v)
         Notify "font.bounds"        (fun [| Bool(v) |] -> ui.drawBounds <- v)
         Notify "font.autohint"      (fun [| Bool(v) |] -> ui.autohint <- v)
@@ -424,6 +425,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "FVimDetach" 0 (sprintf "call rpcnotify(%d, 'remote.detach')" myChannel))
 
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 (sprintf "call rpcnotify(%d, 'font.autosnap', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.bounds', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutohint" 1 (sprintf "call rpcnotify(%d, 'font.autohint', <args>)" myChannel))
