@@ -1,7 +1,7 @@
 ﻿module FVim.neovim.def
 
 open FVim.log
-open FVim.Common
+open FVim.common
 
 open Avalonia.Media
 open System.Collections.Generic
@@ -138,8 +138,41 @@ type GridLine =
         cells: GridCell[]
     }
 
+type Anchor =
+| NorthWest
+| NorthEast
+| SouthWest
+| SouthEast
+
+///  <summary>
+///  The "kind" item uses a single letter to indicate the kind of completion.  This
+///  may be used to show the completion differently (different color or icon).
+///  Currently these types can be used:
+///      v    variable
+///      f    function or method
+///      m    member of a struct or class
+///      t    typedef
+///      d    #define or macro
+///  </summary>
+type CompleteKind =
+| Variable
+| Function
+| Member
+| Typedef
+| Macro
+
+type CompleteItem =
+    {
+        word: string
+        abbr: string option
+        menu: string option
+        info: string option
+        kind: CompleteKind option
+    }
+with static member empty = { word = ""; abbr = None; menu = None; info = None; kind = None }
+
 type RedrawCommand =
-// global
+///  -- global --
 | SetOption of UiOption[]
 | SetTitle of string
 | SetIcon of string
@@ -152,8 +185,8 @@ type RedrawCommand =
 //| Suspend // ??
 //| UpdateMenu // ??
 | Flush
-// grid events
-// note, cterm_* are transmitted as term 256-color codes
+///  -- grid events --
+///  note, cterm_* are transmitted as term 256-color codes
 | DefaultColorsSet of fg: Color * bg: Color * sp: Color * cterm_fg: Color * cterm_bg: Color
 | HighlightAttrDefine of HighlightAttr[]
 | GridLine of GridLine[]
@@ -162,9 +195,51 @@ type RedrawCommand =
 | GridCursorGoto of grid: int * row: int * col: int
 | GridScroll of grid:int * top:int * bot:int * left:int * right:int * rows:int * cols: int
 | GridResize of grid: int * width: int * height: int
-// multigrid events
+/// -- multigrid events --
+///  Set the position and size of the grid in Nvim (i.e. the outer grid
+///  size). If the window was previously hidden, it should now be shown
+///  again.
 | WinPos of grid: int * win: int * start_row: int * start_col: int * width: int * height:int
-// legacy events
+///  Display or reconfigure floating window `win`. The window should be
+///  displayed above another grid `anchor_grid` at the specified position
+///  `anchor_row` and `anchor_col`. For the meaning of `anchor` and more
+///  details of positioning, see |nvim_open_win()|.
+| WinFloatPos of grid: int * win: int * anchor: Anchor * anchor_grid: int * anchor_row: int * anchor_col: int * focusable: bool
+///  Display or reconfigure external window `win`. The window should be
+///  displayed as a separate top-level window in the desktop environment,
+///  or something similar.
+| WinExternalPos of grid: int * win: int
+///  Stop displaying the window. The window can be shown again later.
+| WinHide of grid: int
+///  Hint that following `grid_scroll` on the default grid should
+///  scroll over windows. This is a temporary workaround to allow
+///  UIs to use the builtin message drawing. Later on, messages will be
+///  drawn on a dedicated grid. Using |ui-messages| also avoids this issue.
+| WinScrollOverStart 
+///  Hint that scrolled over windows should be redrawn again, and not be
+///  overdrawn by default grid scrolling anymore.
+| WinScrollOverReset
+///  Close the window
+| WinClose of grid: int
+///  -- popupmenu events --
+///  Show |popupmenu-completion|. `items` is an array of completion items
+///  to show; each item is an array of the form [word, kind, menu, info] as
+///  defined at |complete-items|, except that `word` is replaced by `abbr`
+///  if present.  `selected` is the initially-selected item, a zero-based
+///  index into the array of items (-1 if no item is selected). `row` and
+///  `col` give the anchor position, where the first character of the
+///  completed word will be. When |ui-multigrid| is used, `grid` is the
+///  grid for the anchor position. When `ext_cmdline` is active, `grid` is
+///  set to -1 to indicate the popupmenu should be anchored to the external
+///  cmdline. Then `col` will be a byte position in the cmdline text.
+| PopupMenuShow of items: CompleteItem[] * selected: int * row: int * col: int * grid : int
+///  Select an item in the current popupmenu. `selected` is a zero-based
+///  index into the array of items from the last popupmenu_show event, or
+///  -1 if no item is selected.
+| PopupMenuSelect of selected: int
+///  Hide the popupmenu.
+| PopupMenuHide
+///  -- legacy events --
 //| UpdateFg of Color
 //| UpdateBg of Color
 //| UpdateSp of Color
@@ -195,68 +270,7 @@ type EventParseException(data: obj) =
     member __.Input = data
     override __.Message = sprintf "Could not parse the neovim message: %A" data
 
-let mkparams1 (t1: 'T1)                                          = [| box t1 |]
-let mkparams2 (t1: 'T1) (t2: 'T2)                                = [| box t1; box t2 |]
-let mkparams3 (t1: 'T1) (t2: 'T2) (t3: 'T3)                      = [| box t1; box t2; box t3 |]
-let mkparams4 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4)            = [| box t1; box t2; box t3; box t4|]
-let mkparams5 (t1: 'T1) (t2: 'T2) (t3: 'T3) (t4: 'T4) (t5: 'T5)  = [| box t1; box t2; box t3; box t4; box t5|]
-
-let (|ObjArray|_|) (x:obj) =
-    match x with
-    | :? (obj[]) as x    -> Some x
-    | :? (obj list) as x -> Some(Array.ofList x)
-    | :? (obj seq) as x  -> Some(Array.ofSeq x)
-    | _                  -> None
-
-let (|Bool|_|) (x:obj) =
-    match x with
-    | :? bool as x       -> Some x
-    | _ -> None
-
-let (|String|_|) (x:obj) =
-    match x with
-    | :? string as x     -> Some x
-    | _ -> None
-
-let IsString (x:obj) =
-    match x with
-    | :? string as x     -> Some x
-    | _ -> None
-
-let Integer32 (x:obj) =
-    match x with
-    | :? int32  as x     -> Some(int32 x)
-    | :? int16  as x     -> Some(int32 x)
-    | :? int8   as x     -> Some(int32 x)
-    | :? uint16 as x     -> Some(int32 x)
-    | :? uint32 as x     -> Some(int32 x)
-    | :? uint8  as x     -> Some(int32 x)
-    | _ -> None
-
-let (|Integer32|_|) (x:obj) =
-    match x with
-    | :? int32  as x     -> Some(int32 x)
-    | :? int16  as x     -> Some(int32 x)
-    | :? int8   as x     -> Some(int32 x)
-    | :? uint16 as x     -> Some(int32 x)
-    | :? uint32 as x     -> Some(int32 x)
-    | :? uint8  as x     -> Some(int32 x)
-    | _ -> None
-
-// converts to bool in a desperate (read: JavaScript) attempt
-let (|ForceBool|_|) (x:obj) =
-    match x with
-    | Bool x -> Some x
-    | String("v:true")
-    | String("true") -> Some true
-    | String("v:false") 
-    | String("false") -> Some false
-    | String(ParseInt32 x) when x <> 0 -> Some true
-    | String(ParseInt32 x) when x = 0 -> Some false
-    | String("") -> Some false
-    | String(_) -> Some true
-    | _ -> None
-
+///  Matches ObjArray against the [|string; p1; p2; ... |] form
 let (|C|_|) (x:obj) =
     match x with
     | ObjArray x -> 
@@ -265,11 +279,13 @@ let (|C|_|) (x:obj) =
         | _ -> None
     | _ -> None
 
+///  Matches ObjArray against the [|string; [|p1; p2; ...|] |] form.
 let (|C1|_|) (x:obj) =
     match x with
     | ObjArray [| (String cmd); ObjArray ps |] -> Some(cmd, ps)
     | _ -> None
 
+///  Chooses from ObjArray with a parser
 let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
     match xs with
     | :? (obj seq) as xs ->
@@ -277,11 +293,13 @@ let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
         Some result
     | _ -> None
 
+///  Matches ObjArray against the form [|key; value|]
 let (|KV|_|) (k: string) (x: obj) =
     match x with
     | ObjArray [| (String key); x |] when key = k -> Some x
     | _ -> None
 
+///  Finds [|key; value|] in (ObjArray | hashmap<obj, obj>)
 let FindKV (k: string) (x: obj) =
     match x with
     | ObjArray arr ->
@@ -292,6 +310,7 @@ let FindKV (k: string) (x: obj) =
         | _ -> None
     | _ -> None
 
+///  Finds [|key; value|] in (ObjArray | hashmap<obj, obj>)
 let (|FindKV|_|) (k: string) (x: obj) =
     match x with
     | ObjArray arr ->
@@ -422,12 +441,34 @@ let parse_grid_line (x: obj) =
         -> Some {grid = grid; row=row; col_start=col_start; cells=cells}
     | _ -> None
 
+let (|Anchor|_|) =
+    function
+    | String "NE" -> Some NorthEast
+    | String "NW" -> Some NorthWest
+    | String "SE" -> Some SouthEast
+    | String "SW" -> Some SouthWest
+    | _ -> None
+
+let parse_complete_item =
+    function
+    | ObjArray [| (String word); (String abbr); (String menu); (String info) |] -> 
+        Some {
+            word = word
+            abbr = Some abbr
+            menu = Some menu
+            info = Some info
+            kind = None
+        }
+    | x -> 
+        trace "parse_complete_item: unrecognized: %A" x
+        None
+
 let parse_redrawcmd (x: obj) =
     match x with
     | C("option_set", P(parse_uioption)options)                                            -> SetOption options
-    | C("default_colors_set", P(parse_default_colors)dcolors )                             -> dcolors |> Array.last
+    | C("default_colors_set", P(parse_default_colors)dcolors)                              -> Array.last dcolors
     | C1("set_title", [|String title|])                                                    -> SetTitle title
-    | C("set_icon", [|String icon|])                                                       -> SetIcon icon
+    | C1("set_icon", [|String icon|])                                                      -> SetIcon icon
     | C1("mode_info_set", [| (Bool csen); P(parse_mode_info)info |])                       -> ModeInfoSet(csen, info)
     | C1("mode_change", [| (String m); (Integer32 i) |])                                   -> ModeChange(m, i)
     | C("mouse_on", _)                                                                     -> Mouse(true)
@@ -442,16 +483,32 @@ let parse_redrawcmd (x: obj) =
     | C1("grid_resize", [| (Integer32 id); (Integer32 w); (Integer32 h) |])                -> GridResize(id, w, h)
     | C1("grid_destroy", [| (Integer32 id) |])                                             -> GridDestroy id
     | C1("grid_cursor_goto", [| (Integer32 grid); (Integer32 row); (Integer32 col) |])     -> GridCursorGoto(grid, row, col)
-    | C1("grid_scroll", 
-         [| (Integer32 grid)
-            (Integer32 top); (Integer32 bot) 
-            (Integer32 left); (Integer32 right) 
-            (Integer32 rows); (Integer32 cols) 
-         |])                                                                               -> GridScroll(grid, top, bot, left, right, rows, cols)
+    | C1("grid_scroll", [| 
+        (Integer32 grid)
+        (Integer32 top); (Integer32 bot) 
+        (Integer32 left); (Integer32 right) 
+        (Integer32 rows); (Integer32 cols) |])                                             -> GridScroll(grid, top, bot, left, right, rows, cols)
     | C("grid_line", P(parse_grid_line)lines)                                              -> GridLine lines
-    | C1("win_pos", [| (Integer32 grid);      (Integer32 win); 
-                       (Integer32 start_row); (Integer32 start_col); 
-                       (Integer32 width);     (Integer32 height) |])                       -> WinPos(grid,win,start_row,start_col,width,height)
+    | C1("win_pos", [| 
+        (Integer32 grid); (Integer32 win) 
+        (Integer32 start_row); (Integer32 start_col)
+        (Integer32 width); (Integer32 height) |])                                          -> WinPos(grid,win,start_row,start_col,width,height)
+    | C1("win_float_pos", [| 
+        (Integer32 grid); (Integer32 win)
+        (Anchor anchor); (Integer32 anchor_grid)
+        (Integer32 anchor_row); (Integer32 anchor_col)
+        (Bool focusable) |])                                                               -> WinFloatPos(grid, win, anchor, anchor_grid, anchor_row, anchor_col, focusable)
+    | C1("win_external_pos", [| 
+        (Integer32 grid); (Integer32 win) |])                                              -> WinExternalPos(grid, win)
+    | C1("win_hide", [| (Integer32 grid) |])                                               -> WinHide(grid)
+    | C("win_scroll_over_start", _)                                                        -> WinScrollOverStart
+    | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
+    | C1("win_close", [| (Integer32 grid) |])                                              -> WinClose(grid)
+    | C1("popupmenu_show", [|
+        P(parse_complete_item)items; (Integer32 selected); 
+        (Integer32 row); (Integer32 col); (Integer32 grid) |])                             -> PopupMenuShow(items, selected, row, col, grid)
+    | C1("popupmenu_select", [| Integer32 selected |])                                     -> PopupMenuSelect(selected)
+    | C("popupmenu_hide", _)                                                               -> PopupMenuHide
     | _                                                                                    -> UnknownCommand x
     //| C("suspend", _)                                                                    -> 
     //| C("update_menu", _)                                                                -> 

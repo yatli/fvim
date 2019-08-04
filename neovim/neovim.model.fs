@@ -3,7 +3,7 @@
 open getopt
 open log
 open ui
-open Common
+open common
 open neovim.def
 open neovim.proc
 
@@ -24,7 +24,7 @@ open FSharp.Control.Tasks.V2
 
 let appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
 
-let private trace x = trace "Model" x
+let private trace x = trace "neovim.model" x
 
 [<AutoOpen>]
 module ModelImpl =
@@ -74,11 +74,8 @@ module ModelImpl =
         | Redraw cmd -> redraw cmd 
         | Exit -> appLifetime.Shutdown()
         | Crash code ->
-            async {
-                trace "neovim crashed with code %d" code
-                do! FVim.log.flush()
-                do! Async.AwaitTask(Dispatcher.UIThread.InvokeAsync(appLifetime.Shutdown))
-            } |> Async.RunSynchronously
+            trace "neovim crashed with code %d" code
+            appLifetime.Shutdown()
         | _ -> ()
 
     let onGridResize(gridui: IGridUI) =

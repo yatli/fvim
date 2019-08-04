@@ -4,7 +4,7 @@ module FVim.Shell
 
 open log
 open getopt
-open Common
+open common
 
 open System
 open System.IO

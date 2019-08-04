@@ -1,5 +1,6 @@
 ﻿namespace FVim
 
+open common
 open log
 open ui
 open wcwidth
@@ -356,7 +357,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
-        | _ -> ()
+        | x -> trace "unimplemented command: %A" x
 
     let raiseInputEvent e =
         inputEvent.Trigger(GridId, e)

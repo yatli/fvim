@@ -3,7 +3,7 @@ module FVim.neovim.proc
 open def
 open FVim.getopt
 open FVim.log
-open FVim.Common
+open FVim.common
 
 open MessagePack
 
@@ -126,8 +126,6 @@ type Nvim() =
                     trace "end read loop: process exited, code = %d" code
                     if code <> 0 then
                         ob.OnNext([|box(Crash code)|])
-                        // sleep, allow message to be flushed
-                        Thread.Sleep 2000
                 else
                     trace "end read loop."
                 ob.OnCompleted()
@@ -267,9 +265,10 @@ type Nvim() =
 
     member __.ui_attach (w:int) (h:int) =
         let opts = hashmap[]
-        opts.[uiopt_rgb]          <- true
+        opts.[uiopt_rgb]           <- true
+        opts.[uiopt_ext_linegrid]  <- true
+        (*opts.[uiopt_ext_popupmenu]  <- true*)
         (*opts.[uiopt_ext_multigrid] <- true*)
-        opts.[uiopt_ext_linegrid] <- true
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 

@@ -1,6 +1,6 @@
 ﻿module FVim.getopt
 
-open Common
+open common
 open System.Net
 
 type ServerOptions =

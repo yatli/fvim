@@ -2,6 +2,7 @@
 
 open neovim.def
 open log
+open common
 
 open ReactiveUI
 open Avalonia.Markup.Xaml

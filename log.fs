@@ -20,6 +20,7 @@ let trace cat fmt =
 let error cat fmt =
     Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
 
+// XXX seriously?
 let flush() =
     async {
         do! Async.Sleep 2000
