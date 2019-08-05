@@ -90,6 +90,7 @@ FVimFontAutohint v:true
 FVimFontSubpixel v:true
 FVimFontLcdRender v:true
 FVimFontHintLevel 'full'
+FVimFontLineHeight '+1.0' " can be 'default', '14.0', '-1.0' etc.
 
 " Try to snap the fonts to the pixels, reduces blur
 " in some situations (e.g. 100% DPI).

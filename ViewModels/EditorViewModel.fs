@@ -376,6 +376,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             hlchangeEvent.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
             |> Observable.subscribe (fun () -> markAllDirty())
+
+            States.Register.Watch "font" (fun () -> fontConfig())
         ] 
 
     member __.Item with get(row, col) = grid_buffer.[row, col]

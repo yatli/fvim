@@ -314,6 +314,7 @@ let Start opts =
     States.Register.Prop<SKPaintHinting> States.parseHintLevel "font.hintLevel"
     States.Register.Prop<SKFontStyleWeight> States.parseFontWeight "font.weight.normal"
     States.Register.Prop<SKFontStyleWeight> States.parseFontWeight "font.weight.bold"
+    States.Register.Prop<States.LineHeightOption> States.parseLineHeightOption "font.lineheight"
     States.Register.Bool "cursor.smoothblink"
     States.Register.Bool "cursor.smoothmove"
     ignore(States.Register.Notify "remote.detach" (fun _ -> Detach()))
@@ -377,6 +378,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "FVimDetach" 0 (sprintf "call rpcnotify(%d, 'remote.detach')" myChannel))
 
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLineHeight" 1 (sprintf "call rpcnotify(%d, 'font.lineheight', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 (sprintf "call rpcnotify(%d, 'font.autosnap', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.drawBounds', <args>)" myChannel))

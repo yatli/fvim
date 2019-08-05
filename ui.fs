@@ -255,12 +255,17 @@ module ui =
             paint.TextSize <- single s'
 
             let w' = float(paint.MeasureText str)
-            let h' = round(float(paint.FontSpacing) * scaling) / scaling
+            let h'' = 
+                match States.font_lineheight with
+                | States.Absolute h' -> h'
+                | States.Default -> float paint.FontSpacing
+                | States.Add h' -> (float paint.FontSpacing) + h'
+            let h' = round(h'' * scaling) / scaling
 
             // calculate score
             let score' = 
                 abs(w' * scaling - round(w' * scaling)) +
-                abs(h' * scaling - round(float(paint.FontSpacing) * scaling))
+                abs(h' * scaling - round(h'' * scaling))
 
             if score' < score then
                 score <- score'

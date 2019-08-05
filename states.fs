@@ -40,6 +40,11 @@ let getNotificationEvent eventName =
     notificationEvents.[eventName] <- ev
     ev
 
+type LineHeightOption =
+| Absolute of float
+| Add of float
+| Default
+
 // cursor
 let mutable cursor_smoothmove  = false
 let mutable cursor_smoothblink = false
@@ -54,6 +59,7 @@ let mutable font_autosnap      = true
 let mutable font_hintLevel     = SKPaintHinting.NoHinting
 let mutable font_weight_normal = SKFontStyleWeight.Normal
 let mutable font_weight_bold   = SKFontStyleWeight.Bold
+let mutable font_lineheight    = LineHeightOption.Default
 
 module private Helper =
     type Foo = A
@@ -81,6 +87,19 @@ let parseHintLevel (v: obj) =
 let parseFontWeight (v: obj) =
     match v with
     | Integer32 v -> Some(LanguagePrimitives.EnumOfValue v)
+    | _ -> None
+
+let parseLineHeightOption (v: obj) =
+    match v with
+    | String v ->
+        if v.StartsWith("+") then
+            Some(Add(float v.[1..]))
+        elif v.StartsWith("-") then
+            Some(Add(-float v.[1..]))
+        elif v.ToLowerInvariant() = "default" then
+            Some Default
+        else
+            Some(Absolute(float v))
     | _ -> None
 
 let Shutdown code = _appLifetime.Shutdown code
