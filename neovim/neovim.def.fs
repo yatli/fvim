@@ -2,22 +2,12 @@
 
 open FVim.log
 open FVim.common
+open FVim.States
 
 open Avalonia.Media
 open System.Collections.Generic
 
 let private trace fmt = trace "neovim.def" fmt
-
-type Request = 
-    {
-        method:     string
-        parameters: obj[]
-    }
-
-type Response = 
-    {
-        result: Choice<obj, obj>
-    }
 
 type CursorShape =
 | Block
@@ -244,15 +234,6 @@ type RedrawCommand =
 //| UpdateBg of Color
 //| UpdateSp of Color
 | UnknownCommand of data: obj
-
-type Event =
-| Request      of int32 * Request * (int32 -> Response -> unit Async)
-| Response     of int32 * Response
-| Notification of Request
-| Redraw       of RedrawCommand[]
-| Error        of string
-| Crash        of code: int32
-| Exit
 
 let uiopt_rgb            = "rgb"
 let uiopt_ext_linegrid   = "ext_linegrid"

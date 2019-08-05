@@ -64,24 +64,6 @@ type ViewLocator() =
 
 module ui =
 
-    let mutable antialiased  = true
-    let mutable drawBounds   = false
-    let mutable autohint     = false
-    let mutable subpixel     = true
-    let mutable lcdrender    = true
-    let mutable autosnap     = true
-    let mutable hintLevel    = SKPaintHinting.NoHinting
-    let mutable private normalWeight = SKFontStyleWeight.Normal
-    let mutable private boldWeight   = SKFontStyleWeight.Bold
-
-    let setHintLevel (v: string) = 
-        match v.ToLower() with
-        | "none" -> hintLevel   <- SKPaintHinting.NoHinting
-        | "slight" -> hintLevel <- SKPaintHinting.Slight
-        | "normal" -> hintLevel <- SKPaintHinting.Normal
-        | "full" -> hintLevel   <- SKPaintHinting.Full
-        | _ -> ()
-
     type InputEvent = 
     | Key          of mods: InputModifiers * key: Key
     | MousePress   of mods: InputModifiers * row: int * col: int * button: MouseButton * combo: int
@@ -212,24 +194,15 @@ module ui =
     let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
     let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
 
-    let private InvalidateFontCache (bold: bool) =
+    let private InvalidateFontCache () =
         List.ofSeq fontcache.Keys
-        |> List.filter (fun (_,_,bold') -> bold = bold')
         |> List.iter (fun k ->
             let font = fontcache.[k]
             font.Dispose()
             ignore(fontcache.Remove k)
         )
 
-    let SetNormalWeight (w: int) =
-        normalWeight <- LanguagePrimitives.EnumOfValue(w)
-        trace "ui" "normalWeight is now: %A" normalWeight
-        InvalidateFontCache false
-
-    let SetBoldWeight (w: int) =
-        boldWeight <- LanguagePrimitives.EnumOfValue(w)
-        trace "ui" "boldWeight is now: %A" boldWeight
-        InvalidateFontCache true
+    ignore(States.Register.Watch "font" InvalidateFontCache)
 
     let GetReverseColor (c: Color) =
         let inv = UInt32.MaxValue - c.ToUint32()
@@ -242,7 +215,7 @@ module ui =
             match fontcache.TryGetValue((fname, italic, bold)) with
             | true, typeface -> typeface
             | _ ->
-                let weight   = if bold then boldWeight else normalWeight
+                let weight   = if bold then States.font_weight_bold else States.font_weight_normal
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)
@@ -262,12 +235,12 @@ module ui =
         use paint = new SKPaint()
         paint.Typeface <- GetTypeface(str, false, false, font, wfont)
         paint.TextSize <- single fontSize
-        paint.IsAntialias <- antialiased
-        paint.IsAutohinted <- autohint
+        paint.IsAntialias <- States.font_antialias
+        paint.IsAutohinted <- States.font_autohint
         paint.IsLinearText <- false
-        paint.HintingLevel <- hintLevel
-        paint.LcdRenderText <- lcdrender
-        paint.SubpixelText <- subpixel
+        paint.HintingLevel <- States.font_hintLevel
+        paint.LcdRenderText <- States.font_lcdrender
+        paint.SubpixelText <- States.font_subpixel
         paint.TextAlign <- SKTextAlign.Left
         paint.DeviceKerningEnabled <- false
         paint.TextEncoding <- SKTextEncoding.Utf16
@@ -295,7 +268,7 @@ module ui =
                 h <- h'
                 s <- s'
 
-        if autosnap then [-50 .. 50] else [0] 
+        if States.font_autosnap then [-50 .. 50] else [0] 
         |> List.iter search
 
         s, w, h
@@ -311,12 +284,12 @@ module ui =
         fgpaint.Color                <- c.ToSKColor()
         fgpaint.Typeface             <- fontFace
         fgpaint.TextSize             <- single fontSize
-        fgpaint.IsAntialias          <- antialiased
-        fgpaint.IsAutohinted         <- autohint
+        fgpaint.IsAntialias          <- States.font_antialias
+        fgpaint.IsAutohinted         <- States.font_autohint
         fgpaint.IsLinearText         <- false
-        fgpaint.HintingLevel         <- hintLevel
-        fgpaint.LcdRenderText        <- lcdrender
-        fgpaint.SubpixelText         <- subpixel
+        fgpaint.HintingLevel         <- States.font_hintLevel
+        fgpaint.LcdRenderText        <- States.font_lcdrender
+        fgpaint.SubpixelText         <- States.font_subpixel
         fgpaint.TextAlign            <- SKTextAlign.Left
         fgpaint.DeviceKerningEnabled <- false
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
@@ -351,7 +324,7 @@ module ui =
 
         // Text bounding box drawing:
         // --------------------------------------------------
-        if drawBounds then
+        if States.font_drawBounds then
             let mutable bounds = SKRect()
             let text = if String.IsNullOrEmpty text then " " else text
             ignore <| fg.MeasureText(text, &bounds)

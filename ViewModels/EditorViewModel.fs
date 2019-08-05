@@ -352,7 +352,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | Bell                                                               -> bell false
         | VisualBell                                                         -> bell true
         | Busy is_busy                                                       -> setBusy is_busy
-        | SetTitle title                                                     -> Model.appLifetime.MainWindow.Title <- title
+        | SetTitle title                                                     -> States.SetTitle title
         | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
@@ -371,7 +371,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         this.Watch [
             Model.Redraw (Array.iter redraw)
 
-            Model.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+            States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
 
             hlchangeEvent.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
@@ -385,6 +385,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.Rows with get() = grid_size.rows
 
     member __.Dirty with get() = grid_dirty
+
+    member __.MarkAllDirty() = markAllDirty()
 
     member __.GetFontAttrs() =
         _guifont, _guifontwide, font_size

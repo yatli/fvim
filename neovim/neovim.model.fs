@@ -22,61 +22,20 @@ open SkiaSharp
 
 open FSharp.Control.Tasks.V2
 
-let appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
-
 let private trace x = trace "neovim.model" x
 
 [<AutoOpen>]
 module ModelImpl =
 
     let nvim = Nvim()
-
     let ev_redraw     = Event<RedrawCommand[]>()
-
-    // request handlers are explicitly registered, 1:1, with no broadcast.
-    let requestHandlers      = hashmap[]
-    // notification events are broadcasted to all subscribers.
-    let notificationEvents   = hashmap[]
     let grids                = hashmap[]
-
-    let getNotificationEvent eventName =
-        match notificationEvents.TryGetValue eventName with
-        | true, ev -> ev
-        | _ ->
-        let ev = Event<obj[]>()
-        notificationEvents.[eventName] <- ev
-        ev
 
     let add_grid(grid: IGridUI) =
         grids.[grid.Id] <- grid
 
     let redraw cmd = 
         ev_redraw.Trigger cmd
-
-    let msg_dispatch =
-        function
-        | Request(id, req, reply) -> 
-            match requestHandlers.TryGetValue req.method with
-            | true, method ->
-                Async.Start(async { 
-                    try
-                        let! rsp = method(req.parameters)
-                        do! reply id rsp
-                    with
-                    | Failure msg -> error "rpc" "request %d(%s) failed: %s" id req.method msg
-                })
-            | _ -> error "rpc" "request handler [%s] not found" req.method
-
-        | Notification(req) ->
-            let event = getNotificationEvent req.method
-            try event.Trigger req.parameters
-            with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
-        | Redraw cmd -> redraw cmd 
-        | Exit -> appLifetime.Shutdown()
-        | Crash code ->
-            trace "neovim crashed with code %d" code
-            appLifetime.Shutdown()
-        | _ -> ()
 
     let onGridResize(gridui: IGridUI) =
         trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
@@ -326,42 +285,38 @@ module ModelImpl =
                 ignore <| nvim.input [|k|]
         )
 
-let Request name fn = requestHandlers.Add(name, fn)
-let Notify name (fn: obj[] -> unit) = 
-    (getNotificationEvent name).Publish.Subscribe(fun objs -> 
-        try fn objs
-        with | x -> error "Notify" "exception thrown: %A" <| x.ToString())
 let Redraw (fn: RedrawCommand[] -> unit) = ev_redraw.Publish |> Observable.subscribe(fn)
 
 let Detach() =
     nvim.stop(0)
-    appLifetime.Shutdown(0)
+    States.Shutdown(0)
 
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
 let Start opts =
-
     trace "starting neovim instance..."
     trace "opts = %A" opts
     nvim.start opts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
-        (msg_dispatch)
+        (States.msg_dispatch)
+
+    ignore(States.Register.Notify "redraw" (fun cmds -> ev_redraw.Trigger (Array.map parse_redrawcmd cmds)))
 
     // rpc handlers
-    List.iter ignore [
-        Notify "font.autosnap"      (fun [| Bool(v) |] -> ui.autosnap <- v)
-        Notify "font.antialias"     (fun [| Bool(v) |] -> ui.antialiased <- v)
-        Notify "font.bounds"        (fun [| Bool(v) |] -> ui.drawBounds <- v)
-        Notify "font.autohint"      (fun [| Bool(v) |] -> ui.autohint <- v)
-        Notify "font.subpixel"      (fun [| Bool(v) |] -> ui.subpixel <- v)
-        Notify "font.lcdrender"     (fun [| Bool(v) |] -> ui.lcdrender <- v)
-        Notify "font.hintLevel"     (fun [| String(v) |] -> ui.setHintLevel v)
-        Notify "font.weight.normal" (fun [| Integer32(v) |] -> ui.SetNormalWeight v)
-        Notify "font.weight.bold"   (fun [| Integer32(v) |] -> ui.SetBoldWeight v)
-        Notify "remote.detach"      (fun _ -> Detach())
-    ] 
+    States.Register.Bool "font.autosnap"
+    States.Register.Bool "font.antialias"
+    States.Register.Bool "font.drawBounds"
+    States.Register.Bool "font.autohint"
+    States.Register.Bool "font.subpixel"
+    States.Register.Bool "font.lcdrender"
+    States.Register.Prop<SKPaintHinting> States.parseHintLevel "font.hintLevel"
+    States.Register.Prop<SKFontStyleWeight> States.parseFontWeight "font.weight.normal"
+    States.Register.Prop<SKFontStyleWeight> States.parseFontWeight "font.weight.bold"
+    States.Register.Bool "cursor.smoothblink"
+    States.Register.Bool "cursor.smoothmove"
+    ignore(States.Register.Notify "remote.detach" (fun _ -> Detach()))
 
     trace "commencing early initialization..."
     async {
@@ -424,7 +379,7 @@ let Start opts =
 
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 (sprintf "call rpcnotify(%d, 'font.autosnap', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
-        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.bounds', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 (sprintf "call rpcnotify(%d, 'font.drawBounds', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutohint" 1 (sprintf "call rpcnotify(%d, 'font.autohint', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontSubpixel" 1 (sprintf "call rpcnotify(%d, 'font.subpixel', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLcdRender" 1 (sprintf "call rpcnotify(%d, 'font.lcdrender', <args>)" myChannel))

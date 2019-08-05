@@ -242,8 +242,13 @@ and Editor() as this =
             this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e m_visualroot)
             this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e m_visualroot)
             this.GetObservable(Editor.DataContextProperty)
-            |> Observable.ofType<EditorViewModel>
+            |> Observable.ofType
             |> Observable.subscribe onViewModelConnected
+            States.Register.Watch "font" (fun () -> 
+                if grid_vm <> Unchecked.defaultof<_> then
+                    grid_vm.MarkAllDirty()
+                    this.InvalidateVisual()
+                )
         ]
         AvaloniaXamlLoader.Load(this)
 

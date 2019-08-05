@@ -37,7 +37,7 @@ type MainWindow() as this =
                 this.SetValue(XProp, p.Point.X)
                 this.SetValue(YProp, p.Point.Y))
 
-            Model.Notify "DrawFPS" (fun [| Bool(v) |] -> 
+            States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "Model" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
 

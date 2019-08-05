@@ -4,6 +4,7 @@ open def
 open FVim.getopt
 open FVim.log
 open FVim.common
+open FVim.States
 
 open MessagePack
 
@@ -149,9 +150,6 @@ type Nvim() =
             // response
             | [| (Integer32 1); (Integer32 msg_id) ; err; result |]
                 -> Response(msg_id, { result = if err = null then Choice1Of2 result else Choice2Of2 err })
-            // redraw
-            | [| (Integer32 2); (String "redraw"); :? (obj[]) as cmds |] 
-                -> Redraw (Array.map parse_redrawcmd cmds)
             // notification
             | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
                 -> Notification { method = method; parameters = parameters }
