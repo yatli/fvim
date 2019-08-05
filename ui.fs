@@ -302,6 +302,7 @@ module ui =
 
     let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
 
+        ctx.PushClip(region)
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
@@ -373,3 +374,5 @@ module ui =
                 path.LineTo(px + q3f, py2)
                 px <- px + ff
             skia.SkCanvas.DrawPath(path , sp)
+
+        ctx.PopClip()
