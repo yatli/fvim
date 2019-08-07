@@ -5,23 +5,26 @@ open SkiaSharp
 open log
 open System.Reflection
 
+[<Struct>]
 type Request = 
     {
         method:     string
         parameters: obj[]
     }
 
+[<Struct>]
 type Response = 
     {
-        result: Choice<obj, obj>
+        result: Result<obj, obj>
     }
 
+[<Struct>]
 type Event =
-| Request      of int32 * Request * (int32 -> Response -> unit Async)
-| Response     of int32 * Response
-| Notification of Request
-| Error        of string
-| Crash        of code: int32
+| Request      of reqId: int32 * req: Request * handler: (int32 -> Response -> unit Async)
+| Response     of rspId: int32 * rsp: Response
+| Notification of nreq: Request
+| Error        of emsg: string
+| Crash        of ccode: int32
 | Exit
 
 let private _stateChangeEvent = Event<string>()

@@ -20,7 +20,7 @@ open System.Threading
 open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
 
-let private trace fmt = trace "neovim.process" fmt
+let inline private trace fmt = trace "neovim.process" fmt
 
 let private default_notify (e: Request) =
     failwithf "%A" e
@@ -135,8 +135,8 @@ type Nvim() =
         let reply (id: int) (rsp: Response) = async {
             let result, error = 
                 match rsp.result with
-                | Choice1Of2 r -> r, null
-                | Choice2Of2 e -> null, e
+                | Ok r -> r, null
+                | Result.Error e -> null, e
             do! Async.AwaitTask(MessagePackSerializer.SerializeAsync(stdin, mkparams4 1 id result error))
             do! Async.AwaitTask(stdin.FlushAsync())
         }
@@ -149,7 +149,7 @@ type Nvim() =
                 -> Request(msg_id, { method = method; parameters = parameters }, reply)
             // response
             | [| (Integer32 1); (Integer32 msg_id) ; err; result |]
-                -> Response(msg_id, { result = if err = null then Choice1Of2 result else Choice2Of2 err })
+                -> Response(msg_id, { result = if err = null then Ok result else Result.Error err })
             // notification
             | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
                 -> Notification { method = method; parameters = parameters }
@@ -162,7 +162,7 @@ type Nvim() =
             | Response(msgid, rsp) ->
                 // intercept response message, if it can be completed successfully
                 match rsp.result with
-                | Choice2Of2 err -> trace "call %d: error response %A" msgid err
+                | Result.Error err -> trace "call %d: error response %A" msgid err
                 | _ -> ()
 
                 match pending.TryRemove msgid with
@@ -276,7 +276,7 @@ type Nvim() =
             //return response
             trace "exists: response = %A" response
             match response.result with
-            | Choice1Of2(Integer32 1) -> return true
+            | Ok(Integer32 1) -> return true
             | _ -> return false
         }
 
@@ -312,6 +312,6 @@ type Nvim() =
             let! rsp = m_call { method = "nvim_list_chans"; parameters = [||] }
 
             match rsp.result with
-            | Choice1Of2(ObjArray arr) -> return arr
+            | Ok(ObjArray arr) -> return arr
             | _ -> return [||]
         }

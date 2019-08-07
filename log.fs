@@ -14,11 +14,19 @@ let private _logsEPub    = _logsESource.Publish |> Observable.map (fun (a,b) -> 
 
 let private _logsSink    = Observable.merge _logsPub _logsEPub |> Observable.filter(fun x -> _filter x) 
 
-let trace cat fmt =
-    Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
+let mutable private _n_logsSink = 0
+
+let trace cat (fmt: Printf.StringFormat< 'a , unit >) =
+    if _n_logsSink > 0 then
+        Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
+    else
+        Printf.kprintf ignore fmt
 
 let error cat fmt =
-    Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
+    if _n_logsSink > 0 then
+        Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
+    else
+        Printf.kprintf ignore fmt
 
 // XXX seriously?
 let flush() =
@@ -31,6 +39,7 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
     let logToStdout = true
     #endif
     if logToStdout then 
+        _n_logsSink <- _n_logsSink + 1
         _logsSink.Add(fun str -> printfn "%s" str)
     let time = System.DateTime.Now
     let ftime = time.ToString "yyyy-MM-dd-hh-mm-ss"
@@ -39,6 +48,7 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
         | Daemon _ -> "fvim-daemon"
         | _ -> "fvim"
     if logToFile then
+        _n_logsSink <- _n_logsSink + 1
         let logname = sprintf "%s-%s.log" fprefix ftime
         let logToFile = System.IO.Path.Combine(config.configdir, logname)
         try System.IO.File.Delete logToFile

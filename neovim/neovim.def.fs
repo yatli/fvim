@@ -7,13 +7,15 @@ open FVim.States
 open Avalonia.Media
 open System.Collections.Generic
 
-let private trace fmt = trace "neovim.def" fmt
+let inline private trace fmt = trace "neovim.def" fmt
 
+[<Struct>]
 type CursorShape =
 | Block
 | Horizontal
 | Vertical
 
+[<Struct>]
 type ModeInfo =
     {
         cursor_shape: CursorShape option
@@ -27,9 +29,12 @@ type ModeInfo =
         name: string
     }
 
+[<Struct>]
 type AmbiWidth = Single | Double
+[<Struct>]
 type ShowTabline = Never | AtLeastTwo | Always
 
+[<Struct>]
 type UiOption =
     ///  When on and 'termbidi' is off, the required visual character
     ///  corrections that need to take place for displaying the Arabic language
@@ -41,36 +46,36 @@ type UiOption =
     ///    c) the enabling of the required combining of some characters
     ///  When disabled the display shows each character's true stand-alone
     ///  form.
-    | ArabicShape of bool
+    | ArabicShape of arabicShape: bool
     ///  Tells Vim what to do with characters with East Asian Width Class
     ///  Ambiguous (such as Euro, Registered Sign, Copyright Sign, Greek
     ///  letters, Cyrillic letters).
-    | AmbiWidth of AmbiWidth
+    | AmbiWidth of ambiWidth: AmbiWidth
     ///  When on all Unicode emoji characters are considered to be full width.
-    | Emoji of bool
+    | Emoji of emoji: bool
     ///  This is a list of fonts which will be used for the GUI version of Vim.
     ///  In its simplest form the value is just one font name.  
-    | Guifont of string
+    | Guifont of guifont: string
     ///  When not empty, specifies two (or more) fonts to be used.  The first
     ///  one for normal English, the second one for your special language.  
-    | GuifontSet of string list
+    | GuifontSet of guifontSet: string list
     ///  When not empty, specifies a comma-separated list of fonts to be used
     ///  for double-width characters.  The first font that can be loaded is
     ///  used.
-    | GuifontWide of string
+    | GuifontWide of guifontWide: string
     ///  Number of pixel lines inserted between characters.  Useful if the font
     ///  uses the full character cell height, making lines touch each other.
     ///  When non-zero there is room for underlining.
-    | LineSpace of int
+    | LineSpace of lineSpace: int
     ///  This is both for the GUI and non-GUI implementation of the tab pages
     ///  line.
-    | ShowTabline of ShowTabline
+    | ShowTabline of showTabline: ShowTabline
     ///  When on, uses |highlight-guifg| and |highlight-guibg| attributes in
     ///  the terminal (thus using 24-bit color). Requires a ISO-8613-3
     ///  compatible terminal.
-    | TermGuiColors of bool
+    | TermGuiColors of termguicolors: bool
     // TODO ui-ext-options
-    | UnknownOption of obj
+    | UnknownOption of unknownOption: obj
 
 [<Struct>]
 type RgbAttr =
@@ -97,6 +102,7 @@ type RgbAttr =
             undercurl = false
         }
 
+[<Struct>]
 type GridCell = 
     {
         text: string
@@ -104,6 +110,7 @@ type GridCell =
         repeat: int option
     }
 
+[<Struct>]
 type HighlightAttr = 
     {
         id: int 
@@ -120,6 +127,7 @@ type HighlightAttr =
             info = [||]
         }
 
+[<Struct>]
 type GridLine =
     {
         grid: int 
@@ -128,6 +136,7 @@ type GridLine =
         cells: GridCell[]
     }
 
+[<Struct>]
 type Anchor =
 | NorthWest
 | NorthEast
@@ -144,6 +153,7 @@ type Anchor =
 ///      t    typedef
 ///      d    #define or macro
 ///  </summary>
+[<Struct>]
 type CompleteKind =
 | Variable
 | Function
@@ -151,6 +161,7 @@ type CompleteKind =
 | Typedef
 | Macro
 
+[<Struct>]
 type CompleteItem =
     {
         word: string

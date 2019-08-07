@@ -22,7 +22,7 @@ open SkiaSharp
 
 open FSharp.Control.Tasks.V2
 
-let private trace x = trace "neovim.model" x
+let inline private trace x = trace "neovim.model" x
 
 [<AutoOpen>]
 module ModelImpl =

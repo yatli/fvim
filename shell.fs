@@ -14,7 +14,7 @@ open System.Runtime.InteropServices
 open Microsoft.Win32
 open UACHelper
 
-let private trace x = trace "shell" x
+let inline private trace x = trace "shell" x
 
 let FVimServerAddress =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "FVimServer"
