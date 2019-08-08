@@ -3,6 +3,7 @@
 open getopt
 open System.Diagnostics
 open FSharp.Control.Reactive
+open System.Collections.Generic
 
 let mutable private _filter = fun _ -> true
 
@@ -16,17 +17,45 @@ let private _logsSink    = Observable.merge _logsPub _logsEPub |> Observable.fil
 
 let mutable private _n_logsSink = 0
 
+type FormatIgnoreBuilder<'T>() = 
+    static let m_TThis = typeof<FormatIgnoreBuilder<'T>>
+    static let m_Ignore =
+        let resultT = typeof<'T>
+        let ret = 
+            printfn "making Ignore"
+            if resultT = typeof<unit> then box ()
+            else
+            // some kind of FSharpFunc`2
+            let fargs = resultT.GetGenericArguments() 
+            let tail = 
+                m_TThis
+                    .GetGenericTypeDefinition()
+                    .MakeGenericType(fargs.[1])
+                    .GetProperty("Ignore", System.Reflection.BindingFlags.Static ||| System.Reflection.BindingFlags.Public)
+                    .GetValue(null)
+
+            let F = 
+                m_TThis
+                    .GetMethod("F", System.Reflection.BindingFlags.Static ||| System.Reflection.BindingFlags.Public) 
+                    .MakeGenericMethod([|fargs.[0]; fargs.[1]|])
+
+            F.Invoke(null, [|tail|])
+        ret :?> 'T
+
+    static member F<'a, 'b> (x: 'b) = (fun (a: 'a) -> x)
+    static member Ignore = m_Ignore
+
 let trace cat (fmt: Printf.StringFormat< 'a , unit >) =
     if _n_logsSink > 0 then
         Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
     else
-        Printf.kprintf ignore fmt
+        FormatIgnoreBuilder<'a>.Ignore
 
 let error cat fmt =
     if _n_logsSink > 0 then
         Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
     else
-        Printf.kprintf ignore fmt
+        FormatIgnoreBuilder<'a>.Ignore
 
 // XXX seriously?
 let flush() =

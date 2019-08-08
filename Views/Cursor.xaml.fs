@@ -127,7 +127,7 @@ type Cursor() as this =
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
+            let _, typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
             bgpaint.Color <- this.ViewModel.bg.ToSKColor()
             sppaint.Color <- this.ViewModel.sp.ToSKColor()
@@ -140,14 +140,14 @@ type Cursor() as this =
                     SetOpacity fgpaint this.Opacity
                     SetOpacity bgpaint this.Opacity
                     SetOpacity sppaint this.Opacity
-                    RenderText(ctx.PlatformImpl, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                    RenderText(ctx.PlatformImpl, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
                 | _ ->
                     // deferred
                     let redraw = ensure_fb()
                     if redraw then
                         let dc = cursor_fb.CreateDrawingContext(null)
                         dc.PushClip(bounds)
-                        RenderText(dc, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, false)
+                        RenderText(dc, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
                         dc.PopClip()
                         dc.Dispose()
                     ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)

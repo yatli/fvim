@@ -191,13 +191,16 @@ module ui =
         else "Noto Color Emoji"
 
     let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
+    let private nerd_shaper = new SKShaper(nerd_typeface)
     let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
-    let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKTypeface>()
+    let private emoji_shaper = new SKShaper(emoji_typeface)
+    let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKShaper*SKTypeface>()
 
     let private InvalidateFontCache () =
         List.ofSeq fontcache.Keys
         |> List.iter (fun k ->
-            let font = fontcache.[k]
+            let (shaper,font) = fontcache.[k]
+            shaper.Dispose()
             font.Dispose()
             ignore(fontcache.Remove k)
         )
@@ -213,27 +216,29 @@ module ui =
 
         let _get fname =
             match fontcache.TryGetValue((fname, italic, bold)) with
-            | true, typeface -> typeface
+            | true, (shaper, typeface) -> (shaper, typeface)
             | _ ->
+                trace "ui" "GetTypeface: allocating new typeface %s:%b:%b" fname italic bold
                 let weight   = if bold then States.font_weight_bold else States.font_weight_normal
                 let width    = SKFontStyleWidth.Normal
                 let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
                 let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)
-                fontcache.[(fname, italic, bold)] <- typeface
-                typeface
+                let shaper   = new SKShaper(typeface)
+                fontcache.[(fname, italic, bold)] <- (shaper, typeface)
+                (shaper, typeface)
 
         let wfont = if String.IsNullOrEmpty wfont then font else wfont
 
         match w with
         | CharType.Wide  -> _get wfont
-        | CharType.Nerd  -> nerd_typeface
-        | CharType.Emoji -> emoji_typeface
-        | CharType.Powerline -> nerd_typeface
+        | CharType.Powerline
+        | CharType.Nerd  -> (nerd_shaper, nerd_typeface)
+        | CharType.Emoji -> (emoji_shaper, emoji_typeface)
         | _              -> _get font
 
     let MeasureText (str: string, font: string, wfont: string, fontSize: float, scaling: float) =
         use paint = new SKPaint()
-        paint.Typeface <- GetTypeface(str, false, false, font, wfont)
+        paint.Typeface <- snd <| GetTypeface(str, false, false, font, wfont)
         paint.TextSize <- single fontSize
         paint.IsAntialias <- States.font_antialias
         paint.IsAutohinted <- States.font_autohint
@@ -300,7 +305,7 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, useShaping: bool) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, shaper: SKShaper ValueOption) =
 
         ctx.PushClip(region)
         //  DrawText accepts the coordinate of the baseline.
@@ -309,10 +314,9 @@ module ui =
         //  total_padding = padding space 1 + padding space 2
         let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
         let baseline      = region.Y + ceil((total_padding / 2.0) - (float fg.FontMetrics.Top))
-        let snappedBaseline = ceil(baseline * scale) / scale
-        let region = region.WithY(region.Y + snappedBaseline - baseline)
+        let region = region.WithY(region.Y + baseline - baseline)
         (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
-        let fontPos       = Point(region.X, snappedBaseline)
+        let fontPos       = Point(region.X, baseline)
 
         let skia = ctx :?> ISkiaDrawingContextImpl
 
@@ -321,9 +325,8 @@ module ui =
 
         skia.SkCanvas.DrawRect(region.ToSKRect(), bg)
         if not <| String.IsNullOrWhiteSpace text then
-            if useShaping then
-                use shaper = new SKShaper(fg.Typeface)
-                skia.SkCanvas.DrawShapedText(shaper, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
+            if shaper.IsSome then
+                skia.SkCanvas.DrawShapedText(shaper.Value, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
             else 
                 skia.SkCanvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
 

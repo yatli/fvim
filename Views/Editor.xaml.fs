@@ -6,6 +6,7 @@ open FVim.wcwidth
 
 open ReactiveUI
 open SkiaSharp
+open SkiaSharp.HarfBuzz
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Markup.Xaml
@@ -92,7 +93,7 @@ and Editor() as this =
 
         let font, fontwide, fontsize = grid_vm.GetFontAttrs()
         let fg, bg, sp, attrs = grid_vm.GetDrawAttrs hlid 
-        let typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
+        let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
 
         use fgpaint = new SKPaint()
         use bgpaint = new SKPaint()
@@ -112,7 +113,10 @@ and Editor() as this =
         sppaint.Color <- sp.ToSKColor()
 
         let txt = String.Concat str
-        let shaping = txt.Length > 1 && issym
+        let shaping = 
+            if txt.Length > 1 && txt.Length < 5 && issym then
+                ValueSome shaper
+            else ValueNone
 
         try
             RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
