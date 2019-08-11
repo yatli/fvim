@@ -48,6 +48,10 @@ type LineHeightOption =
 | Add of float
 | Default
 
+// clipboard
+let mutable clipboard_lines: string[] = [||]
+let mutable clipboard_regtype: string = ""
+
 // cursor
 let mutable cursor_smoothmove  = false
 let mutable cursor_smoothblink = false
@@ -74,6 +78,14 @@ module private Helper =
             propDesc.SetValue(null, v)
         else
             error "states" "The property %s is not found" name
+    let GetProp name =
+        trace "states" "module name = %s" _StatesModuleType.FullName
+        let propDesc = _StatesModuleType.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
+        if propDesc <> null then
+            Some <| propDesc.GetValue(null)
+        else
+            error "states" "The property %s is not found" name
+            None
 
 
 let parseHintLevel (v: obj) = 
@@ -133,12 +145,17 @@ let msg_dispatch =
     | _ -> ()
 
 module Register =
-    let Request name fn = requestHandlers.Add(name, fn)
+    let Request name fn = 
+        requestHandlers.Add(name, fun objs ->
+            try fn objs
+            with x -> 
+                error "Request" "exception thrown: %O" x
+                async { return { result = Result.Error(box x) } })
 
     let Notify name (fn: obj[] -> unit) = 
         (getNotificationEvent name).Publish.Subscribe(fun objs -> 
             try fn objs
-            with | x -> error "Notify" "exception thrown: %A" <| x.ToString())
+            with x -> error "Notify" "exception thrown: %A" <| x.ToString())
 
     let Watch name fn =
         _stateChangeEvent.Publish
@@ -158,6 +175,14 @@ module Register =
                 | None -> ()
             | _ -> ())
         |> ignore
+        Request fullname (fun _ -> async { 
+            let result = 
+                match Helper.GetProp fieldName with
+                | Some v -> Ok v
+                | None -> Result.Error(box "not found")
+            return { result=result }
+        })
 
     let Bool = Prop<bool> (|Bool|_|)
+    let String = Prop<string> (|String|_|)
 

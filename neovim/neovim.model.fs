@@ -29,7 +29,7 @@ module ModelImpl =
 
     let nvim = Nvim()
     let ev_redraw     = Event<RedrawCommand[]>()
-    let grids                = hashmap[]
+    let grids         = hashmap[]
 
     let add_grid(grid: IGridUI) =
         grids.[grid.Id] <- grid
@@ -314,7 +314,32 @@ let Start opts =
     States.Register.Prop<States.LineHeightOption> States.parseLineHeightOption "font.lineheight"
     States.Register.Bool "cursor.smoothblink"
     States.Register.Bool "cursor.smoothmove"
+
     ignore(States.Register.Notify "remote.detach" (fun _ -> Detach()))
+
+    States.Register.Request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> async {
+        States.clipboard_lines <- lines
+        States.clipboard_regtype <- regtype
+        let! _ = Async.AwaitTask(Avalonia.Application.Current.Clipboard.SetTextAsync(String.Join("\n", lines)))
+        trace "set-clipboard called. regtype=%s" regtype
+        return { result = Ok(box [||]) }
+    })
+
+    States.Register.Request "get-clipboard" (fun _ -> async {
+        let! sysClipboard = Async.AwaitTask(Avalonia.Application.Current.Clipboard.GetTextAsync())
+        let sysClipboardLines = sysClipboard.Replace("\r\n", "\n").Split("\n")
+        let clipboard_eq = Array.compareWith (fun a b -> String.Compare(a,b)) States.clipboard_lines sysClipboardLines
+
+        let lines, regtype =
+            if clipboard_eq = 0 then
+                trace "get-clipboard: match, using clipboard lines with regtype %s" States.clipboard_regtype
+                States.clipboard_lines, States.clipboard_regtype
+            else
+                trace "get-clipboard: mismatch, using system clipboard"
+                sysClipboardLines, "v"
+
+        return { result = Ok(box [| box lines; box regtype |])}
+    })
 
     trace "commencing early initialization..."
     async {
@@ -367,14 +392,28 @@ let Start opts =
         if fvimChannels.Length > 1 then
             Environment.Exit(0)
 
+        // Register clipboard provider by setting g:clipboard
+        let clipboard = """let g:clipboard = {
+  'name': 'FVimClipboard',
+  'copy': {
+     '+': {lines, regtype -> rpcrequest(MY_CHANNEL, 'set-clipboard', lines, regtype)},
+     '*': {lines, regtype -> rpcrequest(MY_CHANNEL, 'set-clipboard', lines, regtype)},
+   },
+  'paste': {
+     '+': {-> rpcrequest(MY_CHANNEL, 'get-clipboard')},
+     '*': {-> rpcrequest(MY_CHANNEL, 'get-clipboard')},
+  },
+}"""
+        let! _ = Async.AwaitTask(nvim.command <| clipboard.Replace("MY_CHANNEL", string myChannel).Replace("\r", "").Replace("\n",""))
+
         let! _ = Async.AwaitTask(nvim.set_var "fvim_channel" myChannel)
 
+        let! _ = Async.AwaitTask(nvim.``command!`` "FVimDetach" 0 (sprintf "call rpcnotify(%d, 'remote.detach')" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "FVimToggleFullScreen" 0 (sprintf "call rpcnotify(%d, 'ToggleFullScreen', 1)" myChannel))
+
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothmove', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothblink', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
-        let! _ = Async.AwaitTask(nvim.``command!`` "FVimDetach" 0 (sprintf "call rpcnotify(%d, 'remote.detach')" myChannel))
-
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLineHeight" 1 (sprintf "call rpcnotify(%d, 'font.lineheight', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 (sprintf "call rpcnotify(%d, 'font.autosnap', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))

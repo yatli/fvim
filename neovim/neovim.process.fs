@@ -135,8 +135,8 @@ type Nvim() =
         let reply (id: int) (rsp: Response) = async {
             let result, error = 
                 match rsp.result with
-                | Ok r -> r, null
-                | Result.Error e -> null, e
+                | Ok r -> null, r
+                | Result.Error e -> e, null
             do! Async.AwaitTask(MessagePackSerializer.SerializeAsync(stdin, mkparams4 1 id result error))
             do! Async.AwaitTask(stdin.FlushAsync())
         }
