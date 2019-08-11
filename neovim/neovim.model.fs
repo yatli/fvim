@@ -119,14 +119,14 @@ module ModelImpl =
     let (|Repeat|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
         // | Key(HasFlag(InputModifiers.Control), Key.H)                 
-        // | Key(HasFlag(InputModifiers.Control), Key.J)                 
-        // | Key(HasFlag(InputModifiers.Control), Key.I)                 
-        // | Key(HasFlag(InputModifiers.Control), Key.M)                 
         // | Key(HasFlag(InputModifiers.Control), Key.Oem4) // Oem4 is '['
         // | Key(HasFlag(InputModifiers.Control), Key.L) // if ^L is sent as <FF> then neovim discards the key.
         | Key(_, Key.Back)                                            -> Special "BS"
+        | Key(HasFlag(InputModifiers.Control), Key.I)
         | Key(_, Key.Tab)                                             -> Special "Tab"
+        | Key(HasFlag(InputModifiers.Control), Key.J)
         | Key(_, Key.LineFeed)                                        -> Special "NL"
+        | Key(HasFlag(InputModifiers.Control), Key.M)
         | Key(_, Key.Return)                                          -> Special "CR"
         | Key(_, Key.Escape)                                          -> Special "Esc"
         | Key(_, Key.Space)                                           -> Special "Space"
