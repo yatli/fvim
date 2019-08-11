@@ -22,7 +22,6 @@ type FormatIgnoreBuilder<'T>() =
     static let m_Ignore =
         let resultT = typeof<'T>
         let ret = 
-            printfn "making Ignore"
             if resultT = typeof<unit> then box ()
             else
             // some kind of FSharpFunc`2
