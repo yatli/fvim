@@ -92,6 +92,7 @@ let (|ForceBool|_|) (x:obj) =
 type hashmap<'a, 'b> = System.Collections.Generic.Dictionary<'a, 'b>
 let hashmap (xs: seq<'a*'b>) = new hashmap<'a,'b>(xs |> Seq.map (fun (a,b) -> System.Collections.Generic.KeyValuePair(a,b)))
 
+let escapeArgs: string seq -> string seq = Seq.map (fun (x: string) -> if x.Contains(' ') then sprintf "\"%s\"" (x.Replace("\"", "\\\"")) else x)
 let join (xs: string seq) = System.String.Join(" ", xs)
 
 let inline (>>=) (x: 'a option) (f: 'a -> 'b option) =

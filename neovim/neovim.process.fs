@@ -51,7 +51,7 @@ type Nvim() =
         match serveropts with
         | StartNew ->
             let args = "--embed" :: args
-            let psi  = ProcessStartInfo(prog, join(preargs @ args))
+            let psi  = ProcessStartInfo(prog, (join << escapeArgs) (preargs @ args))
             psi.CreateNoWindow          <- true
             psi.ErrorDialog             <- false
             psi.RedirectStandardError   <- true
