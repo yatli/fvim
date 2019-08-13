@@ -62,7 +62,7 @@ let parseOptions (args: string[]) =
         failwith "--wsl and --ssh cannot be used together."
 
     let prog                = if wsl then "wsl" elif ssh.IsSome then "ssh" else nvim
-    let preargs             = if wsl then [nvim] elif ssh.IsSome then [ssh.Value; nvim] else []
+    let preargs             = if wsl then ["bash"; "-l"; "-c"; "nvim"] elif ssh.IsSome then [ssh.Value; nvim] else []
     let enc                 = if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
 
     let intent = 
