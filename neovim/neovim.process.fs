@@ -47,11 +47,11 @@ type Nvim() =
         | Some events -> events
         | None -> failwith "events"
 
-    member private this.createIO ({ args = args; server = serveropts; program = prog; preArgs = preargs; stderrenc = enc } as opts) = 
+    member private this.createIO ({ args = args; server = serveropts; program = prog; stderrenc = enc } as opts) = 
         match serveropts with
         | StartNew ->
-            let args = "--embed" :: args
-            let psi  = ProcessStartInfo(prog, (join << escapeArgs) (preargs @ args))
+            let args = args |> escapeArgs |> join
+            let psi  = ProcessStartInfo(prog, args)
             psi.CreateNoWindow          <- true
             psi.ErrorDialog             <- false
             psi.RedirectStandardError   <- true
@@ -62,6 +62,7 @@ type Nvim() =
             psi.WindowStyle             <- ProcessWindowStyle.Hidden
             psi.WorkingDirectory        <- Environment.CurrentDirectory
 
+            trace "Starting process. Program: %s; Arguments: %s" prog args
             StartProcess <| Process.Start(psi)
         | Tcp ipe ->
             let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)

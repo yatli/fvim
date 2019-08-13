@@ -23,7 +23,6 @@ type Options =
         args: string list
         program: string
         stderrenc: System.Text.Encoding
-        preArgs: string list
         server: ServerOptions
     }
 
@@ -61,15 +60,6 @@ let parseOptions (args: string[]) =
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
 
-    let prog                = if wsl then "wsl" elif ssh.IsSome then "ssh" else nvim
-    let preargs             = if wsl then ["bash"; "-l"; "-c"; "nvim"] elif ssh.IsSome then [ssh.Value; nvim] else []
-    let enc                 = if wsl then System.Text.Encoding.Unicode else System.Text.Encoding.UTF8
-
-    let intent = 
-        if setup then Setup
-        elif runDaemon then Daemon(port, pipe)
-        else Start
-
     if terminal then
         let set x = "+\"set " + x + "\""
         // fvim --wsl -u NORC +terminal +"set noshowmode" +"set laststatus=0" +"set noruler" +"set noshowcmd"
@@ -84,6 +74,33 @@ let parseOptions (args: string[]) =
         | Some cmd -> "+\"terminal " + cmd + "\""
         | None -> "+terminal"
         |> args.Add
+
+    let prog = 
+        if wsl then 
+            "wsl" 
+        elif ssh.IsSome then 
+            "ssh" 
+        else 
+            nvim
+
+    let args = 
+        if wsl then 
+            ["bash"; "-l"; "-c"; sprintf "nvim --embed %s" (args |> escapeArgs |> join)] 
+        elif ssh.IsSome then 
+            [ssh.Value; nvim; "--embed"] @ (List.ofSeq args)
+        else 
+            ["--embed"] @ (List.ofSeq args)
+
+    let enc = 
+        if wsl then 
+            System.Text.Encoding.Unicode 
+        else 
+            System.Text.Encoding.UTF8
+
+    let intent = 
+        if setup then Setup
+        elif runDaemon then Daemon(port, pipe)
+        else Start
 
     let serveropts = 
         if tryDaemon then
@@ -100,9 +117,8 @@ let parseOptions (args: string[]) =
         logToFile       = trace_to_file
         logPatterns     = trace_patterns
         program         = prog
-        args            = List.ofSeq args
+        args            = args
         server          = serveropts
-        preArgs         = preargs
         stderrenc       = enc
         intent          = intent
     }
