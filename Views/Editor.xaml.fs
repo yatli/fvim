@@ -25,6 +25,7 @@ type Editor() as this =
     static let AnchorXProp    = AvaloniaProperty.Register<Editor, float>("AnchorX")
     static let AnchorYProp    = AvaloniaProperty.Register<Editor, float>("AnchorY")
 
+    let mutable m_render_queued = false
     let mutable m_saved_size  = Size(100.0,100.0)
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
@@ -185,8 +186,10 @@ type Editor() as this =
         | _ -> Unchecked.defaultof<_>
 
     let redraw tick =
-        trace "render tick %d" tick
-        this.InvalidateVisual()
+        if not m_render_queued then
+            trace "render tick %d" tick
+            m_render_queued <- true
+            this.InvalidateVisual()
 
     let onViewModelConnected (vm:EditorViewModel) =
         grid_vm <- vm
@@ -211,7 +214,7 @@ type Editor() as this =
             vm.ObservableForProperty(fun x -> x.Y).Subscribe(fun y -> this.AnchorY <- y.GetValue())
         ]
 
-    let subscribeAndHandle fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
+    let subscribeAndHandleInput fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
         ob.Subscribe(fun e ->
             e.Handled <- true
             doWithDataContext (fn e))
@@ -234,20 +237,23 @@ type Editor() as this =
     do
         this.Watch [
             this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root)
-            this.TextInput |> subscribeAndHandle(fun e vm -> vm.OnTextInput e)
-            this.KeyDown   |> subscribeAndHandle(fun e vm -> vm.OnKey e)
-            this.PointerPressed |> subscribeAndHandle(fun e vm -> vm.OnMouseDown e m_visualroot)
-            this.PointerReleased |> subscribeAndHandle(fun e vm -> vm.OnMouseUp e m_visualroot)
-            this.PointerMoved |> subscribeAndHandle(fun e vm -> vm.OnMouseMove e m_visualroot)
-            this.PointerWheelChanged |> subscribeAndHandle(fun e vm -> vm.OnMouseWheel e m_visualroot)
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType
             |> Observable.subscribe onViewModelConnected
+
             States.Register.Watch "font" (fun () -> 
                 if grid_vm <> Unchecked.defaultof<_> then
                     grid_vm.MarkAllDirty()
                     this.InvalidateVisual()
                 )
+
+            //  Input handling
+            this.TextInput |> subscribeAndHandleInput(fun e vm -> vm.OnTextInput e)
+            this.KeyDown   |> subscribeAndHandleInput(fun e vm -> vm.OnKey e)
+            this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e m_visualroot)
+            this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e m_visualroot)
+            this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e m_visualroot)
+            this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e m_visualroot)
         ]
         AvaloniaXamlLoader.Load(this)
 
@@ -276,6 +282,7 @@ type Editor() as this =
             (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
         (*trace "base rendering"*)
         base.Render ctx
+        m_render_queued <- false
         (*trace "render end"*)
 
     override this.MeasureOverride(size) =

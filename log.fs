@@ -45,16 +45,10 @@ type FormatIgnoreBuilder<'T>() =
     static member Ignore = m_Ignore
 
 let trace cat (fmt: Printf.StringFormat< 'a , unit >) =
-    if _n_logsSink > 0 then
-        Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
-    else
-        FormatIgnoreBuilder<'a>.Ignore
+    Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
 
 let error cat fmt =
-    if _n_logsSink > 0 then
-        Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
-    else
-        FormatIgnoreBuilder<'a>.Ignore
+    Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
 
 // XXX seriously?
 let flush() =
