@@ -36,10 +36,10 @@
     <Compile Include="neovim\neovim.def.fs" />
     <Compile Include="neovim\neovim.process.fs" />
     <Compile Include="neovim\neovim.model.fs" />
-    <Compile Include="ViewModels\GridVisualViewModel.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />
     <Compile Include="ViewModels\EditorViewModel.fs" />
     <Compile Include="ViewModels\MainWindowViewModel.fs" />
+    <Compile Include="Views\ViewBase.fs" />
     <Compile Include="Views\MainWindow.xaml.fs" />
     <Compile Include="Views\Editor.xaml.fs" />
     <Compile Include="Views\Cursor.xaml.fs" />

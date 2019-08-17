@@ -57,7 +57,7 @@ type MainWindow() as this =
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> MainWindowViewModel
-        let pos = PixelPoint(ctx.WindowX, ctx.WindowY)
+        let pos = PixelPoint(int ctx.X, int ctx.Y)
         this.Position <- pos
         this.WindowState <- ctx.WindowState
 

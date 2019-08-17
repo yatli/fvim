@@ -100,3 +100,7 @@ let inline (>>=) (x: 'a option) (f: 'a -> 'b option) =
     | Some x -> f x
     | _ -> None
 
+[<AutoOpen>]
+module internal helpers =
+    let _d x = Option.defaultValue x
+

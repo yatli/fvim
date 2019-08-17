@@ -22,13 +22,9 @@ open Avalonia.Controls
 open System.Reactive.Disposables
 open SkiaSharp
 
-[<AutoOpen>]
-module private helpers =
-    let _d x = Option.defaultValue x
-
 type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
-                    ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
-    inherit ViewModelBase()
+                     ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
+    inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
@@ -64,14 +60,10 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let mutable grid_size        = _d { rows = 10; cols= 10 } _gridsize
     let mutable grid_scale       = _d 1.0 _gridscale
     let mutable grid_fullscreen  = false
-    let mutable grid_rendertick  = 0
-    let mutable measured_size    = _d (Size(100.0, 100.0)) _measuredsize
     let mutable grid_buffer      = Array2D.create grid_size.rows grid_size.cols GridBufferCell.empty
     let mutable grid_dirty       = GridRegion()
     let mutable _fb_h            = 10.0
     let mutable _fb_w            = 10.0
-    let mutable anchor_x         = _d 0.0 _anchorX
-    let mutable anchor_y         = _d 0.0 _anchorY
 
     let child_grids = ObservableCollection<EditorViewModel>()
     let resizeEvent = Event<IGridUI>()
@@ -321,8 +313,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             (* manually resize and position the child grid as per neovim docs *)
             trace "setWinPos: update parameters: h = %d w = %d X = %f Y = %f" h w origin.X origin.Y
             child.initBuffer h w
-            child.AnchorX <- origin.X
-            child.AnchorY <- origin.Y
+            child.X <- origin.X
+            child.Y <- origin.Y
         | None -> 
             let child = new EditorViewModel(
                             grid, this, {rows=h; cols=w}, glyph_size, 
@@ -371,13 +363,13 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         this.Watch [
             Model.Redraw (Array.iter redraw)
 
-            States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
-
             hlchangeEvent.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
-            |> Observable.subscribe (fun () -> markAllDirty())
+            |> Observable.subscribe markAllDirty
 
-            States.Register.Watch "font" (fun () -> fontConfig())
+            States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+            States.Register.Watch "font" fontConfig
+
         ] 
 
     member __.Item with get(row, col) = grid_buffer.[row, col]
@@ -415,8 +407,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     interface IGridUI with
         member __.Id = GridId
-        member __.GridHeight = int( measured_size.Height / glyph_size.Height )
-        member __.GridWidth  = int( measured_size.Width  / glyph_size.Width  )
+        member __.GridHeight = int( this.Height / glyph_size.Height )
+        member __.GridWidth  = int( this.Width  / glyph_size.Width  )
         member __.Resized = resizeEvent.Publish
         member __.Input = inputEvent.Publish
         member __.HasChildren = child_grids.Count <> 0
@@ -461,16 +453,16 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         cursor_info.bold           <- attrs.bold
         cursor_info.italic         <- attrs.italic
         cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-        cursor_info.w              <- width
-        cursor_info.h              <- glyph_size.Height
-        cursor_info.x              <- origin.X
-        cursor_info.y              <- origin.Y
         cursor_info.blinkon        <- on
         cursor_info.blinkoff       <- off
         cursor_info.blinkwait      <- wait
         cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
         cursor_info.enabled        <- cursor_en
         cursor_info.ingrid         <- cursor_ingrid
+        cursor_info.X              <- origin.X
+        cursor_info.Y              <- origin.Y
+        cursor_info.Width          <- width
+        cursor_info.Height         <- glyph_size.Height
         cursor_info.RenderTick     <- cursor_info.RenderTick + 1
         trace "set cursor info, color = %A %A %A" fg bg sp
 
@@ -484,11 +476,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         with get() : bool = grid_fullscreen
         and set(v) =
             ignore <| this.RaiseAndSetIfChanged(&grid_fullscreen, v)
-
-    member this.RenderTick
-        with get() : int = grid_rendertick
-        and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&grid_rendertick, v)
 
     member this.CursorInfo
         with get() : CursorViewModel = cursor_info
@@ -509,30 +496,21 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.GlyphWidth with get(): float = glyph_size.Width
     member __.TopLevel     with get(): bool  = parent.IsNone
 
-    member __.AnchorX
-        with get() : float = anchor_x
-        and set(v) = ignore <| this.RaiseAndSetIfChanged(&anchor_x, v, "AnchorX")
-
-    member __.AnchorY
-        with get() : float = anchor_y
-        and set(v) = ignore <| this.RaiseAndSetIfChanged(&anchor_y, v, "AnchorY")
-
     member __.GridId
         with get() = GridId
 
-    member this.MeasuredSize
-        with get() : Size = measured_size
-        and set(v) =
-            trace "set measured size: %A" v
-            let gridui = this :> IGridUI
-            let gw, gh = gridui.GridWidth, gridui.GridHeight
-            measured_size <- v
-            let gw', gh' = gridui.GridWidth, gridui.GridHeight
-            if gw <> gw' || gh <> gh' then 
-                if this.TopLevel then
-                    resizeEvent.Trigger(this)
-
     member __.ChildGrids = child_grids
+
+    member this.SetMeasuredSize (v: Size) =
+        trace "set measured size: %A" v
+        let gridui = this :> IGridUI
+        let gw, gh = gridui.GridWidth, gridui.GridHeight
+        this.Width <- v.Width
+        this.Height <- v.Height
+        let gw', gh' = gridui.GridWidth, gridui.GridHeight
+        if gw <> gw' || gh <> gh' then 
+            if this.TopLevel then
+                resizeEvent.Trigger(this)
 
     (*******************   Events   ***********************)
 

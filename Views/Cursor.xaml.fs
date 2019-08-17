@@ -5,7 +5,6 @@ open ui
 open common
 open neovim.def
 
-open ReactiveUI
 open Avalonia
 open Avalonia.Animation
 open Avalonia.Controls
@@ -25,9 +24,7 @@ open Avalonia.Visuals.Media.Imaging
 open System.Runtime.InteropServices
 
 type Cursor() as this =
-    inherit UserControl()
-    static let RenderTickProperty = AvaloniaProperty.Register<Cursor, int>("RenderTick")
-    static let ViewModelProp = AvaloniaProperty.Register<Cursor, CursorViewModel>("ViewModel")
+    inherit ViewBase<CursorViewModel>()
 
     let mutable cursor_timer: IDisposable = null
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
@@ -43,7 +40,7 @@ type Cursor() as this =
             cursor_fb_vm <- this.ViewModel.Clone()
             cursor_fb_s <- s
             cursor_fb.Dispose()
-            cursor_fb <- AllocateFramebuffer (cursor_fb_vm.w + 50.0) (cursor_fb_vm.h + 50.0) s
+            cursor_fb <- AllocateFramebuffer (cursor_fb_vm.Width + 50.0) (cursor_fb_vm.Height + 50.0) s
             true
         else false
 
@@ -112,7 +109,7 @@ type Cursor() as this =
 
     do
         this.Watch [
-            this.GetObservable(RenderTickProperty).Subscribe(cursorConfig)
+            this.OnRenderTick cursorConfig
             States.Register.Watch "cursor" setCursorAnimation
         ] 
         AvaloniaXamlLoader.Load(this)
@@ -160,20 +157,4 @@ type Cursor() as this =
         | CursorShape.Vertical, p ->
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
-
-    member this.ViewModel: CursorViewModel = 
-        let ctx = this.DataContext 
-        if ctx = null then Unchecked.defaultof<_> else ctx :?> CursorViewModel
-
-    member this.RenderTick
-        with get() = this.GetValue(RenderTickProperty)
-        and  set(v) = this.SetValue(RenderTickProperty, v)
-
-    interface IViewFor<CursorViewModel> with
-        member this.ViewModel
-            with get (): CursorViewModel = this.GetValue(ViewModelProp)
-            and set (v: CursorViewModel): unit = this.SetValue(ViewModelProp, v)
-        member this.ViewModel
-            with get (): obj = this.GetValue(ViewModelProp) :> obj
-            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
 

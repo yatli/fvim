@@ -55,11 +55,10 @@
 
   <fvim:Cursor
     DataContext         = "{Binding CursorInfo}"
-    Height              = "{Binding h, Mode=OneWay}"
-    Width               = "{Binding w, Mode=OneWay}"
-    RenderTick          = "{Binding RenderTick, Mode=OneWay}"
-    Canvas.Left         = "{Binding x, Mode=OneWay}"
-    Canvas.Top          = "{Binding y, Mode=OneWay}"
+    Height              = "{Binding Height, Mode=OneWay}"
+    Width               = "{Binding Width, Mode=OneWay}"
+    Canvas.Left         = "{Binding X, Mode=OneWay}"
+    Canvas.Top          = "{Binding Y, Mode=OneWay}"
     HorizontalAlignment = "Left"
     VerticalAlignment   = "Top"
     Focusable           = "False"

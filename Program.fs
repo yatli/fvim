@@ -72,5 +72,5 @@ let main(args: string[]) =
     lifetime.MainWindow <- MainWindow(DataContext = mainwin)
     let ret = lifetime.Start(args)
 
-    config.save cfg mainwin.WindowX mainwin.WindowY mainwin.WindowWidth mainwin.WindowHeight mainwin.WindowState
+    config.save cfg (int mainwin.X) (int mainwin.Y) mainwin.Width mainwin.Height mainwin.WindowState
     ret

@@ -18,12 +18,7 @@ open Avalonia.VisualTree
 open System
 open FSharp.Control.Reactive
 
-type EmbeddedEditor() as this =
-    inherit UserControl()
-    do
-        AvaloniaXamlLoader.Load(this)
-
-and Editor() as this =
+type Editor() as this =
     inherit Canvas()
 
     static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
@@ -212,8 +207,8 @@ and Editor() as this =
                 ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
                )
 
-            vm.ObservableForProperty(fun x -> x.AnchorX).Subscribe(fun x -> this.AnchorX <- x.GetValue())
-            vm.ObservableForProperty(fun x -> x.AnchorY).Subscribe(fun y -> this.AnchorY <- y.GetValue())
+            vm.ObservableForProperty(fun x -> x.X).Subscribe(fun x -> this.AnchorX <- x.GetValue())
+            vm.ObservableForProperty(fun x -> x.Y).Subscribe(fun y -> this.AnchorY <- y.GetValue())
         ]
 
     let subscribeAndHandle fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
@@ -293,7 +288,7 @@ and Editor() as this =
                 // the measurement of the view should be consistent with
                 // the buffer size calculated from the viewmodel.
                 else Size(vm.BufferWidth, vm.BufferHeight)
-            vm.MeasuredSize <- sz
+            vm.SetMeasuredSize sz
             sz
         )
 

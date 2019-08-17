@@ -5,13 +5,7 @@ open ReactiveUI
 open FVim.neovim.def
 
 type CursorViewModel() =
-    inherit ViewModelBase()
-
-    let mutable m_h: float            = 1.0               
-    let mutable m_w: float            = 1.0               
-    let mutable m_x: float            = 0.0               
-    let mutable m_y: float            = 0.0
-    let mutable m_tick: int           = 0
+    inherit ViewModelBase(None, None, Some 1.0, Some 1.0)
 
     member val enabled: bool       = true with get,set
     member val ingrid: bool        = true with get,set
@@ -32,23 +26,6 @@ type CursorViewModel() =
     member val cellPercentage: int = 100 with get,set
     member val shape: CursorShape  = CursorShape.Block with get,set
     
-    member this.h 
-        with get(): float = m_h 
-        and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_h, v)
-    member this.w 
-        with get(): float = m_w 
-        and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_w, v)
-    member this.x 
-        with get(): float = m_x 
-        and set(v) = 
-            ignore <| this.RaiseAndSetIfChanged(&m_x, v)
-    member this.y 
-        with get(): float = m_y 
-        and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_y, v)
-    member this.RenderTick 
-        with get(): int = m_tick 
-        and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_tick, v)
-
     member this.Clone() =
         this.MemberwiseClone() :?> CursorViewModel
 
@@ -65,7 +42,7 @@ type CursorViewModel() =
             hash this.undercurl
             hash this.bold
             hash this.italic
-            hash this.h
-            hash this.w
+            hash this.Height
+            hash this.Width
         ] |> Seq.fold (^^^) 0
 
