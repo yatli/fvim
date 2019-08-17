@@ -216,8 +216,9 @@ type Editor() as this =
 
     let subscribeAndHandleInput fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
         ob.Subscribe(fun e ->
-            e.Handled <- true
-            doWithDataContext (fn e))
+            if this.IsFocused && not e.Handled then
+                e.Handled <- true
+                doWithDataContext (fn e))
 
     let drawDebug (dc: IDrawingContextImpl) =
         let txt = Media.FormattedText()

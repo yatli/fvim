@@ -14,6 +14,8 @@ type ViewBase< 'TViewModel when 'TViewModel :> ViewModelBase and 'TViewModel: no
     do
         this.Watch [
             this.Bind(RenderTickProperty, Binding("RenderTick"))
+            this.Bind(Canvas.LeftProperty, Binding("X"))
+            this.Bind(Canvas.TopProperty, Binding("Y"))
         ]
 
     member this.ViewModel: 'TViewModel = 

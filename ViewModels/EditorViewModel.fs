@@ -29,7 +29,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
     let mutable _busy            = false
-    let mutable cursor_info      = new CursorViewModel()
+    let mutable cursor_vm        = new CursorViewModel()
     let mutable cursor_modeidx   = _d -1 _cursormode
     let mutable cursor_row       = 0
     let mutable cursor_col       = 0
@@ -39,6 +39,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
     let mutable mouse_pos        = 0,0
+
+    let mutable popupmenu_vm     = new PopupMenuViewModel()
 
     let mutable default_fg       = Colors.White
     let mutable default_bg       = Colors.Black
@@ -327,6 +329,30 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             //wnd.Content <- anchor.child
             //wnd.Show()
 
+    let hidePopupMenu() =
+        popupmenu_vm.Show <- false
+
+    let selectPopupMenu i =
+        popupmenu_vm.Selection <- i
+
+    let showPopupMenu grid (items: CompleteItem[]) selected row col =
+        if grid <> GridId then
+            hidePopupMenu()
+        else
+        let pos = this.GetPoint (row+1) col
+
+        trace "show popup menu at %O" pos
+
+        let menuLines = min items.Length (grid_size.rows - row)
+        let bounds = this.GetPoint menuLines 0
+
+        popupmenu_vm.X <- pos.X
+        popupmenu_vm.Y <- pos.Y
+        popupmenu_vm.Height <- bounds.Y + 10.0
+        popupmenu_vm.Selection <- selected
+        popupmenu_vm.SetItems items
+        popupmenu_vm.Show <- true
+
     let redraw(cmd: RedrawCommand) =
         match cmd with
         | UnknownCommand x                                                   -> trace "unknown command %A" x
@@ -349,6 +375,9 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
+        | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
+        | PopupMenuSelect(selected)                                          -> selectPopupMenu selected
+        | PopupMenuHide                                                      -> hidePopupMenu ()
         | x -> trace "unimplemented command: %A" x
 
     let raiseInputEvent e =
@@ -441,29 +470,29 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         // do not use the default colors for cursor
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
-        cursor_info.typeface       <- _guifont
-        cursor_info.wtypeface      <- _guifontwide
-        cursor_info.fontSize       <- font_size
-        cursor_info.text           <- text
-        cursor_info.fg             <- fg
-        cursor_info.bg             <- bg
-        cursor_info.sp             <- sp
-        cursor_info.underline      <- attrs.underline
-        cursor_info.undercurl      <- attrs.undercurl
-        cursor_info.bold           <- attrs.bold
-        cursor_info.italic         <- attrs.italic
-        cursor_info.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-        cursor_info.blinkon        <- on
-        cursor_info.blinkoff       <- off
-        cursor_info.blinkwait      <- wait
-        cursor_info.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
-        cursor_info.enabled        <- cursor_en
-        cursor_info.ingrid         <- cursor_ingrid
-        cursor_info.X              <- origin.X
-        cursor_info.Y              <- origin.Y
-        cursor_info.Width          <- width
-        cursor_info.Height         <- glyph_size.Height
-        cursor_info.RenderTick     <- cursor_info.RenderTick + 1
+        cursor_vm.typeface       <- _guifont
+        cursor_vm.wtypeface      <- _guifontwide
+        cursor_vm.fontSize       <- font_size
+        cursor_vm.text           <- text
+        cursor_vm.fg             <- fg
+        cursor_vm.bg             <- bg
+        cursor_vm.sp             <- sp
+        cursor_vm.underline      <- attrs.underline
+        cursor_vm.undercurl      <- attrs.undercurl
+        cursor_vm.bold           <- attrs.bold
+        cursor_vm.italic         <- attrs.italic
+        cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
+        cursor_vm.blinkon        <- on
+        cursor_vm.blinkoff       <- off
+        cursor_vm.blinkwait      <- wait
+        cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
+        cursor_vm.enabled        <- cursor_en
+        cursor_vm.ingrid         <- cursor_ingrid
+        cursor_vm.X              <- origin.X
+        cursor_vm.Y              <- origin.Y
+        cursor_vm.Width          <- width
+        cursor_vm.Height         <- glyph_size.Height
+        cursor_vm.RenderTick     <- cursor_vm.RenderTick + 1
         trace "set cursor info, color = %A %A %A" fg bg sp
 
     member this.setCursorEnabled v =
@@ -478,9 +507,14 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             ignore <| this.RaiseAndSetIfChanged(&grid_fullscreen, v)
 
     member this.CursorInfo
-        with get() : CursorViewModel = cursor_info
+        with get() : CursorViewModel = cursor_vm
         and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&cursor_info, v)
+            ignore <| this.RaiseAndSetIfChanged(&cursor_vm, v)
+
+    member this.PopupMenu
+        with get(): PopupMenuViewModel = popupmenu_vm
+        and set(v) =
+            ignore <| this.RaiseAndSetIfChanged(&popupmenu_vm, v)
 
     member __.RenderScale
         with get() : float = grid_scale
@@ -515,27 +549,23 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
-        e.Handled <- true
         raiseInputEvent <| InputEvent.Key(e.Modifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
             let x, y = e.GetPosition root |> getPos
-            e.Handled <- true
             mouse_pressed <- e.MouseButton
             raiseInputEvent <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en then
             let x, y = e.GetPosition root |> getPos
-            e.Handled <- true
             mouse_pressed <- MouseButton.None
             raiseInputEvent <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if mouse_en && mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
-            e.Handled <- true
             if (x,y) <> mouse_pos then
                 mouse_pos <- x,y
                 raiseInputEvent <| InputEvent.MouseDrag(e.InputModifiers, y, x, mouse_pressed)
@@ -544,7 +574,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         if mouse_en then
             let x, y = e.GetPosition root |> getPos
             let dx, dy = e.Delta.X, e.Delta.Y
-            e.Handled <- true
             raiseInputEvent <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 

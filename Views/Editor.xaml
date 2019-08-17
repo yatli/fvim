@@ -1,19 +1,18 @@
-﻿<Canvas xmlns      = "https://github.com/avaloniaui"
-        xmlns:x    = "http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d    = "http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
-        Focusable  = "True"
-        x:Class    = "FVim.Editor"
-        Background = "{Binding BackgroundBrush, Mode=OneWay}"
-        >
+﻿<Canvas 
+  xmlns      = "https://github.com/avaloniaui"
+  xmlns:x    = "http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d    = "http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
+  Focusable  = "True"
+  x:Class    = "FVim.Editor"
+  Background = "{Binding BackgroundBrush, Mode=OneWay}"
+  >
 
-  <Canvas.Styles>
-    <Style Selector="ItemsControl > ContentPresenter">
-      <Setter Property="Canvas.Left" Value="{Binding AnchorX, Mode=OneWay}"/>
-      <Setter Property="Canvas.Top"  Value="{Binding AnchorY, Mode=OneWay}"/>
-    </Style>
-  </Canvas.Styles>
+  <!--<Canvas.Styles>-->
+    <!--<Style Selector="ItemsControl > ContentPresenter">-->
+    <!--</Style>-->
+  <!--</Canvas.Styles>-->
 
   <ItemsControl 
     Items               = "{Binding ChildGrids,   Mode=OneWay}"
@@ -57,12 +56,18 @@
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
     Width               = "{Binding Width, Mode=OneWay}"
-    Canvas.Left         = "{Binding X, Mode=OneWay}"
-    Canvas.Top          = "{Binding Y, Mode=OneWay}"
     HorizontalAlignment = "Left"
     VerticalAlignment   = "Top"
     Focusable           = "False"
     IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
     >
   </fvim:Cursor>
+
+  <fvim:PopupMenu 
+    DataContext         = "{Binding PopupMenu}"
+    ZIndex              = "10"
+    Focusable           = "True"
+    HorizontalAlignment = "Stretch"
+    VerticalAlignment   = "Stretch"
+    MaxHeight           = "600" />
 </Canvas>

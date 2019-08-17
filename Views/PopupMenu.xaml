@@ -1,0 +1,23 @@
+<UserControl 
+  xmlns      = "https://github.com/avaloniaui"
+  xmlns:x    = "http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d    = "http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
+  Focusable  = "True"
+  x:Class    = "FVim.PopupMenu">
+  <ListBox 
+    Items               = "{Binding Items}"
+    SelectedIndex       = "{Binding Selection, Mode=TwoWay}"
+    Width               = "NaN"
+    Height              = "NaN"
+    HorizontalAlignment = "Stretch"
+    VerticalAlignment   = "Stretch"
+    Focusable           = "True">
+    <ListBox.ItemTemplate>
+      <DataTemplate>
+        <fvim:CompletionItem/>
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+  </ListBox>
+</UserControl>
