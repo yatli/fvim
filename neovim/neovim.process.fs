@@ -266,7 +266,7 @@ type Nvim() =
         let opts = hashmap[]
         opts.[uiopt_rgb]           <- true
         opts.[uiopt_ext_linegrid]  <- true
-        (*opts.[uiopt_ext_popupmenu]  <- true*)
+        opts.[uiopt_ext_popupmenu]  <- true
         (*opts.[uiopt_ext_multigrid] <- true*)
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
@@ -298,6 +298,8 @@ type Nvim() =
 
     member nvim.edit (file: string) =
         nvim.command ("edit " + file)
+
+    member nvim.call = m_call
 
     member nvim.quitall () =
         nvim.command "confirm quitall"

@@ -7,12 +7,12 @@
   Focusable  = "True"
   x:Class    = "FVim.PopupMenu">
   <ListBox 
-    Name                = "List"
-    Items               = "{Binding Items}"
-    SelectedIndex       = "{Binding Selection, Mode=TwoWay}"
-    HorizontalAlignment = "Stretch"
-    VerticalAlignment   = "Top"
-    Focusable           = "True">
+    Name                     = "List"
+    Items                    = "{Binding Items}"
+    SelectedIndex            = "{Binding Selection, Mode=TwoWay}"
+    HorizontalAlignment      = "Stretch"
+    VerticalAlignment        = "Top"
+    Focusable                = "True">
     <ListBox.ItemTemplate>
       <DataTemplate>
         <fvim:CompletionItem/>

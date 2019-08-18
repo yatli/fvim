@@ -17,13 +17,14 @@ type PopupMenu() as this =
             this.Parent.Focus()
 
     do
+        AvaloniaXamlLoader.Load(this)
+        let lst = this.FindControl<ListBox>("List")
         this.Watch [
             this.Bind(UserControl.IsVisibleProperty, Binding("Show"))
             this.Bind(UserControl.HeightProperty, Binding("Height"))
             this.Bind(UserControl.WidthProperty, Binding("Width"))
+            lst.SelectionChanged.Subscribe(fun x -> for item in x.AddedItems do lst.ScrollIntoView item)
         ]
-        this.Height <- System.Double.NaN
-        AvaloniaXamlLoader.Load(this)
 
     override this.OnKeyDown(e) =
         relayToParent e

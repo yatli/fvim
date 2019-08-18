@@ -425,7 +425,6 @@ let Start opts =
         ()
     }
 
-    
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
     gridui.Resized 
@@ -453,6 +452,16 @@ let OnGridReady(gridui: IGridUI) =
             let! _ = nvim.command "runtime! ginit.vim"
             in ()
         } |> ignore
+
+let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
+    trace "SelectPopupMenuItem: index=%d insert=%b finish=%b" index insert finish
+    task {
+        let insert = if insert then "v:true" else "v:false"
+        let finish = if finish then "v:true" else "v:false"
+        let! _ = nvim.command (sprintf "call nvim_select_popupmenu_item(%d, %s, %s, {})" index insert finish)
+        in ()
+    } |> ignore
+    
 
 let OnTerminated (args) =
     trace "terminating nvim..."

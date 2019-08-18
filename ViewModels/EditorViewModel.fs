@@ -327,8 +327,14 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let hidePopupMenu() =
         popupmenu_vm.Show <- false
 
-    let selectPopupMenu i =
+    let selectPopupMenuPassive i =
         popupmenu_vm.Selection <- i
+
+    let selectPopupMenuActive i =
+        Model.SelectPopupMenuItem i true false
+
+    let commitPopupMenu i =
+        Model.SelectPopupMenuItem i true true
 
     let showPopupMenu grid (items: CompleteItem[]) selected row col =
         if grid <> GridId then
@@ -376,7 +382,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
-        | PopupMenuSelect(selected)                                          -> selectPopupMenu selected
+        | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | x -> trace "unimplemented command: %A" x
 
@@ -391,6 +397,9 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         fontConfig()
         this.Watch [
             Model.Redraw (Array.iter redraw)
+
+            popupmenu_vm.ObservableForProperty(fun x -> x.Selection)
+            |> Observable.subscribe (fun x -> selectPopupMenuActive <| x.GetValue())
 
             hlchangeEvent.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
