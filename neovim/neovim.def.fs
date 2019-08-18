@@ -154,7 +154,7 @@ type Anchor =
 ///      d    #define or macro
 ///  </summary>
 [<Struct>]
-type CompleteKind =
+type VimCompleteKind =
 | Variable
 | Function
 | Member
@@ -168,10 +168,9 @@ type CompleteItem =
         abbr: string option
         menu: string option
         info: string option
-        kind: CompleteKind option
     }
 with 
-    static member empty = { word = ""; abbr = None; menu = None; info = None; kind = None }
+    static member empty = { word = ""; abbr = None; menu = None; info = None }
     static member GetLength (x: CompleteItem) =
         let _len (x: string option) = (_d "" x).Length
         x.word.Length + _len x.abbr + _len x.menu + _len x.info
@@ -453,7 +452,6 @@ let parse_complete_item =
             abbr = Some abbr
             menu = Some menu
             info = Some info
-            kind = None
         }
     | x -> 
         trace "parse_complete_item: unrecognized: %A" x

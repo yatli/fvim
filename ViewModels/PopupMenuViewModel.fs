@@ -8,15 +8,6 @@ open System.Collections.ObjectModel
 open FVim.common.helpers
 open Avalonia
 
-type CompletionItemViewModel(item: CompleteItem) =
-    inherit ViewModelBase()
-    do
-        trace "CompletionItemViewModel" "item = %A" item
-    member __.Text = item.word
-    member __.Menu = _d "" item.menu
-    member __.Info = _d "" item.info
-    member __.ShowIcon = false
-
 type PopupMenuViewModel() =
     inherit ViewModelBase()
 
@@ -58,7 +49,7 @@ type PopupMenuViewModel() =
         let r_ne = Rect(ne_topleft, ne_bottomright)
 
         let region = 
-            if r_se.Width > desiredSizeVec.X / 3.0 || r_se.Width > r_ne.Width then
+            if r_se.Height > desiredSizeVec.Y / 3.0 || r_se.Height > r_ne.Height then
                 r_se
             else
                 r_ne

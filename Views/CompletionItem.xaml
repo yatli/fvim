@@ -5,9 +5,22 @@
   xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
   Focusable  = "True"
+  Height     = "{Binding Height}"
   x:Class    = "FVim.CompletionItem">
-  <TextBlock 
-    Text="{Binding Text}" 
-    VerticalAlignment="Stretch"
-    />
+  <Grid Margin="0">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{Binding Height}" />
+      <ColumnDefinition Width="10" />
+      <ColumnDefinition Width="100*" />
+      <ColumnDefinition Width="10" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Image Source="{Binding Icon}" Grid.Row="0" Grid.Column="0" 
+      Width="16" Height="16" HorizontalAlignment="Left" Margin="0"/>
+    <TextBlock Text="{Binding Text}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Row="0" Grid.Column="2" />
+    <TextBlock Text="{Binding Menu}" HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Row="0" Grid.Column="4" />
+  </Grid>
 </UserControl>
