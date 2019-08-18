@@ -29,18 +29,13 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
 
     let mutable _busy            = false
-    let mutable cursor_vm        = new CursorViewModel()
-    let mutable cursor_modeidx   = _d -1 _cursormode
-    let mutable cursor_row       = 0
-    let mutable cursor_col       = 0
-    let mutable cursor_en        = true
-    let mutable cursor_ingrid    = true
+    let cursor_vm                = new CursorViewModel(_cursormode)
 
     let mutable mouse_en         = true
     let mutable mouse_pressed    = MouseButton.None
     let mutable mouse_pos        = 0,0
 
-    let mutable popupmenu_vm     = new PopupMenuViewModel()
+    let popupmenu_vm             = new PopupMenuViewModel()
 
     let mutable default_fg       = Colors.White
     let mutable default_bg       = Colors.Black
@@ -160,7 +155,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
                 col <- col + 1
         let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
         // if the buffer under cursor is updated, also notify the cursor view model
-        if row = cursor_row && line.col_start <= cursor_col && cursor_col < col
+        if row = cursor_vm.row && line.col_start <= cursor_vm.col && cursor_vm.col < col
         then this.cursorConfig()
         //trace "redraw" "putBuffer: writing to %A" dirty
         // italic font artifacts I: remainders after scrolling and redrawing the dirty part
@@ -196,13 +191,13 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         this.setCursorEnabled cs_en
 
     let cursorGoto id row col =
-        cursor_ingrid <- (id = GridId)
-        cursor_row <- row
-        cursor_col <- col
+        cursor_vm.ingrid <- (id = GridId)
+        cursor_vm.row <- row
+        cursor_vm.col <- col
         this.cursorConfig()
 
     let changeMode (name: string) (index: int) = 
-        cursor_modeidx <- index
+        cursor_vm.modeidx <- index
         this.cursorConfig()
 
     let bell (visual: bool) =
@@ -266,10 +261,10 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
 
-        if top <= cursor_row 
-           && cursor_row <= bot 
-           && left <= cursor_col 
-           && cursor_col <= right
+        if top <= cursor_vm.row 
+           && cursor_vm.row <= bot 
+           && left <= cursor_vm.col 
+           && cursor_vm.col <= right
         then
             this.cursorConfig()
 
@@ -321,7 +316,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             let child = new EditorViewModel(
                             grid, this, {rows=h; cols=w}, glyph_size, 
                             Size(child_size.X, child_size.Y), font_size, grid_scale, hi_defs, mode_defs, 
-                            _guifont, _guifontwide, cursor_modeidx, origin.X, origin.Y)
+                            _guifont, _guifontwide, cursor_vm.modeidx, origin.X, origin.Y)
             child_grids.Add child
             //let wnd = Window()
             //wnd.Height  <- child_size.Y
@@ -339,18 +334,23 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         if grid <> GridId then
             hidePopupMenu()
         else
-        let pos = this.GetPoint (row+1) col
+        let startPos  = this.GetPoint row col
+        let cursorPos = this.GetPoint (cursor_vm.row + 1) cursor_vm.col
 
-        trace "show popup menu at %O" pos
+        trace "show popup menu at [%O, %O]" startPos cursorPos
 
-        let menuLines = min items.Length (grid_size.rows - row)
-        let bounds = this.GetPoint menuLines 0
+        //  Decide the maximum size of the popup menu based on grid dimensions
+        let menuLines = items.Length
+        let menuCols = 
+            items
+            |> Array.map CompleteItem.GetLength
+            |> Array.max
 
-        popupmenu_vm.X <- pos.X
-        popupmenu_vm.Y <- pos.Y
-        popupmenu_vm.Height <- bounds.Y + 10.0
+        let bounds = this.GetPoint menuLines menuCols
+        let editorSize = this.GetPoint grid_size.rows grid_size.cols
+
         popupmenu_vm.Selection <- selected
-        popupmenu_vm.SetItems items
+        popupmenu_vm.SetItems(items, Rect(startPos, cursorPos), glyph_size.Height, bounds, editorSize)
         popupmenu_vm.Show <- true
 
     let redraw(cmd: RedrawCommand) =
@@ -449,15 +449,15 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         Point(double(col) * glyph_size.Width, double(row) * glyph_size.Height)
 
     member __.cursorConfig() =
-        if mode_defs.Length = 0 || cursor_modeidx < 0 then ()
-        elif grid_buffer.GetLength(0) <= cursor_row || grid_buffer.GetLength(1) <= cursor_col then ()
+        if mode_defs.Length = 0 || cursor_vm.modeidx < 0 then ()
+        elif grid_buffer.GetLength(0) <= cursor_vm.row || grid_buffer.GetLength(1) <= cursor_vm.col then ()
         else
-        let mode              = mode_defs.[cursor_modeidx]
-        let hlid              = grid_buffer.[cursor_row, cursor_col].hlid
+        let mode              = mode_defs.[cursor_vm.modeidx]
+        let hlid              = grid_buffer.[cursor_vm.row, cursor_vm.col].hlid
         let hlid              = Option.defaultValue hlid mode.attr_id
         let fg, bg, sp, attrs = this.GetDrawAttrs hlid
-        let origin            = this.GetPoint cursor_row cursor_col
-        let text              = grid_buffer.[cursor_row, cursor_col].text
+        let origin            = this.GetPoint cursor_vm.row cursor_vm.col
+        let text              = grid_buffer.[cursor_vm.row, cursor_vm.col].text
         let text_type         = wswidth text
         let width             = float(max <| 1 <| CharTypeWidth text_type) * glyph_size.Width
 
@@ -486,8 +486,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         cursor_vm.blinkoff       <- off
         cursor_vm.blinkwait      <- wait
         cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
-        cursor_vm.enabled        <- cursor_en
-        cursor_vm.ingrid         <- cursor_ingrid
         cursor_vm.X              <- origin.X
         cursor_vm.Y              <- origin.Y
         cursor_vm.Width          <- width
@@ -496,8 +494,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         trace "set cursor info, color = %A %A %A" fg bg sp
 
     member this.setCursorEnabled v =
-        cursor_en <- v
-        this.cursorConfig()
+        cursor_vm.enabled <- v
+        cursor_vm.RenderTick <- cursor_vm.RenderTick + 1
 
     (*******************   Exposed properties   ***********************)
 
@@ -508,13 +506,9 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     member this.CursorInfo
         with get() : CursorViewModel = cursor_vm
-        and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&cursor_vm, v)
 
     member this.PopupMenu
         with get(): PopupMenuViewModel = popupmenu_vm
-        and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&popupmenu_vm, v)
 
     member __.RenderScale
         with get() : float = grid_scale

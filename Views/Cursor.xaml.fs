@@ -31,8 +31,9 @@ type Cursor() as this =
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
     let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
-    let mutable cursor_fb_vm = CursorViewModel()
+    let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_s = 1.0
+    let mutable render_queued = false
 
     let ensure_fb() =
         let s = this.GetVisualRoot().RenderScaling
@@ -84,7 +85,9 @@ type Cursor() as this =
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
-            this.InvalidateVisual()
+            if not render_queued then
+                render_queued <- true
+                this.InvalidateVisual()
 
     let setCursorAnimation() =
         let transitions = Transitions()
@@ -157,4 +160,6 @@ type Cursor() as this =
         | CursorShape.Vertical, p ->
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
+
+        render_queued <- false
 

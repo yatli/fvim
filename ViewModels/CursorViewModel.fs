@@ -3,12 +3,16 @@
 open Avalonia.Media
 open ReactiveUI
 open FVim.neovim.def
+open FVim.common.helpers
 
-type CursorViewModel() =
+type CursorViewModel(cursorMode: int option) =
     inherit ViewModelBase(None, None, Some 1.0, Some 1.0)
 
     member val enabled: bool       = true with get,set
     member val ingrid: bool        = true with get,set
+    member val row: int            = 0 with get,set
+    member val col: int            = 0 with get,set
+    member val modeidx: int        = _d -1 cursorMode with get,set
     member val typeface: string    = "" with get,set
     member val wtypeface: string   = "" with get,set
     member val fontSize: float     = 8.0 with get,set
@@ -34,14 +38,6 @@ type CursorViewModel() =
             hash this.typeface
             hash this.wtypeface
             hash this.fontSize
-            hash this.text
-            hash this.fg
-            hash this.bg
-            hash this.sp
-            hash this.underline
-            hash this.undercurl
-            hash this.bold
-            hash this.italic
             hash this.Height
             hash this.Width
         ] |> Seq.fold (^^^) 0

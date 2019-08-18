@@ -170,7 +170,11 @@ type CompleteItem =
         info: string option
         kind: CompleteKind option
     }
-with static member empty = { word = ""; abbr = None; menu = None; info = None; kind = None }
+with 
+    static member empty = { word = ""; abbr = None; menu = None; info = None; kind = None }
+    static member GetLength (x: CompleteItem) =
+        let _len (x: string option) = (_d "" x).Length
+        x.word.Length + _len x.abbr + _len x.menu + _len x.info
 
 type RedrawCommand =
 ///  -- global --
