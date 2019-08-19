@@ -250,6 +250,7 @@ type Nvim() =
     member this.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
         this.events
         |> Observable.observeOnContext ctx
+        |> Observable.synchronize
         |> Observable.subscribe        fn
         |> this.pushSubscription
 
@@ -267,7 +268,7 @@ type Nvim() =
         opts.[uiopt_rgb]           <- true
         opts.[uiopt_ext_linegrid]  <- true
         opts.[uiopt_ext_popupmenu]  <- true
-        (*opts.[uiopt_ext_multigrid] <- true*)
+        opts.[uiopt_ext_multigrid] <- true
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 

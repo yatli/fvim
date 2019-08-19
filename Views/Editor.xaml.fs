@@ -16,14 +16,14 @@ open Avalonia.Skia
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
 open System
+open System.Collections.Specialized
 open FSharp.Control.Reactive
+open Avalonia.Data
 
 type Editor() as this =
     inherit Canvas()
 
     static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
-    static let AnchorXProp    = AvaloniaProperty.Register<Editor, float>("AnchorX")
-    static let AnchorYProp    = AvaloniaProperty.Register<Editor, float>("AnchorY")
 
     let mutable m_render_queued = false
     let mutable m_saved_size  = Size(100.0,100.0)
@@ -34,7 +34,7 @@ type Editor() as this =
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
     let mutable (m_visualroot: IVisual) = this :> IVisual
 
-    let mutable m_debug = false
+    let mutable m_debug = true
 
     let trace fmt = 
         let nr =
@@ -191,6 +191,9 @@ type Editor() as this =
             m_render_queued <- true
             this.InvalidateVisual()
 
+    let findChildEditor (vm: obj) =
+        this.Children |> Seq.tryFind(fun x -> x.DataContext = vm)
+
     let onViewModelConnected (vm:EditorViewModel) =
         grid_vm <- vm
         trace "viewmodel connected"
@@ -210,8 +213,21 @@ type Editor() as this =
                 ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
                )
 
-            vm.ObservableForProperty(fun x -> x.X).Subscribe(fun x -> this.AnchorX <- x.GetValue())
-            vm.ObservableForProperty(fun x -> x.Y).Subscribe(fun y -> this.AnchorY <- y.GetValue())
+            vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
+                match changes.Action with
+                | NotifyCollectionChangedAction.Add ->
+                    for vm in changes.NewItems do
+                        let view = Editor()
+                        view.DataContext <- vm
+                        view.ZIndex <- 3
+                        this.Children.Add(view)
+                | NotifyCollectionChangedAction.Remove ->
+                    for vm in changes.OldItems do
+                        match findChildEditor vm with
+                        | Some view -> ignore(this.Children.Remove view)
+                        | _ -> ()
+                | _ -> failwith "not supported"
+            )
         ]
 
     let subscribeAndHandleInput fn (ob: IObservable< #Avalonia.Interactivity.RoutedEventArgs>) =
@@ -241,6 +257,9 @@ type Editor() as this =
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType
             |> Observable.subscribe onViewModelConnected
+
+            this.Bind(Canvas.LeftProperty, Binding("X"))
+            this.Bind(Canvas.TopProperty, Binding("Y"))
 
             States.Register.Watch "font" (fun () -> 
                 if grid_vm <> Unchecked.defaultof<_> then
@@ -308,10 +327,3 @@ type Editor() as this =
             with get (): obj = this.GetValue(ViewModelProp) :> obj
             and set (v: obj): unit = this.SetValue(ViewModelProp, v)
 
-    member this.AnchorX
-        with get(): float = this.GetValue(AnchorXProp)
-        and set(v: float) = this.SetValue(AnchorXProp, v)
-
-    member this.AnchorY
-        with get(): float = this.GetValue(AnchorYProp)
-        and set(v: float) = this.SetValue(AnchorYProp, v)
