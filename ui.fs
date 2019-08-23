@@ -339,7 +339,7 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, shaper: SKShaper ValueOption) =
+    let RenderText (ctx: IDrawingContextImpl, region: Rect, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, shaper: SKShaper ValueOption) =
 
         ctx.PushClip(region)
         //  DrawText accepts the coordinate of the baseline.

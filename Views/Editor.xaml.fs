@@ -17,6 +17,76 @@ open Avalonia.Media.Imaging
 open Avalonia.VisualTree
 open System
 open FSharp.Control.Reactive
+open System.Collections.Generic
+open Avalonia.Utilities
+
+type Span = Span of text: string * hlid: int
+
+type SpanCache(w, h, s) =
+    let m_bitmap = AllocateFramebuffer w h s
+    let mutable m_time = DateTime.Now
+
+    let mutable m_curpos = 0.0
+
+    member __.Alloc(w') =
+        if m_curpos + w' <= w then
+            let ret = ValueSome(m_curpos, m_bitmap)
+            m_curpos <- ceil (m_curpos + w')
+            ret
+        else ValueNone
+
+    member __.Hit() =
+        m_time <- DateTime.Now
+
+    interface IDisposable with
+        member __.Dispose() =
+            m_bitmap.Dispose()
+
+type RenderedSpan =
+    {
+        Canvas: RenderTargetBitmap
+        Start: float
+        Cache: SpanCache
+    }
+
+type SpanCacheQueryResult =
+| Hit of RenderedSpan
+| Allocated of RenderTargetBitmap * float
+| Fail
+
+[<AllowNullLiteral>]
+type SpanRenderCache(scale, h) =
+    let m_width = 4096.0
+    let m_caches = List<SpanCache>([ new SpanCache(m_width, h, scale) ])
+    let m_lookup = Dictionary<Span, RenderedSpan>()
+
+    member __.Query(txt, hlid, w) =
+        let span = Span(txt, hlid)
+        match m_lookup.TryGetValue(Span(txt,hlid)) with
+        | _ when w > m_width || txt.Length < 2  -> Fail
+        | true, result -> 
+            result.Cache.Hit()
+            Hit result
+        | _ ->
+        let cache, pos, bitmap = 
+            let last_cache = m_caches.[m_caches.Count - 1]
+            match last_cache.Alloc(w) with
+            | ValueSome(curpos, bitmap) -> last_cache, curpos, bitmap
+            | _ ->
+            let new_cache = new SpanCache(m_width, h, scale)
+            m_caches.Add(new_cache)
+            match new_cache.Alloc(w) with
+            | ValueSome(curpos, bitmap) -> new_cache, curpos, bitmap
+            | _ -> failwith "?"
+        m_lookup.[span] <- { Canvas=bitmap; Start=pos; Cache=cache  }
+        cache.Hit()
+        Allocated(bitmap, pos)
+
+    member __.Height = h
+
+    interface IDisposable with
+        member __.Dispose() =
+            m_caches.ForEach(fun x -> (x :> IDisposable).Dispose())
 
 type Editor() as this =
     inherit Canvas()
@@ -26,34 +96,43 @@ type Editor() as this =
     static let AnchorYProp    = AvaloniaProperty.Register<Editor, float>("AnchorY")
 
     let mutable m_render_queued = false
-    let mutable m_saved_size  = Size(100.0,100.0)
-    let mutable m_saved_pos   = PixelPoint(300, 300)
+    let mutable m_saved_size = Size(100.0,100.0)
+    let mutable m_saved_pos = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
-    let mutable grid_fb: RenderTargetBitmap  = null
-    let mutable grid_scale: float            = 1.0
-    let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
+    let mutable m_fb: RenderTargetBitmap = null
+    let mutable m_cache: SpanRenderCache = null
+    let mutable m_scale: float = 1.0
+    let mutable m_viewmodel: EditorViewModel = Unchecked.defaultof<_>
     let mutable (m_visualroot: IVisual) = this :> IVisual
 
     let mutable m_debug = false
 
     let trace fmt = 
         let nr =
-            if grid_vm <> Unchecked.defaultof<_> then (grid_vm:>IGridUI).Id.ToString()
+            if m_viewmodel <> Unchecked.defaultof<_> then (m_viewmodel:>IGridUI).Id.ToString()
             else "(no vm attached)"
         trace ("editor #" + nr) fmt
 
 
     let image() = this.FindControl<Image>("FrameBuffer")
 
+    let ensureCache h =
+        if m_cache = null || m_cache.Height < h then
+            if m_cache <> null then
+                (m_cache:>IDisposable).Dispose()
+                m_cache <- null
+            m_cache <- new SpanRenderCache(m_scale, h)
+
     let resizeFrameBuffer() =
-        grid_scale <- this.GetVisualRoot().RenderScaling
+        m_scale <- this.GetVisualRoot().RenderScaling
         let image = image()
         image.Source <- null
-        if grid_fb <> null then
-            grid_fb.Dispose()
-            grid_fb <- null
-        grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
-        image.Source <- grid_fb
+        if m_fb <> null then
+            m_fb.Dispose()
+            m_fb <- null
+
+        m_fb <- AllocateFramebuffer (m_viewmodel.BufferWidth) (m_viewmodel.BufferHeight) m_scale
+        image.Source <- m_fb
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system =
@@ -77,18 +156,13 @@ type Editor() as this =
     //-------------------------------------------------------------------------
     // like this:
     let rounding (pt: Point) =
-        let px = pt * grid_scale 
-        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale 
+        let px = pt * m_scale 
+        Point(Math.Ceiling px.X, Math.Ceiling px.Y) / m_scale 
 
-    let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) (issym: bool) =
+    let drawBufferImpl ctx region hlid issym x (txt: string) =
+        let font, fontwide, fontsize = m_viewmodel.GetFontAttrs()
+        let fg, bg, sp, attrs = m_viewmodel.GetDrawAttrs hlid
 
-        let x = 
-            match str with
-            | x :: _ -> x
-            | _ -> " "
-
-        let font, fontwide, fontsize = grid_vm.GetFontAttrs()
-        let fg, bg, sp, attrs = grid_vm.GetDrawAttrs hlid 
         let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
 
         use fgpaint = new SKPaint()
@@ -96,46 +170,68 @@ type Editor() as this =
         use sppaint = new SKPaint()
         SetForegroundBrush(fgpaint, fg, typeface, fontsize)
 
-        let nr_col = 
-            match wswidth grid_vm.[row, colend - 1].text with
-            | CharType.Wide | CharType.Nerd | CharType.Emoji -> colend - col + 1
-            | _ -> colend - col
-
-        let topLeft      = grid_vm.GetPoint row col
-        let bottomRight  = topLeft + grid_vm.GetPoint 1 nr_col
-        let bg_region    = Rect(topLeft , bottomRight)
-
         bgpaint.Color <- bg.ToSKColor()
         sppaint.Color <- sp.ToSKColor()
 
-        let txt = String.Concat str
         let shaping = 
             if txt.Length > 1 && txt.Length < 5 && issym then
                 ValueSome shaper
             else ValueNone
 
         try
-            RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+            RenderText(ctx, region, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
         with
-        | ex -> trace "drawBuffer: %s" <| ex.ToString()
+        | ex -> trace "drawBufferImpl: %s" <| ex.ToString()
+
+    let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (xs: string list) (issym: bool) =
+
+        let x = 
+            if xs.Length = 0 then " "
+            else xs.[0]
+        let txt = String.Concat xs
+
+        let nr_col = 
+            match wswidth m_viewmodel.[row, colend - 1].text with
+            | CharType.Wide | CharType.Nerd | CharType.Emoji -> colend - col + 1
+            | _ -> colend - col
+
+        let topLeft      = m_viewmodel.GetPoint row col
+        let bottomRight  = topLeft + m_viewmodel.GetPoint 1 nr_col
+        let bg_region    = Rect(topLeft , bottomRight)
+
+        match m_cache.Query(txt, hlid, bg_region.Width) with
+        | Fail -> drawBufferImpl ctx bg_region hlid issym x txt
+        | Allocated(bitmap, pos) ->
+            trace "hit cache, txt='%s', pos=%f" txt pos
+            let dc = bitmap.CreateDrawingContext(null)
+            let region = bg_region.WithX(pos).WithY(0.0)
+            dc.PushClip(region)
+            drawBufferImpl dc region hlid issym x txt
+            dc.Dispose()
+            let bitmap' = bitmap.PlatformImpl :?> IRef<IBitmapImpl>
+            ctx.DrawImage(bitmap', 1.0, Rect(0.0, 0.0, region.Width * m_scale, region.Height * m_scale), bg_region)
+        | Hit { Canvas = bitmap; Start=pos } ->
+            let bitmap' = bitmap.PlatformImpl :?> IRef<IBitmapImpl>
+            let region = bg_region.WithX(pos).WithY(0.0)
+            ctx.DrawImage(bitmap', 1.0, Rect(0.0, 0.0, region.Width * m_scale, region.Height * m_scale), bg_region)
 
     // assembles text from grid and draw onto the context.
     let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
-        let xN = min xN grid_vm.Cols
+        let xN = min xN m_viewmodel.Cols
         let x0 = max x0 0
-        let y  = (min y  (grid_vm.Rows - 1) ) |> max 0
+        let y  = (min y  (m_viewmodel.Rows - 1) ) |> max 0
         let mutable x': int                  = xN - 1
-        let mutable prev: GridBufferCell ref = ref grid_vm.[y, x']
+        let mutable prev: GridBufferCell ref = ref m_viewmodel.[y, x']
         let mutable str: string list         = []
         let mutable wc: CharType             = wswidth (!prev).text
         let mutable sym: bool                = isProgrammingSymbol (!prev).text
         let mutable bold = 
-            let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!prev).hlid
+            let _,_,_,hl_attrs = m_viewmodel.GetDrawAttrs (!prev).hlid
             hl_attrs.bold
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
         for x = xN - 1 downto x0 do
-            let current = ref grid_vm.[y,x]
+            let current = ref m_viewmodel.[y,x]
             let mytext = (!current).text
             //  !NOTE text shaping is slow. We only use shaping for
             //  a symbol-only span (for ligature drawing).
@@ -154,7 +250,7 @@ type Editor() as this =
                 str <- []
                 if hlidchange then
                     prev <- current
-                    bold <- let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!current).hlid
+                    bold <- let _,_,_,hl_attrs = m_viewmodel.GetDrawAttrs (!current).hlid
                             in hl_attrs.bold
             str <- mytext :: str
         drawBuffer ctx y x0 (x' + 1) (!prev).hlid str sym
@@ -192,7 +288,7 @@ type Editor() as this =
             this.InvalidateVisual()
 
     let onViewModelConnected (vm:EditorViewModel) =
-        grid_vm <- vm
+        m_viewmodel <- vm
         trace "viewmodel connected"
         vm.Watch [
             vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun tick -> redraw <| tick.GetValue())
@@ -222,7 +318,7 @@ type Editor() as this =
 
     let drawDebug (dc: IDrawingContextImpl) =
         let txt = Media.FormattedText()
-        txt.Text <- sprintf "Grid #%d, Z=%d" grid_vm.GridId this.ZIndex
+        txt.Text <- sprintf "Grid #%d, Z=%d" m_viewmodel.GridId this.ZIndex
         txt.Typeface <- Media.Typeface("Iosevka Slab", 16.0)
 
         dc.DrawText(Media.Brushes.Tan, Point(10.0, 10.0), txt.PlatformImpl)
@@ -234,7 +330,6 @@ type Editor() as this =
         dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(this.Bounds.Width, this.Bounds.Height))
         dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
 
-
     do
         this.Watch [
             this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root)
@@ -243,8 +338,8 @@ type Editor() as this =
             |> Observable.subscribe onViewModelConnected
 
             States.Register.Watch "font" (fun () -> 
-                if grid_vm <> Unchecked.defaultof<_> then
-                    grid_vm.MarkAllDirty()
+                if m_viewmodel <> Unchecked.defaultof<_> then
+                    m_viewmodel.MarkAllDirty()
                     this.InvalidateVisual()
                 )
 
@@ -260,13 +355,15 @@ type Editor() as this =
 
     override this.Render ctx =
         (*trace "render begin"*)
-        if grid_fb <> null then
-            let dirty = grid_vm.Dirty
+        if m_fb <> null then
+            ensureCache m_viewmodel.GlyphHeight
+
+            let dirty = m_viewmodel.Dirty
             if not <| dirty.Empty() then
                 let regions = dirty.Regions()
                 trace "drawing %d regions"  regions.Count
                 let timer = System.Diagnostics.Stopwatch.StartNew()
-                use grid_dc = grid_fb.CreateDrawingContext(null)
+                use grid_dc = m_fb.CreateDrawingContext(null)
                 grid_dc.PushClip(Rect this.Bounds.Size)
                 for r in regions do
                     for row = r.row to r.row_end - 1 do
@@ -278,7 +375,7 @@ type Editor() as this =
                 grid_dc.PopClip()
                 timer.Stop()
                 trace "drawing end, time = %dms." timer.ElapsedMilliseconds
-                grid_vm.markClean()
+                m_viewmodel.markClean()
 
             (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
         (*trace "base rendering"*)

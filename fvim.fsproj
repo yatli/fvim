@@ -6,6 +6,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationIcon>fvim.ico</ApplicationIcon>
     <OutputType>Exe</OutputType>
+    <DebugType>Full</DebugType>
   </PropertyGroup>
   
   <PropertyGroup>
