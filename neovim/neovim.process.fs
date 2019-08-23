@@ -268,7 +268,7 @@ type Nvim() =
         opts.[uiopt_rgb]           <- true
         opts.[uiopt_ext_linegrid]  <- true
         opts.[uiopt_ext_popupmenu]  <- true
-        opts.[uiopt_ext_multigrid] <- true
+        (*opts.[uiopt_ext_multigrid] <- true*)
 
         m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 

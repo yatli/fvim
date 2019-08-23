@@ -34,7 +34,7 @@ type Editor() as this =
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
     let mutable (m_visualroot: IVisual) = this :> IVisual
 
-    let mutable m_debug = true
+    let mutable m_debug = false
 
     let trace fmt = 
         let nr =
