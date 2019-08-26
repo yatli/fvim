@@ -1,8 +1,7 @@
 {
   "profiles": {
     "fvim": {
-      "commandName": "Project",
-      "commandLineArgs": "--connect localhost:9527"
+      "commandName": "Project"
     }
   }
 }
