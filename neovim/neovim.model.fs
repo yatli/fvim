@@ -258,6 +258,7 @@ module ModelImpl =
             match x with
             | ImeEvent    -> _imeArmed <- true
             | TextInput _ -> ()
+            | Unrecognized -> _imeArmed <- true
             | _           -> _imeArmed <- false
             // TODO anything that cancels ime input state?
 
