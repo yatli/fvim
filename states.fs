@@ -48,6 +48,9 @@ type LineHeightOption =
 | Add of float
 | Default
 
+// keyboard mapping
+let mutable key_disableShiftSpace = false
+
 // clipboard
 let mutable clipboard_lines: string[] = [||]
 let mutable clipboard_regtype: string = ""
