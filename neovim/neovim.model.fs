@@ -124,6 +124,7 @@ module ModelImpl =
         // | Key(HasFlag(InputModifiers.Control), Key.M)
         // | Key(HasFlag(InputModifiers.Control), Key.Oem4) // Oem4 is '['
         // | Key(HasFlag(InputModifiers.Control), Key.L) // if ^L is sent as <FF> then neovim discards the key.
+        | Key(_, Key.CapsLock)                                        -> Unrecognized  // avoid sending "capslock" key sequence
         | Key(_, Key.Back)                                            -> Special "BS"
         | Key(_, Key.Tab)                                             -> Special "Tab"
         | Key(_, Key.LineFeed)                                        -> Special "NL"
@@ -258,7 +259,6 @@ module ModelImpl =
             match x with
             | ImeEvent    -> _imeArmed <- true
             | TextInput _ -> ()
-            | Unrecognized -> _imeArmed <- true
             | _           -> _imeArmed <- false
             // TODO anything that cancels ime input state?
 
