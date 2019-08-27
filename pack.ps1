@@ -6,10 +6,6 @@ param([string[]]$plat=("win7-x64","win-x64"))
 New-Item -ItemType Directory -Force -Name publish -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force bin\ -ErrorAction SilentlyContinue
 Remove-Item publish\*
-Invoke-Command { 
-    nuget sources remove -Name "Avalonia Nightly"
-    nuget sources add -Name "Avalonia Nightly" -Source "https://www.myget.org/F/avalonia-ci/api/v2" -NonInteractive 
-} -ErrorAction SilentlyContinue
 
 foreach($i in $plat) {
     dotnet publish -f netcoreapp3.0 -c Release --self-contained -r $i
