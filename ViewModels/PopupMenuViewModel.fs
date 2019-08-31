@@ -106,7 +106,7 @@ type PopupMenuViewModel() =
 
         this.X <- region.X
         this.Y <- region.Y
-        this.Width <- region.Width
+        this.Width <- region.Width + 36.0 // for icons etc.
         this.Height <- region.Height
 
         items 
