@@ -13,6 +13,8 @@ type PopupMenuViewModel() =
 
     let mutable m_show = false
     let mutable m_selection = -1
+    let mutable m_fontFamily = Avalonia.Media.FontFamily("")
+    let mutable m_fontSize = 12.0
     let m_items = ObservableCollection<CompletionItemViewModel>()
 
     let trace x = FVim.log.trace "CompletionItem" x
@@ -25,8 +27,14 @@ type PopupMenuViewModel() =
         with get(): int = m_selection
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_selection, v, "Selection")
 
-    member this.Items
-        with get() = m_items
+    member this.Items with get() = m_items
+    member this.FontFamily with get() = m_fontFamily
+    member this.FontSize with get() = m_fontSize
+    
+
+    member this.SetFont(fontfamily, fontsize) =
+        ignore <| this.RaiseAndSetIfChanged(&m_fontFamily, Avalonia.Media.FontFamily(fontfamily), "FontFamily")
+        ignore <| this.RaiseAndSetIfChanged(&m_fontSize, fontsize, "FontSize")
 
     member this.SetItems(items: CompleteItem[], textArea: Rect, lineHeight: float, desiredSizeVec: Point, editorSizeVec: Point) =
         m_items.Clear()

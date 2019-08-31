@@ -11,6 +11,8 @@
   HorizontalAlignment = "Left"
   VerticalAlignment = "Top"
   HorizontalContentAlignment = "Stretch"
+  TextBlock.FontFamily="{Binding FontFamily}" 
+  TextBlock.FontSize="{Binding FontSize}" 
   x:Class    = "FVim.PopupMenu">
   <ListBox 
     Name                     = "List"

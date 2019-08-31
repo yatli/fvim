@@ -98,11 +98,12 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         let s, w, h = MeasureText(" ", m_guifont, m_guifontwide, m_fontsize, m_gridscale)
         m_glyphsize <- Size(w, h)
         m_fontsize <- s
-        this.RaisePropertyChanged("FontFamily")
-        this.RaisePropertyChanged("FontSize")
 
         trace "fontConfig: guifont=%s guifontwide=%s size=%A" m_guifont m_guifontwide m_glyphsize
+        // sync font to cursor vm
         this.cursorConfig()
+        // sync font to popupmenu vm
+        m_popupmenu_vm.SetFont(m_guifont, m_fontsize)
         markAllDirty()
         m_resize_ev.Trigger(this)
 
@@ -540,8 +541,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.GlyphHeight with get(): float = m_glyphsize.Height
     member __.GlyphWidth with get(): float = m_glyphsize.Width
     member __.TopLevel with get(): bool  = parent.IsNone
-    member __.FontFamily with get(): string = m_guifont
-    member __.FontSize with get(): float = m_fontsize
 
     member __.GridId
         with get() = GridId
