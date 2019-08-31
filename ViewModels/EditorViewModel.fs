@@ -80,9 +80,16 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_griddirty.Clear()
         m_griddirty.Union{ row = 0; col = 0; height = m_gridsize.rows; width = m_gridsize.cols }
 
+    let mutable m_flushtime = DateTime.Now
+
     let flush() = 
-        trace "flush."
-        this.RenderTick <- this.RenderTick + 1
+        let tnow = DateTime.Now
+        if (tnow - m_flushtime) >= TimeSpan.FromMilliseconds(10.0) then
+            trace "flush."
+            this.RenderTick <- this.RenderTick + 1
+            m_flushtime <- tnow
+        else
+            trace "flush throttled."
 
     let fontConfig() =
         m_fontsize <- max m_fontsize 1.0
