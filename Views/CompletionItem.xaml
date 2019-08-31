@@ -9,9 +9,12 @@
   x:Class    = "FVim.CompletionItem">
   <Grid Margin="0">
     <Grid.ColumnDefinitions>
+      <!--The icon column has Width === Height-->
       <ColumnDefinition Width="{Binding Height}" />
+      <!--A fixed small spacer-->
       <ColumnDefinition Width="10" />
-      <ColumnDefinition Width="100*" />
+      <ColumnDefinition Width="80*" />
+      <!--A fixed small spacer-->
       <ColumnDefinition Width="10" />
       <ColumnDefinition Width="Auto" />
     </Grid.ColumnDefinitions>
@@ -20,7 +23,9 @@
     </Grid.RowDefinitions>
     <Image Source="{Binding Icon}" Grid.Row="0" Grid.Column="0" 
       Width="16" Height="16" HorizontalAlignment="Left" Margin="0"/>
-    <TextBlock Text="{Binding Text}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Row="0" Grid.Column="2" />
-    <TextBlock Text="{Binding Menu}" HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Row="0" Grid.Column="4" />
+    <TextBlock Text="{Binding Text}" Grid.Row="0" Grid.Column="2" 
+      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"  />
+    <TextBlock Text="{Binding Menu}" Grid.Row="0" Grid.Column="4" 
+      HorizontalAlignment="Right" VerticalAlignment="Stretch" />
   </Grid>
 </UserControl>

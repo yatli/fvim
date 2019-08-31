@@ -20,9 +20,6 @@ type PopupMenu() as this =
         AvaloniaXamlLoader.Load(this)
         let lst = this.FindControl<ListBox>("List")
         this.Watch [
-            this.Bind(UserControl.IsVisibleProperty, Binding("Show"))
-            this.Bind(UserControl.HeightProperty, Binding("Height"))
-            this.Bind(UserControl.WidthProperty, Binding("Width"))
             lst.SelectionChanged.Subscribe(fun x -> for item in x.AddedItems do lst.ScrollIntoView item)
         ]
 

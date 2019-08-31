@@ -15,6 +15,8 @@ type PopupMenuViewModel() =
     let mutable m_selection = -1
     let m_items = ObservableCollection<CompletionItemViewModel>()
 
+    let trace x = FVim.log.trace "CompletionItem" x
+
     member this.Show
         with get(): bool = m_show
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_show, v, "Show")
@@ -50,8 +52,10 @@ type PopupMenuViewModel() =
 
         let region = 
             if r_se.Height > desiredSizeVec.Y / 3.0 || r_se.Height > r_ne.Height then
+                trace "choose region SE: %A" r_se
                 r_se
             else
+                trace "choose region NE: %A" r_ne
                 r_ne
 
         this.X <- region.X

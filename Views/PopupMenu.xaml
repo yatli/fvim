@@ -5,17 +5,23 @@
   xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
   Focusable  = "True"
+  IsVisible  = "{Binding Show}"
+  Height     = "{Binding Height}"
+  Width      = "{Binding Width}"
+  HorizontalAlignment = "Left"
+  VerticalAlignment = "Top"
+  HorizontalContentAlignment = "Stretch"
   x:Class    = "FVim.PopupMenu">
   <ListBox 
     Name                     = "List"
     Items                    = "{Binding Items}"
     SelectedIndex            = "{Binding Selection, Mode=TwoWay}"
     HorizontalAlignment      = "Stretch"
-    VerticalAlignment        = "Top"
+    VerticalAlignment        = "Stretch"
     Focusable                = "True">
     <ListBox.ItemTemplate>
       <DataTemplate>
-        <fvim:CompletionItem/>
+        <fvim:CompletionItem />
       </DataTemplate>
     </ListBox.ItemTemplate>
   </ListBox>

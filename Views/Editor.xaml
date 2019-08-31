@@ -34,7 +34,6 @@
     DataContext         = "{Binding PopupMenu}"
     ZIndex              = "10"
     Focusable           = "True"
-    HorizontalAlignment = "Stretch"
-    VerticalAlignment   = "Stretch"
-    MaxHeight           = "600" />
+    HorizontalAlignment = "Left"
+    VerticalAlignment   = "Top"/>
 </Canvas>
