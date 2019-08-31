@@ -11,20 +11,42 @@
   HorizontalAlignment = "Left"
   VerticalAlignment = "Top"
   HorizontalContentAlignment = "Stretch"
-  TextBlock.FontFamily="{Binding FontFamily}" 
-  TextBlock.FontSize="{Binding FontSize}" 
+  FontFamily="{Binding FontFamily}" 
+  FontSize="{Binding FontSize}" 
+  Foreground="{Binding NormalForeground}"
+  Background="{Binding NormalBackground}"
   x:Class    = "FVim.PopupMenu">
   <ListBox 
     Name                     = "List"
     Items                    = "{Binding Items}"
+    Background               = "{Binding NormalBackground}"
     SelectedIndex            = "{Binding Selection, Mode=TwoWay}"
     HorizontalAlignment      = "Stretch"
     VerticalAlignment        = "Stretch"
     Focusable                = "True">
     <ListBox.ItemTemplate>
       <DataTemplate>
-        <fvim:CompletionItem />
+        <fvim:CompletionItem 
+          Background = "{Binding $parent.Background}"
+        />
       </DataTemplate>
     </ListBox.ItemTemplate>
+    <ListBox.Styles>
+      <Style Selector="ListBoxItem[IsSelected=true]">
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Background" Value="{Binding $parent[fvim:PopupMenu].DataContext.SelectBackground}" />
+        <Setter Property="Foreground" Value="{Binding $parent[fvim:PopupMenu].DataContext.SelectForeground}" />
+      </Style>                
+      <Style Selector="ScrollBar">
+        <Setter Property="Foreground" Value="{Binding $parent[fvim:PopupMenu].DataContext.ScrollbarForeground}" />
+        <Setter Property="Background" Value="{Binding $parent[fvim:PopupMenu].DataContext.ScrollbarBackground}" />
+      </Style>
+      <Style Selector="ScrollBar:vertical">
+        <Setter Property="Width" Value="6" />
+      </Style>
+      <Style Selector="ScrollBar:horizontal">
+        <Setter Property="Height" Value="6" />
+      </Style>
+    </ListBox.Styles>
   </ListBox>
 </UserControl>

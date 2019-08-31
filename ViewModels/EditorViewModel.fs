@@ -51,6 +51,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let mutable m_mode_defs      = match _modedefs with
                                      | None -> Array.empty<ModeInfo>
                                      | Some arr -> arr.Clone() :?> ModeInfo[]
+    let mutable m_semhl          = Map.empty
 
     let mutable m_guifont        = _d DefaultFont     _guifont
     let mutable m_guifontwide    = _d DefaultFontWide _guifontwide
@@ -117,6 +118,23 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_default_sp <- x.rgb_attr.special.Value
             this.RaisePropertyChanged("BackgroundBrush")
         m_hlchange_ev.Trigger()
+
+    let setSemanticHighlightGroups grp =
+        m_semhl <- grp
+        // update popupmenu color
+        let [ nfg, nbg, _, _
+              sfg, sbg, _, _
+              scfg, scbg, _, _
+              _, bbg, _, _ ] = 
+            [
+                SemanticHighlightGroup.Pmenu
+                SemanticHighlightGroup.PmenuSel
+                SemanticHighlightGroup.PmenuSbar
+                SemanticHighlightGroup.VertSplit
+            ] 
+            |> List.map (m_semhl.TryFind >> Option.defaultValue 1 >> this.GetDrawAttrs)
+
+        m_popupmenu_vm.SetColors(nfg, nbg, sfg, sbg, scfg, scbg, bbg)
 
     let setDefaultColors fg bg sp = 
 
@@ -372,6 +390,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         match cmd with
         | UnknownCommand x                                                   -> trace "unknown command %A" x
         | HighlightAttrDefine hls                                            -> hiattrDefine hls
+        | SemanticHighlightGroupSet groups                                   -> setSemanticHighlightGroups groups
         | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
         | ModeChange(name, index)                                            -> changeMode name index

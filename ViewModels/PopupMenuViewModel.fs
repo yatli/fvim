@@ -7,6 +7,7 @@ open ReactiveUI
 open System.Collections.ObjectModel
 open FVim.common.helpers
 open Avalonia
+open Avalonia.Media
 
 type PopupMenuViewModel() =
     inherit ViewModelBase()
@@ -15,6 +16,16 @@ type PopupMenuViewModel() =
     let mutable m_selection = -1
     let mutable m_fontFamily = Avalonia.Media.FontFamily("")
     let mutable m_fontSize = 12.0
+
+    //  Colors
+    let mutable m_normalFg: IBrush = Brushes.Black :> IBrush
+    let mutable m_normalBg: IBrush = Brushes.White :> IBrush
+    let mutable m_selectFg: IBrush = Brushes.Black :> IBrush
+    let mutable m_selectBg: IBrush = Brushes.AliceBlue :> IBrush
+    let mutable m_scrollbarFg: IBrush = Brushes.DimGray :> IBrush
+    let mutable m_scrollbarBg: IBrush = Brushes.Gray :> IBrush
+    let mutable m_border: IBrush = Brushes.DarkGray :> IBrush
+
     let m_items = ObservableCollection<CompletionItemViewModel>()
 
     let trace x = FVim.log.trace "CompletionItem" x
@@ -30,11 +41,38 @@ type PopupMenuViewModel() =
     member this.Items with get() = m_items
     member this.FontFamily with get() = m_fontFamily
     member this.FontSize with get() = m_fontSize
+    member this.NormalForeground with get() = m_normalFg
+    member this.NormalBackground with get() = m_normalBg
+    member this.SelectForeground with get() = m_selectFg
+    member this.SelectBackground with get() = m_selectBg
+    member this.ScrollbarForeground with get() = m_scrollbarFg
+    member this.ScrollbarBackground with get() = m_scrollbarBg
+    member this.BorderColor with get() = m_border
     
 
     member this.SetFont(fontfamily, fontsize) =
         ignore <| this.RaiseAndSetIfChanged(&m_fontFamily, Avalonia.Media.FontFamily(fontfamily), "FontFamily")
         ignore <| this.RaiseAndSetIfChanged(&m_fontSize, fontsize, "FontSize")
+
+    member this.SetColors(nfg: Color, nbg: Color, sfg: Color, sbg: Color, scfg: Color, scbg: Color, bbg: Color) =
+        let nfg, nbg, sfg, sbg, scfg, scbg, bbg =
+            SolidColorBrush(nfg) :> IBrush,
+            SolidColorBrush(nbg) :> IBrush,
+            SolidColorBrush(sfg) :> IBrush,
+            SolidColorBrush(sbg) :> IBrush,
+            SolidColorBrush(scfg) :> IBrush,
+            SolidColorBrush(scbg) :> IBrush,
+            SolidColorBrush(bbg) :> IBrush
+
+        [
+            this.RaiseAndSetIfChanged(&m_normalFg,    nfg,  "NormalForeground")
+            this.RaiseAndSetIfChanged(&m_normalBg,    nbg,  "NormalBackground")
+            this.RaiseAndSetIfChanged(&m_selectFg,    sfg,  "SelectForeground")
+            this.RaiseAndSetIfChanged(&m_selectBg,    sbg,  "SelectBackground")
+            this.RaiseAndSetIfChanged(&m_scrollbarFg, scfg, "ScrollbarForeground")
+            this.RaiseAndSetIfChanged(&m_scrollbarBg, scbg, "ScrollbarBackground")
+            this.RaiseAndSetIfChanged(&m_border,      bbg,  "BorderColor")
+        ] |> ignore
 
     member this.SetItems(items: CompleteItem[], textArea: Rect, lineHeight: float, desiredSizeVec: Point, editorSizeVec: Point) =
         m_items.Clear()
@@ -47,7 +85,7 @@ type PopupMenuViewModel() =
             let y = min editorSizeVec.Y (max 0.0 vec.Y)
             Point(x, y)
 
-        let padding = Point(5.0, 10.0)
+        let padding = Point(10.0, 10.0)
 
         let se_topleft     = textArea.BottomLeft
         let se_bottomright = _cap(se_topleft + desiredSizeVec + padding)

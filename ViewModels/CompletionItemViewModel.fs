@@ -103,7 +103,7 @@ module CompletionItemHelper =
             if name = "Unknown" then null
             else
             let fname = sprintf "avares://FVim/Assets/intellisense/%s_16x.png" name
-            trace "CompleteItem" "loading intellisense icon %s" fname
+            (*trace "CompleteItem" "loading intellisense icon %s" fname*)
             new Bitmap(assets.Open(new System.Uri(fname)))) 
 
 open CompletionItemHelper
@@ -111,8 +111,8 @@ open CompletionItemHelper
 type CompletionItemViewModel(item: CompleteItem) =
     inherit ViewModelBase()
     let kind = ParseCompletionItemKind item.abbr
-    do
-        trace "CompletionItemViewModel" "item = %A" item
+    (*do*)
+        (*trace "CompletionItemViewModel" "item = %A" item*)
     member __.Text = item.word
     member __.Menu = _d "" item.menu
     member __.Info = _d "" item.info
