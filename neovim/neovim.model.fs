@@ -124,6 +124,7 @@ module ModelImpl =
         // | Key(HasFlag(InputModifiers.Control), Key.M)
         // | Key(HasFlag(InputModifiers.Control), Key.Oem4) // Oem4 is '['
         // | Key(HasFlag(InputModifiers.Control), Key.L) // if ^L is sent as <FF> then neovim discards the key.
+        | Key(_, Key.CapsLock)                                        -> Unrecognized  // avoid sending "capslock" key sequence
         | Key(_, Key.Back)                                            -> Special "BS"
         | Key(_, Key.Tab)                                             -> Special "Tab"
         | Key(_, Key.LineFeed)                                        -> Special "NL"
@@ -226,6 +227,8 @@ module ModelImpl =
         |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
         |  Key.D8 | Key.D9)) 
             -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), x)
+        | Key(m & HasFlag(InputModifiers.Shift), Key.Space) when States.key_disableShiftSpace
+            -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~InputModifiers.Shift), Key.Space)
         | Key(m, _)
         | MousePress(m, _, _, _, _) 
         | MouseRelease(m, _, _, _) 
@@ -311,6 +314,7 @@ let Start opts =
     States.Register.Prop<States.LineHeightOption> States.parseLineHeightOption "font.lineheight"
     States.Register.Bool "cursor.smoothblink"
     States.Register.Bool "cursor.smoothmove"
+    States.Register.Bool "key.disableShiftSpace"
 
     ignore(States.Register.Notify "remote.detach" (fun _ -> Detach()))
 
@@ -421,6 +425,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 (sprintf "call rpcnotify(%d, 'font.hindLevel', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.normal', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.bold', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 (sprintf "call rpcnotify(%d, 'key.disableShiftSpace', <args>)" myChannel))
 
         ()
     }

@@ -111,7 +111,7 @@ type Nvim() =
             Task.Factory.StartNew(fun () -> 
                 trace "begin read loop"
                 let mutable ex = false
-                while not ex && serverExitCode().IsNone && not cancel.IsCancellationRequested do
+                while not ex && not cancel.IsCancellationRequested do
                    try
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                        ob.OnNext(data)
