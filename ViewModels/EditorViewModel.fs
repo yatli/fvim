@@ -34,6 +34,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int*InputEvent>()
     let m_hlchange_ev            = Event<unit>()
+    let m_tick_ev                = Event<unit>()
 
     let mutable m_busy           = false
 
@@ -81,16 +82,9 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_griddirty.Clear()
         m_griddirty.Union{ row = 0; col = 0; height = m_gridsize.rows; width = m_gridsize.cols }
 
-    let mutable m_flushtime = DateTime.Now
-
     let flush() = 
-        let tnow = DateTime.Now
-        if (tnow - m_flushtime) >= TimeSpan.FromMilliseconds(10.0) then
-            trace "flush."
-            this.RenderTick <- this.RenderTick + 1
-            m_flushtime <- tnow
-        else
-            trace "flush throttled."
+        trace "flush."
+        this.RenderTick <- this.RenderTick + 1
 
     let fontConfig() =
         m_fontsize <- max m_fontsize 1.0
@@ -400,7 +394,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
         | GridDestroy id when id = GridId                                    -> ()
         | GridScroll(id, top,bot,left,right,rows,cols) when id = GridId      -> scrollBuffer top bot left right rows cols
-        | Flush                                                              -> flush() 
+        | Flush                                                              -> m_tick_ev.Trigger()
         | Bell                                                               -> bell false
         | VisualBell                                                         -> bell true
         | Busy is_busy                                                       -> setBusy is_busy
@@ -432,6 +426,11 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_hlchange_ev.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
             |> Observable.subscribe markAllDirty
+
+            m_tick_ev.Publish
+            |> Observable.throttle(TimeSpan.FromMilliseconds 10.0)
+            |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
+            |> Observable.subscribe flush
 
             States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
             States.Register.Watch "font" fontConfig
