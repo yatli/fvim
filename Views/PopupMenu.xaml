@@ -27,9 +27,7 @@
     Focusable                = "True">
     <ListBox.ItemTemplate>
       <DataTemplate>
-        <fvim:CompletionItem 
-          Background = "{Binding $parent.Background}"
-        />
+        <fvim:CompletionItem Background = "{Binding $parent.Background}" />
       </DataTemplate>
     </ListBox.ItemTemplate>
     <ListBox.Styles>
@@ -37,7 +35,10 @@
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Background" Value="{Binding $parent[fvim:PopupMenu].DataContext.SelectBackground}" />
         <Setter Property="Foreground" Value="{Binding $parent[fvim:PopupMenu].DataContext.SelectForeground}" />
-      </Style>                
+      </Style>
+      <Style Selector="ListBoxItem[IsPointerOver=true]">
+        <Setter Property="FontWeight" Value="Bold" />
+      </Style>
       <Style Selector="ScrollBar">
         <Setter Property="Foreground" Value="{Binding $parent[fvim:PopupMenu].DataContext.ScrollbarForeground}" />
         <Setter Property="Background" Value="{Binding $parent[fvim:PopupMenu].DataContext.ScrollbarBackground}" />
