@@ -30,8 +30,8 @@ type MainWindow() as this =
         this.Watch [
             this.Closing.Subscribe (fun e -> Model.OnTerminating e)
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
-            this.Bind(XProp, Binding("WindowX", BindingMode.TwoWay))
-            this.Bind(YProp, Binding("WindowY", BindingMode.TwoWay))
+            this.Bind(XProp, Binding("X", BindingMode.TwoWay))
+            this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
 
             this.PositionChanged.Subscribe (fun p ->
                 this.SetValue(XProp, p.Point.X)
