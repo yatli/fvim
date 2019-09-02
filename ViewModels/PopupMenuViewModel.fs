@@ -85,7 +85,7 @@ type PopupMenuViewModel() =
             let y = min editorSizeVec.Y (max 0.0 vec.Y)
             Point(x, y)
 
-        let padding = Point(10.0, 10.0)
+        let padding = Point(16.0 + 36.0, 16.0) // extra 36 for icons etc
 
         let se_topleft     = textArea.BottomLeft
         let se_bottomright = _cap(se_topleft + desiredSizeVec + padding)
@@ -106,7 +106,7 @@ type PopupMenuViewModel() =
 
         this.X <- region.X
         this.Y <- region.Y
-        this.Width <- region.Width + 36.0 // for icons etc.
+        this.Width <- region.Width
         this.Height <- region.Height
 
         items 

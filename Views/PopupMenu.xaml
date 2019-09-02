@@ -20,6 +20,7 @@
     Name                     = "List"
     Items                    = "{Binding Items}"
     Background               = "{Binding NormalBackground}"
+    BorderBrush              = "{Binding BorderColor}"
     SelectedIndex            = "{Binding Selection, Mode=TwoWay}"
     HorizontalAlignment      = "Stretch"
     VerticalAlignment        = "Stretch"
