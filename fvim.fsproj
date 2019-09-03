@@ -37,6 +37,7 @@
     <Compile Include="neovim\neovim.process.fs" />
     <Compile Include="neovim\neovim.model.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />
+    <Compile Include="ViewModels\CompletionItemViewModel.fs" />
     <Compile Include="ViewModels\PopupMenuViewModel.fs" />
     <Compile Include="ViewModels\EditorViewModel.fs" />
     <Compile Include="ViewModels\MainWindowViewModel.fs" />
@@ -55,7 +56,7 @@
     <Compile Update="**\*.xaml.fs">
       <DependentUpon>%(Filename)</DependentUpon>
     </Compile>
-    <AvaloniaResource Include="Assets\*" />
+    <AvaloniaResource Include="Assets\**\*" />
     <Content Include="**\*.xaml" />
     <AvaloniaResource Include="**\*.xaml">
       <SubType>Designer</SubType>

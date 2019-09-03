@@ -1,5 +1,6 @@
 namespace FVim
 
+open ReactiveUI
 open Avalonia
 open Avalonia.Markup.Xaml
 open Avalonia.Controls
@@ -7,6 +8,8 @@ open Avalonia.Data
 
 open System.Linq
 open FVim.log
+
+open FSharp.Control.Reactive
 
 type PopupMenu() as this =
     inherit ViewBase<PopupMenuViewModel>()
@@ -17,13 +20,15 @@ type PopupMenu() as this =
             this.Parent.Focus()
 
     do
-        this.Watch [
-            this.Bind(UserControl.IsVisibleProperty, Binding("Show"))
-            this.Bind(UserControl.HeightProperty, Binding("Height"))
-            this.Bind(UserControl.WidthProperty, Binding("Width"))
-        ]
-        this.Height <- System.Double.NaN
         AvaloniaXamlLoader.Load(this)
+        let lst = this.FindControl<ListBox>("List")
+        this.Watch [
+            lst.SelectionChanged.Subscribe(fun x -> for item in x.AddedItems do lst.ScrollIntoView item)
+            this.ViewModelConnected.Subscribe(fun vm -> vm.Watch [
+                vm.ObservableForProperty(fun x -> x.SelectBackground)
+                |> Observable.subscribe(fun selectBg -> lst.Resources.["HighlightBrush"] <- selectBg.Value)
+            ])
+        ]
 
     override this.OnKeyDown(e) =
         relayToParent e

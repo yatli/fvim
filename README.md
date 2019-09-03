@@ -103,6 +103,16 @@ FVimFontBoldWeight 700
 " Font debugging -- draw bounds around each glyph
 FVimFontDrawBounds v:true
 
+" UI options (all default to v:false)
+FVimUIMultiGrid v:false     " per-window grid system -- work in progress
+FVimUIPopupMenu v:true      " external popup menu
+FVimUITabLine v:false       " external tabline -- not implemented
+FVimUICmdLine v:false       " external cmdline -- not implemented
+FVimUIWildMenu v:false      " external wildmenu -- not implemented
+FVimUIMessages v:false      " external messages -- not implemented
+FVimUITermColors v:false    " not implemented
+FVimUIHlState v:false       " not implemented
+
 " Detach from a remote session without killing the server
 " If this command is executed on a standalone instance,
 " the embedded process will be terminated anyway.

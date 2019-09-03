@@ -154,7 +154,7 @@ type Anchor =
 ///      d    #define or macro
 ///  </summary>
 [<Struct>]
-type CompleteKind =
+type VimCompleteKind =
 | Variable
 | Function
 | Member
@@ -168,13 +168,63 @@ type CompleteItem =
         abbr: string option
         menu: string option
         info: string option
-        kind: CompleteKind option
     }
 with 
-    static member empty = { word = ""; abbr = None; menu = None; info = None; kind = None }
+    static member empty = { word = ""; abbr = None; menu = None; info = None }
     static member GetLength (x: CompleteItem) =
         let _len (x: string option) = (_d "" x).Length
         x.word.Length + _len x.abbr + _len x.menu + _len x.info
+
+type SemanticHighlightGroup =
+    | SpecialKey   = 0
+    | EndOfBuffer  = 1
+    | TermCursor   = 2
+    | TermCursorNC = 3
+    | NonText      = 4
+    | Directory    = 5
+    | ErrorMsg     = 6
+    | IncSearch    = 7
+    | Search       = 8
+    | MoreMsg      = 9
+    | ModeMsg      = 10
+    | LineNr       = 11
+    | CursorLineNr = 12
+    | Question     = 13
+    | StatusLine   = 14
+    | StatusLineNC = 15
+    | VertSplit    = 16
+    | Title        = 17
+    | Visual       = 18
+    | VisualNC     = 19
+    | WarningMsg   = 20
+    | WildMenu     = 21
+    | Folded       = 22
+    | FoldColumn   = 23
+    | DiffAdd      = 24
+    | DiffChange   = 25
+    | DiffDelete   = 26
+    | DiffText     = 27
+    | SignColumn   = 28
+    | Conceal      = 29
+    | SpellBad     = 30
+    | SpellCap     = 31
+    | SpellRare    = 32
+    | SpellLocal   = 33
+    | Pmenu        = 34
+    | PmenuSel     = 35
+    | PmenuSbar    = 36
+    | PmenuThumb   = 37
+    | TabLine      = 38
+    | TabLineSel   = 39
+    | TabLineFill  = 40
+    | CursorColumn = 41
+    | CursorLine   = 42
+    | ColorColumn  = 43
+    | QuickFixLine = 44
+    | Whitespace   = 45
+    | NormalNC     = 46
+    | MsgSeparator = 47
+    | NormalFloat  = 48
 
 type RedrawCommand =
 ///  -- global --
@@ -244,22 +294,12 @@ type RedrawCommand =
 | PopupMenuSelect of selected: int
 ///  Hide the popupmenu.
 | PopupMenuHide
+| SemanticHighlightGroupSet of groups: Map<SemanticHighlightGroup, int>
 ///  -- legacy events --
 //| UpdateFg of Color
 //| UpdateBg of Color
 //| UpdateSp of Color
 | UnknownCommand of data: obj
-
-let uiopt_rgb            = "rgb"
-let uiopt_ext_linegrid   = "ext_linegrid"
-let uiopt_ext_multigrid  = "ext_multigrid"
-let uiopt_ext_popupmenu  = "ext_popupmenu"
-let uiopt_ext_tabline    = "ext_tabline"
-let uiopt_ext_cmdline    = "ext_cmdline"
-let uiopt_ext_wildmenu   = "ext_wildmenu"
-let uiopt_ext_messages   = "ext_messages"
-let uiopt_ext_hlstate    = "ext_hlstate"
-let uiopt_ext_termcolors = "ext_termcolors"
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -453,11 +493,18 @@ let parse_complete_item =
             abbr = Some abbr
             menu = Some menu
             info = Some info
-            kind = None
         }
     | x -> 
         trace "parse_complete_item: unrecognized: %A" x
         None
+
+let parse_semantic_hlgroup =
+    function
+    | ObjArray [| (String key); (Integer32 id) |] ->
+        match SemanticHighlightGroup.TryParse key with
+        | true, key -> Some(key, id)
+        | _ -> None
+    | _ -> None
 
 let parse_redrawcmd (x: obj) =
     match x with
@@ -505,6 +552,7 @@ let parse_redrawcmd (x: obj) =
         (Integer32 row); (Integer32 col); (Integer32 grid) |])                             -> PopupMenuShow(items, selected, row, col, grid)
     | C1("popupmenu_select", [| Integer32 selected |])                                     -> PopupMenuSelect(selected)
     | C("popupmenu_hide", _)                                                               -> PopupMenuHide
+    | C("hl_group_set", P(parse_semantic_hlgroup)gs)                                       -> SemanticHighlightGroupSet(Map.ofArray gs)
     | _                                                                                    -> UnknownCommand x
     //| C("suspend", _)                                                                    -> 
     //| C("update_menu", _)                                                                -> 
