@@ -100,6 +100,11 @@ let inline (>>=) (x: 'a option) (f: 'a -> 'b option) =
     | Some x -> f x
     | _ -> None
 
+let inline (>?=) (x: Result<'a, 'e>) (f: 'a -> Result<'b, 'e>) =
+    match x with
+    | Ok result -> f result
+    | Error err -> Error err
+
 [<AutoOpen>]
 module internal helpers =
     let _d x = Option.defaultValue x

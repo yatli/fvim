@@ -48,6 +48,9 @@ type LineHeightOption =
 | Add of float
 | Default
 
+// channel
+let mutable channel_id = 1
+
 // keyboard mapping
 let mutable key_disableShiftSpace = false
 
@@ -71,18 +74,62 @@ let mutable font_weight_normal = SKFontStyleWeight.Normal
 let mutable font_weight_bold   = SKFontStyleWeight.Bold
 let mutable font_lineheight    = LineHeightOption.Default
 
+// ui
+let mutable ui_available_opts  = Set.empty<string>
+let mutable ui_multigrid       = false
+let mutable ui_popupmenu       = false
+let mutable ui_tabline         = false
+let mutable ui_cmdline         = false
+let mutable ui_wildmenu        = false
+let mutable ui_messages        = false
+let mutable ui_termcolors      = false
+let mutable ui_hlstate         = false
+
+[<Literal>]
+let uiopt_rgb            = "rgb"
+[<Literal>]
+let uiopt_ext_linegrid   = "ext_linegrid"
+[<Literal>]
+let uiopt_ext_multigrid  = "ext_multigrid"
+[<Literal>]
+let uiopt_ext_popupmenu  = "ext_popupmenu"
+[<Literal>]
+let uiopt_ext_tabline    = "ext_tabline"
+[<Literal>]
+let uiopt_ext_cmdline    = "ext_cmdline"
+[<Literal>]
+let uiopt_ext_wildmenu   = "ext_wildmenu"
+[<Literal>]
+let uiopt_ext_messages   = "ext_messages"
+[<Literal>]
+let uiopt_ext_hlstate    = "ext_hlstate"
+[<Literal>]
+let uiopt_ext_termcolors = "ext_termcolors"
+
+///  !Note does not include rgb and ext_linegrid
+let PopulateUIOptions (opts: hashmap<_,_>) =
+    let c k v = 
+        if ui_available_opts.Contains k then
+            opts.[k] <- v
+    c uiopt_ext_popupmenu ui_popupmenu
+    c uiopt_ext_multigrid ui_multigrid
+    c uiopt_ext_tabline ui_tabline
+    c uiopt_ext_cmdline ui_cmdline
+    c uiopt_ext_wildmenu ui_wildmenu
+    c uiopt_ext_messages ui_messages
+    c uiopt_ext_hlstate ui_hlstate
+    c uiopt_ext_termcolors ui_termcolors
+
 module private Helper =
     type Foo = A
     let _StatesModuleType = typeof<Foo>.DeclaringType.DeclaringType
     let SetProp name v =
-        trace "states" "module name = %s" _StatesModuleType.FullName
         let propDesc = _StatesModuleType.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
         if propDesc <> null then
             propDesc.SetValue(null, v)
         else
             error "states" "The property %s is not found" name
     let GetProp name =
-        trace "states" "module name = %s" _StatesModuleType.FullName
         let propDesc = _StatesModuleType.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
         if propDesc <> null then
             Some <| propDesc.GetValue(null)
@@ -160,9 +207,9 @@ module Register =
             try fn objs
             with x -> error "Notify" "exception thrown: %A" <| x.ToString())
 
-    let Watch name fn =
+    let Watch (name: string) fn =
         _stateChangeEvent.Publish
-        |> Observable.filter (fun x -> x = name)
+        |> Observable.filter (fun x -> x.StartsWith(name))
         |> Observable.subscribe (fun _ -> fn())
 
     let Prop<'T> (parser: obj -> 'T option) (fullname: string) =
@@ -174,7 +221,7 @@ module Register =
                 match parser(v) with
                 | Some v -> 
                     Helper.SetProp fieldName v
-                    _stateChangeEvent.Trigger section
+                    _stateChangeEvent.Trigger fullname
                 | None -> ()
             | _ -> ())
         |> ignore

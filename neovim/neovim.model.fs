@@ -288,6 +288,16 @@ let Detach() =
     nvim.stop(0)
     States.Shutdown(0)
 
+let UpdateUICapabilities() =
+    let opts = hashmap[]
+    States.PopulateUIOptions opts
+    trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
+    async {
+        for KeyValue(k, v) in opts do
+            let! _ = Async.AwaitTask <| nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
+            in ()
+    } |> Async.RunSynchronously
+
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
@@ -315,8 +325,17 @@ let Start opts =
     States.Register.Bool "cursor.smoothblink"
     States.Register.Bool "cursor.smoothmove"
     States.Register.Bool "key.disableShiftSpace"
+    States.Register.Bool "ui.multigrid"
+    States.Register.Bool "ui.popupmenu"
+    States.Register.Bool "ui.tabline"
+    States.Register.Bool "ui.cmdline"
+    States.Register.Bool "ui.wildmenu"
+    States.Register.Bool "ui.messages"
+    States.Register.Bool "ui.termcolors"
+    States.Register.Bool "ui.hlstate"
 
-    ignore(States.Register.Notify "remote.detach" (fun _ -> Detach()))
+    States.Register.Notify "remote.detach" (fun _ -> Detach())
+    States.Register.Watch "ui" UpdateUICapabilities
 
     States.Register.Request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> async {
         States.clipboard_lines <- lines
@@ -389,6 +408,8 @@ let Start opts =
         trace "FVim connected clients: %A" fvimChannels
         trace "FVim client channel is: %d" myChannel
 
+        FVim.States.channel_id <- myChannel
+
         // Another instance is already up
         if fvimChannels.Length > 1 then
             Environment.Exit(0)
@@ -426,6 +447,14 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.normal', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.bold', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 (sprintf "call rpcnotify(%d, 'key.disableShiftSpace', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 (sprintf "call rpcnotify(%d, 'ui.multigrid', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 (sprintf "call rpcnotify(%d, 'ui.popupmenu', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUITabLine" 1 (sprintf "call rpcnotify(%d, 'ui.tabline', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUICmdLine" 1 (sprintf "call rpcnotify(%d, 'ui.cmdline', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIWildMenu" 1 (sprintf "call rpcnotify(%d, 'ui.wildmenu', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIMessages" 1 (sprintf "call rpcnotify(%d, 'ui.messages', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUITermColors" 1 (sprintf "call rpcnotify(%d, 'ui.termcolors', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
 
         ()
     }
@@ -466,7 +495,6 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
         let! _ = nvim.command (sprintf "call nvim_select_popupmenu_item(%d, %s, %s, {})" index insert finish)
         in ()
     } |> ignore
-    
 
 let OnTerminated (args) =
     trace "terminating nvim..."
