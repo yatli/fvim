@@ -12,8 +12,13 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 - For Windows 7, use the `win7-x64` package.
 - For Windows 10, use the `win-x64` package -- this version has faster startup.
 - For macOS, it's packaged as an app bundle -- unzip and drag it to your applications folder.
-- For Linux, you can either unpack manually, or run `dpkg -i fvim_package_name.deb` to install it with the package manager.
-
+- For Linux:
+    - Debian based distributions: `dpkg -i fvim_package_name.deb`
+    - Arch Linux:  [Install via AUR](https://aur.archlinux.org/packages/fvim/)
+    - Compile from Source (having dotnet-sdk-3+ installed):
+        ```
+            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f netcoreapp3.0 -c Release -r linux-x64 --self-contained
+        ```
 
 ### Features
 
@@ -57,7 +62,7 @@ We're now targeting `netcoreapp3.0` so make sure to install the latest preview S
 We're also actively tracking the head of `Avalonia`, so please add their myget feed (https://www.myget.org/F/avalonia-ci/api/v2) to your nuget package manager:
 ```
 # Windows:
-nuget sources add -Name "Avalonia Nightly" -Source "https://www.myget.org/F/avalonia-ci/api/v2" -NonInteractive 
+nuget sources add -Name "Avalonia Nightly" -Source "https://www.myget.org/F/avalonia-ci/api/v2" -NonInteractive
 # Others:
 Edit ~/.nuget/NuGet/config.xml and insert the feed.
 ```
@@ -94,7 +99,7 @@ FVimFontLineHeight '+1.0' " can be 'default', '14.0', '-1.0' etc.
 
 " Try to snap the fonts to the pixels, reduces blur
 " in some situations (e.g. 100% DPI).
-FVimFontAutoSnap v:true 
+FVimFontAutoSnap v:true
 
 " Font weight tuning, possible valuaes are 100..900
 FVimFontNormalWeight 400
@@ -132,13 +137,13 @@ FVim-args:
     --wsl                       Start NeoVim in WSL
     --nvim path-to-program      Use an alternative nvim program
 
-    --connect target            Connect to a remote NeoVim backend. The target 
-                                can be an IP endpoint (127.0.0.1:9527), or a 
+    --connect target            Connect to a remote NeoVim backend. The target
+                                can be an IP endpoint (127.0.0.1:9527), or a
                                 Unix socket address (/tmp/path/to/socket), or a
                                 Windows named pipe (PipeName).
 
-    --setup                     Registers FVim as a text editor, and updates 
-                                file association and icons. Requires UAC 
+    --setup                     Registers FVim as a text editor, and updates
+                                file association and icons. Requires UAC
                                 elevation on Windows.
 
     =========================== Daemon options ===================================
@@ -152,10 +157,10 @@ FVim-args:
                                 disabled.
 
     --daemonPipe                Override the named pipe address of the daemon.
-                                When this option is not given, defaults to 
+                                When this option is not given, defaults to
                                 '/tmp/FVimServer'
 
-    --tryDaemon                 First try to connect to a local daemon. If not 
+    --tryDaemon                 First try to connect to a local daemon. If not
                                 found, start an embedded NeoVim instance.
 
     =========================== Debug options ====================================
