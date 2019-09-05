@@ -5,9 +5,11 @@ open log
 
 open ReactiveUI
 open System.Collections.ObjectModel
+open System.Threading
 open FVim.common.helpers
 open Avalonia
 open Avalonia.Media
+open Avalonia.Threading
 
 type PopupMenuViewModel() =
     inherit ViewModelBase()
@@ -28,6 +30,8 @@ type PopupMenuViewModel() =
     let mutable m_border: IBrush = Brushes.DarkGray :> IBrush
 
     let m_items = ObservableCollection<CompletionItemViewModel>()
+    let mutable m_cancelSrc: CancellationTokenSource = new CancellationTokenSource()
+    let m_itemCommit = Event<int>()
 
     let trace x = FVim.log.trace "CompletionItem" x
 
@@ -50,6 +54,7 @@ type PopupMenuViewModel() =
     member this.ScrollbarForeground with get() = m_scrollbarFg
     member this.ScrollbarBackground with get() = m_scrollbarBg
     member this.BorderColor with get() = m_border
+    member this.Commit = m_itemCommit.Publish
     
 
     member this.SetFont(fontfamily, fontsize) =
@@ -60,7 +65,7 @@ type PopupMenuViewModel() =
         let tobrush (x: Color) = SolidColorBrush(x) :> IBrush
         let (/) (x: Color) (y: float) = 
             Color(
-                byte(float x.A / y), 
+                byte(float x.A), 
                 byte(float x.R / y), 
                 byte(float x.G / y), 
                 byte(float x.B / y))
@@ -82,6 +87,12 @@ type PopupMenuViewModel() =
     member this.SetItems(items: CompleteItem[], textArea: Rect, lineHeight: float, desiredSizeVec: Point, editorSizeVec: Point) =
         m_items.Clear()
 
+        // new completion items coming in while old still being added?
+        // cancel them, otherwise it blocks the UI thread/add dups.
+        if m_cancelSrc <> null then
+            m_cancelSrc.Cancel()
+            m_cancelSrc.Dispose()
+
         //  Decide where to show the menu.
         //  --------------------------------
 
@@ -90,7 +101,7 @@ type PopupMenuViewModel() =
             let y = min editorSizeVec.Y (max 0.0 vec.Y)
             Point(x, y)
 
-        let padding = Point(16.0 + 36.0, 16.0) // extra 36 for icons etc
+        let padding = Point(20.0 + 36.0, 16.0) // extra 36 for icons etc
 
         let se_topleft     = textArea.BottomLeft
         let se_bottomright = _cap(se_topleft + desiredSizeVec + padding)
@@ -114,8 +125,26 @@ type PopupMenuViewModel() =
         this.Width <- region.Width
         this.Height <- region.Height
 
-        items 
-        |> Array.map CompletionItemViewModel 
-        |> Array.iter (fun x -> 
+        let addItem (x: CompletionItemViewModel) =
             x.Height <- lineHeight
-            this.Items.Add x)
+            this.Items.Add x
+
+        let chunks = 
+            items 
+            |> Array.mapi (fun idx item -> CompletionItemViewModel(item, fun () -> m_itemCommit.Trigger idx))
+            |> Array.chunkBySize 16
+
+        m_cancelSrc <- new CancellationTokenSource()
+        m_cancelSrc.CancelAfter(100)
+        let token = m_cancelSrc.Token
+        let asyncAdd = async {
+            for chunk in chunks do
+                if token.IsCancellationRequested then return ()
+                let task = Dispatcher.UIThread.InvokeAsync(fun () -> 
+                    // new items made their way to the UI thread, abort
+                    if not token.IsCancellationRequested then 
+                        Array.iter addItem chunk)
+                do! Async.AwaitTask(task)
+        }
+
+        Async.Start(asyncAdd, m_cancelSrc.Token)

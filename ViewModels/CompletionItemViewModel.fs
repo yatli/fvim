@@ -108,11 +108,12 @@ module CompletionItemHelper =
 
 open CompletionItemHelper
 
-type CompletionItemViewModel(item: CompleteItem) =
+type CompletionItemViewModel(item: CompleteItem, oncommit: unit -> unit) =
     inherit ViewModelBase()
     let kind = ParseCompletionItemKind item.abbr
     (*do*)
         (*trace "CompletionItemViewModel" "item = %A" item*)
+    member __.OnCommit = oncommit
     member __.Text = item.word
     member __.Menu = _d "" item.menu
     member __.Info = _d "" item.info

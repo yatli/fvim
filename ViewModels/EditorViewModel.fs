@@ -423,6 +423,9 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_popupmenu_vm.ObservableForProperty(fun x -> x.Selection)
             |> Observable.subscribe (fun x -> selectPopupMenuActive <| x.GetValue())
 
+            m_popupmenu_vm.Commit
+            |> Observable.subscribe commitPopupMenu
+
             m_hlchange_ev.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
             |> Observable.subscribe markAllDirty

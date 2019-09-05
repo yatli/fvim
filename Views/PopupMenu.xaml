@@ -27,7 +27,7 @@
     Focusable                = "True">
     <ListBox.ItemTemplate>
       <DataTemplate>
-        <fvim:CompletionItem Background = "{Binding $parent.Background}" />
+        <fvim:CompletionItem Background="{Binding $parent.Background}" />
       </DataTemplate>
     </ListBox.ItemTemplate>
     <ListBox.Styles>
