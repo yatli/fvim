@@ -1,5 +1,5 @@
 #!/bin/bash
-# usage: 
+# usage:
 #     pack.sh linux-x64
 #     pack.sh osx-x64
 
@@ -15,7 +15,7 @@ dotnet publish -f netcoreapp3.0 -c Release --self-contained -r $PKG_TFM
 
 function pack-linux-x64()
 {
-    rm -f ./*.deb
+    rm -f ./{*.deb,*.rpm}
 
     pushd $PKG_ROOT
     cd ..
@@ -33,8 +33,9 @@ function pack-linux-x64()
     chmod +x $PKG_ROOT/usr/share/fvim/FVim
     chmod +x $PKG_ROOT/usr/bin/fvim
     fpm -s dir -t deb -n fvim -v $VERSION -C $PKG_ROOT
+    fpm -s dir -t rpm -n fvim -v $VERSION -C $PKG_ROOT
 
-    mv *.deb publish/
+    mv {*.deb,*.rpm} publish/
 }
 
 function pack-osx-x64()
