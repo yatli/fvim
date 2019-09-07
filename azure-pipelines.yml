@@ -44,7 +44,7 @@ jobs:
     inputs:
       targetType: 'inline'
       script: |
-        sudo apt-get install ruby ruby-dev rubygems build-essential
+        sudo apt-get install ruby ruby-dev rubygems build-essential rpm
         sudo gem install --no-ri --no-rdoc fpm
   - task: Bash@3
     inputs:
