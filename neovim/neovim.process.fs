@@ -47,7 +47,7 @@ type Nvim() =
         | Some events -> events
         | None -> failwith "events"
 
-    member private this.createIO ({ args = args; server = serveropts; program = prog; stderrenc = enc } as opts) = 
+    member private this.createIO ({ args = args; serveropts = serveropts; program = prog; stderrenc = enc } as opts) = 
         match serveropts with
         | StartNew ->
             let args = args |> escapeArgs |> join
@@ -78,7 +78,8 @@ type Nvim() =
                 pipe.Connect(timeout=50)
                 StreamChannel pipe
             with :? TimeoutException ->
-                this.createIO {opts with server = StartNew}
+                //  transition from TryDamon to StartNew, add "--embed"
+                this.createIO {opts with serveropts = StartNew; args = ["--embed"] @ args}
 
     member this.start opts =
         match m_io, m_events with

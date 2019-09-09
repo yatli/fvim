@@ -23,7 +23,7 @@ type Options =
         args: string list
         program: string
         stderrenc: System.Text.Encoding
-        server: ServerOptions
+        serveropts: ServerOptions
     }
 
 let parseOptions (args: string[]) =
@@ -88,6 +88,8 @@ let parseOptions (args: string[]) =
             ["bash"; "-l"; "-c"; sprintf "nvim --embed %s" (args |> escapeArgs |> join)] 
         elif ssh.IsSome then 
             [ssh.Value; nvim; "--embed"] @ (List.ofSeq args)
+        elif tryDaemon then
+            List.ofSeq args
         else 
             ["--embed"] @ (List.ofSeq args)
 
@@ -118,7 +120,7 @@ let parseOptions (args: string[]) =
         logPatterns     = trace_patterns
         program         = prog
         args            = args
-        server          = serveropts
+        serveropts      = serveropts
         stderrenc       = enc
         intent          = intent
     }
