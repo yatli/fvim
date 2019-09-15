@@ -347,6 +347,7 @@ let Start opts =
 
     States.Register.Request "get-clipboard" (fun _ -> async {
         let! sysClipboard = Async.AwaitTask(Avalonia.Application.Current.Clipboard.GetTextAsync())
+        let sysClipboard = if String.IsNullOrEmpty sysClipboard then "" else sysClipboard
         let sysClipboardLines = sysClipboard.Replace("\r\n", "\n").Split("\n")
         let clipboard_eq = Array.compareWith (fun a b -> String.Compare(a,b)) States.clipboard_lines sysClipboardLines
 
