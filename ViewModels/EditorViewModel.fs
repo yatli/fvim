@@ -21,6 +21,7 @@ open System.Collections.ObjectModel
 open Avalonia.Controls
 open System.Reactive.Disposables
 open SkiaSharp
+open System.Runtime.InteropServices
 
 type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
                      ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
@@ -417,6 +418,11 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_default_fg <- fg
         m_default_sp <- sp
         fontConfig()
+
+        let tick_throttle =
+            if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
+            else Observable.throttle(TimeSpan.FromMilliseconds 10.0)
+
         this.Watch [
             Model.Redraw (Array.iter redraw)
 
@@ -431,7 +437,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             |> Observable.subscribe markAllDirty
 
             m_tick_ev.Publish
-            |> Observable.throttle(TimeSpan.FromMilliseconds 10.0)
+            |> tick_throttle
             |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
             |> Observable.subscribe flush
 
