@@ -67,10 +67,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.8.999-cibuild0003670-beta" />
+    <PackageReference Include="Avalonia" Version="0.8.999-cibuild0004051-beta" />
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2019013001" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.8.999-cibuild0003670-beta" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.999-cibuild0003670-beta" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.8.999-cibuild0004051-beta" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.999-cibuild0004051-beta" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
     <PackageReference Include="FSharp.Data" Version="3.1.1" />
     <PackageReference Include="GitInfo" Version="2.0.20">
