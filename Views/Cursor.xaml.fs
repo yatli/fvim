@@ -43,6 +43,9 @@ type Cursor() as this =
             cursor_fb.Dispose()
             cursor_fb <- AllocateFramebuffer (cursor_fb_vm.Width + 50.0) (cursor_fb_vm.Height + 50.0) s
             true
+        elif cursor_fb_vm.text <> this.ViewModel.text then
+            cursor_fb_vm.text <- this.ViewModel.text
+            true
         else false
 
     let fgpaint = new SKPaint()
@@ -118,7 +121,7 @@ type Cursor() as this =
         AvaloniaXamlLoader.Load(this)
 
     override this.Render(ctx) =
-        //trace "cursor" "render begin"
+        (*trace "cursor" "Render text: %s" this.ViewModel.text*)
 
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
