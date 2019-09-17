@@ -341,7 +341,9 @@ module ui =
 
     let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, shaper: SKShaper ValueOption) =
 
-        ctx.PushClip(region)
+        //  don't clip. see #60
+        //  ctx.PushClip(region)
+
         //  DrawText accepts the coordinate of the baseline.
         //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
         let h = region.Bottom - region.Y
