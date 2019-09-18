@@ -561,7 +561,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_gridscale <- v
 
     member __.BackgroundBrush
-        with get(): SolidColorBrush = SolidColorBrush(m_default_bg)
+        with get(): SolidColorBrush = 
+            SolidColorBrush(m_default_bg, 0.3)
 
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w
