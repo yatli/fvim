@@ -111,7 +111,9 @@ type Cursor() as this =
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
             transitions.Add(y_transition)
-        this.SetValue(Cursor.TransitionsProperty, transitions)
+        trace "cursor" "setCursorAnimation: blink=%b, move=%b" States.cursor_smoothblink States.cursor_smoothmove
+        this.Transitions <- transitions
+        this.Transitions |> ignore
 
     do
         this.Watch [
