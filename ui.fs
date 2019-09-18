@@ -339,8 +339,6 @@ module ui =
         fgpaint.TextEncoding         <- SKTextEncoding.Utf16
         ()
 
-    let _clearColor = Avalonia.Media.Color(0uy, 0uy, 0uy, 0uy)
-
     let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, shaper: SKShaper ValueOption) =
 
         //  don't clip all along. see #60
@@ -360,12 +358,12 @@ module ui =
         //lol wat??
         //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
 
-        if bg.Color.Alpha = 0uy then
+        if bg.Color.Alpha <> 0xFFuy then
+            let _clearColor = Avalonia.Media.Color(0uy, bg.Color.Red, bg.Color.Green, bg.Color.Blue)
             skia.PushClip(region)
             skia.Clear(_clearColor)
             skia.PopClip()
-        else
-            skia.SkCanvas.DrawRect(region.ToSKRect(), bg)
+        skia.SkCanvas.DrawRect(region.ToSKRect(), bg)
         if not <| String.IsNullOrWhiteSpace text then
             if shaper.IsSome then
                 skia.SkCanvas.DrawShapedText(shaper.Value, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)

@@ -472,7 +472,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             sp <- GetReverseColor sp
 
         if bg = m_default_bg then
-            bg <- Avalonia.Media.Color(0uy, bg.R, bg.G, bg.B)
+            bg <- Avalonia.Media.Color(200uy, bg.R, bg.G, bg.B)
         fg, bg, sp, attrs
 
 
@@ -564,7 +564,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     member __.BackgroundBrush
         with get(): SolidColorBrush = 
-            SolidColorBrush(m_default_bg, 0.0)
+            SolidColorBrush(m_default_bg, 0.5)
 
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w
