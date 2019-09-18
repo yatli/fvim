@@ -13,11 +13,50 @@ open Avalonia
 open Avalonia.Data
 open Avalonia.ReactiveUI
 
+open System.Runtime.InteropServices
+open System.Runtime
+
+type internal AccentState =
+    | ACCENT_DISABLED = 0
+    | ACCENT_ENABLE_GRADIENT = 1
+    | ACCENT_ENABLE_TRANSPARENTGRADIENT = 2
+    | ACCENT_ENABLE_BLURBEHIND = 3
+    | ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
+    | ACCENT_INVALID_STATE = 5
+
+[<Struct>]
+[<StructLayout(LayoutKind.Sequential)>]
+type internal AccentPolicy =
+    {
+        AccentState: AccentState
+        AccentFlags: uint32
+        GradientColor: uint32
+        AnimationId: uint32
+    }
+
+type internal WindowCompositionAttribute =
+    // ...
+    | WCA_ACCENT_POLICY = 19
+    // ...
+
+
+[<Struct>]
+[<StructLayout(LayoutKind.Sequential)>]
+type internal WindowCompositionAttributeData =
+    {
+        Attribute: WindowCompositionAttribute
+        Data: nativeint
+        SizeOfData: int32
+    }
+
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()
 
     static let XProp = AvaloniaProperty.Register<MainWindow,int>("PosX")
     static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
+
+    [<DllImport("user32.dll")>]
+    static extern int internal SetWindowCompositionAttribute(nativeint hwnd, WindowCompositionAttributeData& data);
 
     do
         #if DEBUG
@@ -73,4 +112,23 @@ type MainWindow() as this =
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
         ]
+
+        let _blurOpacity = 1u
+        let _blurBackgroundColor = 0x990000u
+
+        let accent = 
+            { 
+                AccentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND
+                GradientColor = (_blurOpacity <<< 24) ||| (_blurBackgroundColor &&& 0xFFFFFFu) 
+                AccentFlags = 0u
+                AnimationId = 0u
+            }
+        let accentStructSize = Marshal.SizeOf(accent);
+        let accentPtr = Marshal.AllocHGlobal(accentStructSize);
+        Marshal.StructureToPtr(accent, accentPtr, false);
+
+        let mutable data = { Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY; SizeOfData = accentStructSize; Data = accentPtr }
+        SetWindowCompositionAttribute(this.PlatformImpl.Handle.Handle, &data) |> ignore
+
+        Marshal.FreeHGlobal(accentPtr);
 
