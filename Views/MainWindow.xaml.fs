@@ -33,12 +33,8 @@ type MainWindow() as this =
             this.Bind(XProp, Binding("X", BindingMode.TwoWay))
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
 
-            this.PositionChanged.Subscribe (fun p ->
-                this.SetValue(XProp, p.Point.X)
-                this.SetValue(YProp, p.Point.Y))
-
             States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
-                trace "Model" "DrawFPS: %A" v
+                trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
 
             this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
@@ -51,13 +47,30 @@ type MainWindow() as this =
             this.AddHandler(DragDrop.DragOverEvent, (fun _ (e:DragEventArgs) ->
                 e.DragEffects <- DragDropEffects.Move ||| DragDropEffects.Link ||| DragDropEffects.Copy
             ))
+
         ]
         AvaloniaXamlLoader.Load this
-
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> MainWindowViewModel
         let pos = PixelPoint(int ctx.X, int ctx.Y)
+        let mutable firstPoschange = true
+        let mutable deltaX = 0
+        let mutable deltaY = 0
+
+        trace "mainwindow" "set position: %d, %d" pos.X pos.Y
         this.Position <- pos
         this.WindowState <- ctx.WindowState
+        this.Watch [
+            this.PositionChanged.Subscribe (fun p ->
+                if firstPoschange then
+                    firstPoschange <- false
+                    deltaX <- p.Point.X - pos.X
+                    deltaY <- p.Point.Y - pos.Y
+                    trace "mainwindow" "first PositionChanged event: %d, %d (delta=%d, %d)" p.Point.X p.Point.Y deltaX deltaY
+                else
+                    this.SetValue(XProp, p.Point.X - deltaX)
+                    this.SetValue(YProp, p.Point.Y - deltaY)
+                )
+        ]
 
