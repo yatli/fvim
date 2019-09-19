@@ -358,6 +358,7 @@ module ui =
         //lol wat??
         //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
 
+        // push clip and fill bg
         if bg.Color.Alpha <> 0xFFuy then
             let _clearColor = Avalonia.Media.Color(0uy, bg.Color.Red, bg.Color.Green, bg.Color.Blue)
             skia.PushClip(region)
