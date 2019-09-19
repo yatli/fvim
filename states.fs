@@ -85,6 +85,10 @@ let mutable ui_messages        = false
 let mutable ui_termcolors      = false
 let mutable ui_hlstate         = false
 
+// background
+let mutable background_composition = ""
+let mutable background_opacity     = 1.0
+
 [<Literal>]
 let uiopt_rgb            = "rgb"
 [<Literal>]
@@ -235,4 +239,9 @@ module Register =
 
     let Bool = Prop<bool> (|Bool|_|)
     let String = Prop<string> (|String|_|)
+    let Float = Prop<float> (function
+        | Integer32 x -> Some(float x)
+        | :? float as x -> Some x
+        | _ -> None)
+
 

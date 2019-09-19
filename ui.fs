@@ -419,3 +419,76 @@ module ui =
             skia.SkCanvas.DrawPath(path , sp)
 
         ctx.PopClip()
+
+    module internal win32 =
+        type AccentState =
+            | ACCENT_DISABLED = 0
+            | ACCENT_ENABLE_GRADIENT = 1
+            | ACCENT_ENABLE_TRANSPARENTGRADIENT = 2
+            | ACCENT_ENABLE_BLURBEHIND = 3
+            | ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
+            | ACCENT_INVALID_STATE = 5
+
+        [<Struct>]
+        [<StructLayout(LayoutKind.Sequential)>]
+        type AccentPolicy =
+            {
+                AccentState: AccentState
+                AccentFlags: uint32
+                GradientColor: uint32
+                AnimationId: uint32
+            }
+
+        type WindowCompositionAttribute =
+            // ...
+            | WCA_ACCENT_POLICY = 19
+            // ...
+
+
+        [<Struct>]
+        [<StructLayout(LayoutKind.Sequential)>]
+        type WindowCompositionAttributeData =
+            {
+                Attribute: WindowCompositionAttribute
+                Data: nativeint
+                SizeOfData: int32
+            }
+
+        [<DllImport("user32.dll")>]
+        extern int SetWindowCompositionAttribute(nativeint hwnd, WindowCompositionAttributeData& data);
+
+    open win32
+
+    type WindowBackgroundComposition =
+        | NoBackgroundComposition
+        | GaussianBlur of opacity: float * color: Color
+        | AdvancedBlur of opacity: float * color: Color
+
+    let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition: WindowBackgroundComposition)=
+
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
+            let flag, opacity, bgcolor = 
+                match composition with
+                | NoBackgroundComposition -> 
+                    AccentState.ACCENT_DISABLED, 0u, 0u
+                | GaussianBlur(op, c) ->
+                    AccentState.ACCENT_ENABLE_BLURBEHIND, uint32(op * 255.0), c.ToUint32()
+                | AdvancedBlur(op, c) ->
+                    AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND, uint32(op * 255.0), c.ToUint32()
+
+            let accent = 
+                { 
+                    AccentState = flag
+                    GradientColor = (opacity <<< 24) ||| (bgcolor &&& 0xFFFFFFu) 
+                    AccentFlags = 0u
+                    AnimationId = 0u
+                }
+            let accentStructSize = Marshal.SizeOf(accent);
+            let accentPtr = Marshal.AllocHGlobal(accentStructSize);
+            Marshal.StructureToPtr(accent, accentPtr, false);
+
+            let mutable data = { Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY; SizeOfData = accentStructSize; Data = accentPtr }
+            SetWindowCompositionAttribute(win.PlatformImpl.Handle.Handle, &data) |> ignore
+
+            Marshal.FreeHGlobal(accentPtr);
+

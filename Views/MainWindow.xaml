@@ -14,6 +14,6 @@
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         Content="{Binding MainGrid}"
-        Background="#00FFFFFF"
+        Background="Transparent"
         >
 </Window>

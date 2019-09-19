@@ -111,7 +111,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_default_fg <- x.rgb_attr.foreground.Value
             m_default_bg <- x.rgb_attr.background.Value
             m_default_sp <- x.rgb_attr.special.Value
-            this.RaisePropertyChanged("BackgroundBrush")
+            this.RaisePropertyChanged("BackgroundColor")
         m_hlchange_ev.Trigger()
 
     let setSemanticHighlightGroups grp =
@@ -562,9 +562,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         and set(v) =
             m_gridscale <- v
 
-    member __.BackgroundBrush
-        with get(): SolidColorBrush = 
-            SolidColorBrush(m_default_bg, 0.0)
+    member __.BackgroundColor
+        with get(): Color = m_default_bg
 
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w

@@ -6,7 +6,7 @@
   xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
   Focusable  = "True"
   x:Class    = "FVim.Editor"
-  Background = "{Binding BackgroundBrush, Mode=OneWay}"
+  Background = "Transparent"
   >
 
   <Image 

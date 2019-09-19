@@ -15,39 +15,7 @@ open Avalonia.ReactiveUI
 
 open System.Runtime.InteropServices
 open System.Runtime
-
-type internal AccentState =
-    | ACCENT_DISABLED = 0
-    | ACCENT_ENABLE_GRADIENT = 1
-    | ACCENT_ENABLE_TRANSPARENTGRADIENT = 2
-    | ACCENT_ENABLE_BLURBEHIND = 3
-    | ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
-    | ACCENT_INVALID_STATE = 5
-
-[<Struct>]
-[<StructLayout(LayoutKind.Sequential)>]
-type internal AccentPolicy =
-    {
-        AccentState: AccentState
-        AccentFlags: uint32
-        GradientColor: uint32
-        AnimationId: uint32
-    }
-
-type internal WindowCompositionAttribute =
-    // ...
-    | WCA_ACCENT_POLICY = 19
-    // ...
-
-
-[<Struct>]
-[<StructLayout(LayoutKind.Sequential)>]
-type internal WindowCompositionAttributeData =
-    {
-        Attribute: WindowCompositionAttribute
-        Data: nativeint
-        SizeOfData: int32
-    }
+open Avalonia.Media
 
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()
@@ -55,8 +23,22 @@ type MainWindow() as this =
     static let XProp = AvaloniaProperty.Register<MainWindow,int>("PosX")
     static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
 
-    [<DllImport("user32.dll")>]
-    static extern int internal SetWindowCompositionAttribute(nativeint hwnd, WindowCompositionAttributeData& data);
+    let mutable m_bgcolor: Color = Color()
+    let mutable m_bgopacity: float = 1.0
+    let mutable m_bgblur = false
+    let mutable m_bgacrylic = false
+
+    let configBackground() =
+        let comp =
+            if m_bgacrylic then ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+            elif m_bgblur then ui.GaussianBlur(m_bgopacity, m_bgcolor)
+            else ui.NoBackgroundComposition
+        if comp = ui.NoBackgroundComposition then
+            this.Background <- SolidColorBrush(m_bgcolor)
+        else
+            this.Background <- Brushes.Transparent
+        trace "mainwindow" "configBackground: %A" comp
+        ui.SetWindowBackgroundComposition this comp
 
     do
         #if DEBUG
@@ -71,6 +53,25 @@ type MainWindow() as this =
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
             this.Bind(XProp, Binding("X", BindingMode.TwoWay))
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
+
+            States.Register.Watch "background.composition" (fun () ->
+                match States.background_composition.ToLower() with
+                | "blur" ->
+                    m_bgblur <- true
+                    m_bgacrylic <- false
+                | "acrylic" ->
+                    m_bgblur <- false
+                    m_bgacrylic <- true
+                | "none" | _ -> 
+                    m_bgblur <- false
+                    m_bgacrylic <- false
+                configBackground()
+                )
+
+            States.Register.Watch "background.opacity" (fun () ->
+                m_bgopacity <- States.background_opacity
+                configBackground()
+                )
 
             States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
@@ -111,24 +112,10 @@ type MainWindow() as this =
                     this.SetValue(XProp, p.Point.X - deltaX)
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
+            ctx.MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
+            |> Observable.subscribe(fun c -> 
+                trace "mainwindow" "update background color: %s" (c.Value.ToString())
+                m_bgcolor <- c.Value
+                configBackground())
         ]
-
-        let _blurOpacity = 1u
-        let _blurBackgroundColor = 0x990000u
-
-        let accent = 
-            { 
-                AccentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND
-                GradientColor = (_blurOpacity <<< 24) ||| (_blurBackgroundColor &&& 0xFFFFFFu) 
-                AccentFlags = 0u
-                AnimationId = 0u
-            }
-        let accentStructSize = Marshal.SizeOf(accent);
-        let accentPtr = Marshal.AllocHGlobal(accentStructSize);
-        Marshal.StructureToPtr(accent, accentPtr, false);
-
-        let mutable data = { Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY; SizeOfData = accentStructSize; Data = accentPtr }
-        SetWindowCompositionAttribute(this.PlatformImpl.Handle.Handle, &data) |> ignore
-
-        Marshal.FreeHGlobal(accentPtr);
 
