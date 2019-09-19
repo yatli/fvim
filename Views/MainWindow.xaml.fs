@@ -32,11 +32,7 @@ type MainWindow() as this =
         let comp =
             if m_bgacrylic then ui.AdvancedBlur(m_bgopacity, m_bgcolor)
             elif m_bgblur then ui.GaussianBlur(m_bgopacity, m_bgcolor)
-            else ui.NoBackgroundComposition
-        if comp = ui.NoBackgroundComposition then
-            this.Background <- SolidColorBrush(m_bgcolor)
-        else
-            this.Background <- Brushes.Transparent
+            else ui.SolidBackground m_bgcolor
         trace "mainwindow" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
 

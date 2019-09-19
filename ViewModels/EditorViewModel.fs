@@ -472,7 +472,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             sp <- GetReverseColor sp
 
         if bg = m_default_bg then
-            bg <- Avalonia.Media.Color(200uy, bg.R, bg.G, bg.B)
+            bg <- Avalonia.Media.Color(0uy, bg.R, bg.G, bg.B)
         fg, bg, sp, attrs
 
 

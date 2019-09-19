@@ -460,7 +460,7 @@ module ui =
     open win32
 
     type WindowBackgroundComposition =
-        | NoBackgroundComposition
+        | SolidBackground of color: Color
         | GaussianBlur of opacity: float * color: Color
         | AdvancedBlur of opacity: float * color: Color
 
@@ -469,11 +469,17 @@ module ui =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
             let flag, opacity, bgcolor = 
                 match composition with
-                | NoBackgroundComposition -> 
+                | SolidBackground c -> 
+                    win.Background <- SolidColorBrush(c)
                     AccentState.ACCENT_DISABLED, 0u, 0u
                 | GaussianBlur(op, c) ->
-                    AccentState.ACCENT_ENABLE_BLURBEHIND, uint32(op * 255.0), c.ToUint32()
+                    let c = Color(byte(op * 255.0), c.R, c.G, c.B)
+                    win.Background <- SolidColorBrush(c)
+                    AccentState.ACCENT_ENABLE_BLURBEHIND, uint32(op * 255.0), 0u
                 | AdvancedBlur(op, c) ->
+                    win.Background <- Brushes.Transparent
+                    // RGB -> BGR
+                    let c = Color(0uy, c.B, c.G, c.R)
                     AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND, uint32(op * 255.0), c.ToUint32()
 
             let accent = 
