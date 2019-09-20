@@ -9,16 +9,6 @@
   Background = "Transparent"
   >
 
-  <Image 
-    Name                = "FrameBuffer"
-    Source              = "{Binding FrameBuffer,  Mode=OneWay}"
-    Width               = "{Binding BufferWidth,  Mode=OneWay}"
-    Height              = "{Binding BufferHeight, Mode=OneWay}"
-    HorizontalAlignment = "Left"
-    VerticalAlignment   = "Top"
-    Focusable           = "False"
-  />
-
   <fvim:Cursor
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
