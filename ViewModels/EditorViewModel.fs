@@ -471,8 +471,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             bg <- GetReverseColor bg
             sp <- GetReverseColor sp
 
-        if bg = m_default_bg then
-            bg <- Avalonia.Media.Color(254uy, bg.R, bg.G, bg.B)
+        if bg = m_default_bg && (States.background_composition = "acrylic" || States.background_composition = "blur") then
+            bg <- Avalonia.Media.Color(0uy, bg.R, bg.G, bg.B)
         fg, bg, sp, attrs
 
 
