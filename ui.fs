@@ -458,7 +458,17 @@ module ui =
         [<DllImport("user32.dll")>]
         extern int SetWindowCompositionAttribute(nativeint hwnd, WindowCompositionAttributeData& data);
 
+    module internal osx =
+        [<DllImport("fvim-ext")>]
+        extern void vh_init();
+        [<DllImport("fvim-ext")>]
+        extern int32 vh_add_view(nativeint hwnd);
+
     open win32
+    open osx
+
+    if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
+        vh_init()
 
     type WindowBackgroundComposition =
         | SolidBackground of color: Color
@@ -498,4 +508,14 @@ module ui =
             SetWindowCompositionAttribute(win.PlatformImpl.Handle.Handle, &data) |> ignore
 
             Marshal.FreeHGlobal(accentPtr);
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
+            match composition with
+            | SolidBackground c ->
+                win.Background <- SolidColorBrush(c)
+            | GaussianBlur(op, c)
+            | AdvancedBlur(op, c) ->
+                let c = Color(byte(op * 255.0), c.R, c.G, c.B)
+                win.Background <- SolidColorBrush(c)
+                ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)
+            ()
 
