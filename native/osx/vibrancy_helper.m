@@ -18,8 +18,7 @@ void vh_init() {
     memset(s_view_arr, 0, sizeof(s_view_arr));
 }
 
-int32_t vh_add_view(NSView** ppview) {
-    NSView* view = *ppview;
+int32_t vh_add_view(NSView* view) {
     if(!view) {
         return -1;
     }
