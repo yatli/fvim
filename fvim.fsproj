@@ -64,6 +64,9 @@
     <EmbeddedResource Include="nerd.ttf" />
     <Content Include="Assets\*" />
     <None Include="icons\*.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="lib/libfvim-ext.dylib">
+      <PackagePath>runtimes\osx-x64\native</PackagePath>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

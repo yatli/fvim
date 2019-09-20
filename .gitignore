@@ -10,3 +10,5 @@ desktop.ini
 *.deb
 *.app
 *.zip
+native/**/build
+.ccls-cache
