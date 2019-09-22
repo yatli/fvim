@@ -300,6 +300,7 @@ module ui =
                 | States.Default -> float paint.FontSpacing
                 | States.Add h' -> (float paint.FontSpacing) + h'
             let h' = round(h'' * scaling) / scaling
+            let h' = max h' 1.0
 
             // calculate score
             let score' = 

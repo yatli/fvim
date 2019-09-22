@@ -168,7 +168,9 @@ let parseLineHeightOption (v: obj) =
         elif v.ToLowerInvariant() = "default" then
             Some Default
         else
-            Some(Absolute(float v))
+            let v = float v
+            if v > 0.0 then Some(Absolute v) 
+            else None
     | _ -> None
 
 let Shutdown code = _appLifetime.Shutdown code
