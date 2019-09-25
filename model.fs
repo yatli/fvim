@@ -4,6 +4,7 @@ open getopt
 open log
 open ui
 open common
+open States
 open neovim.def
 open neovim.proc
 
@@ -364,6 +365,27 @@ let Start opts =
 
     trace "commencing early initialization..."
     async {
+        let! api_info = Async.AwaitTask(nvim.call { method = "nvim_get_api_info"; parameters = [||] })
+        let api_query_result = 
+            match api_info.result with
+            | Ok(ObjArray [| Integer32 _; metadata |]) -> Ok metadata
+            | _ -> Result.Error("nvim_get_api_info")
+            >?= fun metadata ->
+            match metadata with
+            | FindKV "ui_options" (P (|String|_|) ui_options) -> Ok(Set.ofArray ui_options)
+            | _ -> Result.Error("find ui_options")
+            >?= fun ui_options ->
+            trace "available ui options: %A" ui_options
+            ui_available_opts <- ui_options
+            Ok()
+        match api_query_result with
+        | Ok() ->
+            if not (ui_available_opts.Contains uiopt_ext_linegrid) ||
+               not (ui_available_opts.Contains uiopt_rgb) then
+               failwithf "api_query_result: your NeoVim version is too low. fvim requires \"rgb\" and \"ext_linegrid\" options, got: %A" ui_available_opts
+        | Result.Error(msg) ->
+            failwithf "api_query_result: %s" msg
+
         // for remote, send open file args as edit commands
         if nvim.isRemote then
             for file in opts.args do
@@ -458,7 +480,8 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
 
         ()
-    }
+    } 
+    |> Async.RunSynchronously
 
 let OnGridReady(gridui: IGridUI) =
     // connect the redraw commands
