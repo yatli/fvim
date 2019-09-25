@@ -64,7 +64,9 @@ let main(args: string[]) =
     let _ = builder.SetupWithoutStarting()
     // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
-    Async.RunSynchronously(Model.Start opts)
+    try
+        Model.Start opts
+    with ex -> ()
     let cfg = config.load()
     let cwd = Environment.CurrentDirectory |> Path.GetFullPath
     let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)

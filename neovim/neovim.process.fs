@@ -265,30 +265,12 @@ type Nvim() =
         m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
-        task {
-            let! api_info = m_call { method = "nvim_get_api_info"; parameters = [||] }
-            let opts = hashmap[]
-            let result = 
-                match api_info.result with
-                | Ok(ObjArray [| Integer32 chid; metadata |]) -> Ok metadata
-                | _ -> Result.Error("nvim_get_api_info")
-                >?= fun metadata ->
-                opts.[uiopt_rgb]           <- true
-                opts.[uiopt_ext_linegrid]  <- true
-                match metadata with
-                | FindKV "ui_options" (P (|String|_|) ui_options) -> Ok(Set.ofArray ui_options)
-                | _ -> Result.Error("find ui_options")
-                >?= fun ui_options ->
-                trace "available ui options: %A" ui_options
-                ui_available_opts <- ui_options
-                PopulateUIOptions opts
-                Ok()
-            match result with
-            | Result.Ok()  -> return! m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
-            | Result.Error msg -> 
-                trace "ui_attach error: %s" msg
-                return { result = Result.Error(box msg) }
-        }
+        let opts = hashmap [
+            uiopt_rgb, true
+            uiopt_ext_linegrid, true
+        ]
+        PopulateUIOptions opts
+        m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 
     member __.exists (var: string) =
         task {
