@@ -399,7 +399,7 @@ let Start opts =
         let clientVersion = 
             hashmap [
                 "major", "0"
-                "minor", "1"
+                "minor", "2"
                 "prerelease", "dev"
             ]
         let clientType = "ui"
