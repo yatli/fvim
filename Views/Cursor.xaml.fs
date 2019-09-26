@@ -3,7 +3,7 @@
 open log
 open ui
 open common
-open neovim.def
+open def
 
 open Avalonia
 open Avalonia.Animation

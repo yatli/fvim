@@ -1,6 +1,6 @@
 ﻿namespace FVim
 
-open neovim.def
+open def
 open log
 open common
 
@@ -12,6 +12,8 @@ open Avalonia.Interactivity
 open Avalonia
 open Avalonia.Data
 open Avalonia.ReactiveUI
+
+#nowarn "0025"
 
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()
@@ -36,6 +38,8 @@ type MainWindow() as this =
             States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
+
+            Model.Flush |> Observable.subscribe this.InvalidateVisual
 
             this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
                 if e.Data.Contains(DataFormats.FileNames) then

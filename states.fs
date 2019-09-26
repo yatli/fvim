@@ -4,6 +4,7 @@ open common
 open SkiaSharp
 open log
 open System.Reflection
+open Avalonia.Threading
 
 [<Struct>]
 type Request = 

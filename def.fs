@@ -1,13 +1,12 @@
-﻿module FVim.neovim.def
+﻿module FVim.def
 
 open FVim.log
 open FVim.common
-open FVim.States
 
 open Avalonia.Media
 open System.Collections.Generic
 
-let inline private trace fmt = trace "neovim.def" fmt
+let inline private trace fmt = trace "def" fmt
 
 [<Struct>]
 type CursorShape =

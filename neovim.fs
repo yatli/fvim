@@ -1,10 +1,10 @@
-module FVim.neovim.proc
+module FVim.neovim
 
 open def
-open FVim.getopt
-open FVim.log
-open FVim.common
-open FVim.States
+open getopt
+open log
+open common
+open States
 
 open MessagePack
 
@@ -252,7 +252,7 @@ type Nvim() =
         this.events
         |> Observable.observeOnContext ctx
         |> Observable.synchronize
-        |> Observable.subscribe        fn
+        |> Observable.subscribe fn
         |> this.pushSubscription
 
     //  ========================== NeoVim API ===============================
@@ -263,8 +263,7 @@ type Nvim() =
 
     member __.grid_resize (id: int) (w: int) (h: int) =
         if ui_multigrid then
-            Task.FromResult({result=Ok(box "hey")})
-            //m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
+            m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
         else
             m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 

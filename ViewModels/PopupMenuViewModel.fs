@@ -1,6 +1,6 @@
 namespace FVim
 
-open neovim.def
+open def
 open log
 
 open ReactiveUI
@@ -10,6 +10,7 @@ open FVim.common.helpers
 open Avalonia
 open Avalonia.Media
 open Avalonia.Threading
+#nowarn "0025"
 
 type PopupMenuViewModel() =
     inherit ViewModelBase()

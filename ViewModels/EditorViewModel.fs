@@ -4,7 +4,7 @@ open common
 open log
 open ui
 open wcwidth
-open neovim.def
+open def
 
 open ReactiveUI
 open Avalonia
@@ -23,6 +23,8 @@ open System.Reactive.Disposables
 open SkiaSharp
 open System.Runtime.InteropServices
 
+#nowarn "0025"
+
 type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
                      ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
@@ -35,7 +37,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int*InputEvent>()
     let m_hlchange_ev            = Event<unit>()
-    let m_tick_ev                = Event<unit>()
 
     let mutable m_busy           = false
 
@@ -82,10 +83,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let markAllDirty () =
         m_griddirty.Clear()
         m_griddirty.Union{ row = 0; col = 0; height = m_gridsize.rows; width = m_gridsize.cols }
-
-    let flush() = 
-        trace "flush."
-        this.RenderTick <- this.RenderTick + 1
 
     let fontConfig() =
         m_fontsize <- max m_fontsize 1.0
@@ -222,18 +219,12 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_cursor_vm.modeidx <- index
         this.cursorConfig()
 
-    let bell (visual: bool) =
-        // TODO
-        trace "neovim: bell: %A" visual
-        ()
-
     let setBusy (v: bool) =
         trace "neovim: busy: %A" v
         m_busy <- v
         this.setCursorEnabled <| not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
-        //flush()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -384,24 +375,17 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let redraw(cmd: RedrawCommand) =
         //trace "%A" cmd
         match cmd with
-        | UnknownCommand x                                                   -> trace "unknown command %A" x
         | HighlightAttrDefine hls                                            -> hiattrDefine hls
         | SemanticHighlightGroupSet groups                                   -> setSemanticHighlightGroups groups
         | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
         | ModeChange(name, index)                                            -> changeMode name index
-        | GridResize(id, w, h)                                               -> if id = GridId then this.initBuffer h w
-        | GridClear id                                                       -> if id = GridId then clearBuffer()
-        | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = GridId then putBuffer line) lines
+        | GridResize(_, w, h)                                                -> this.initBuffer h w
+        | GridClear _                                                        -> clearBuffer()
+        | GridLine lines                                                     -> Array.iter putBuffer lines
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
-        | GridDestroy id                                                     -> ()
-        | GridScroll(id, top,bot,left,right,rows,cols)                       -> if id = GridId then scrollBuffer top bot left right rows cols
-        | Flush                                                              -> m_tick_ev.Trigger()
-        | Bell                                                               -> bell false
-        | VisualBell                                                         -> bell true
+        | GridScroll(_, top,bot,left,right,rows,cols)                        -> scrollBuffer top bot left right rows cols
         | Busy is_busy                                                       -> setBusy is_busy
-        | SetTitle title                                                     -> States.SetTitle title
-        | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
         | WinPos(grid, win, startrow, startcol, w, h)                        -> if GridId = 1 then setWinPos grid win startrow startcol w h
@@ -420,12 +404,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_default_sp <- sp
         fontConfig()
 
-        let tick_throttle =
-            if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
-            else Observable.throttle(TimeSpan.FromMilliseconds 10.0)
-
         this.Watch [
-            Model.Redraw (Array.iter redraw)
 
             m_popupmenu_vm.ObservableForProperty(fun x -> x.Selection)
             |> Observable.subscribe (fun x -> selectPopupMenuActive <| x.GetValue())
@@ -436,11 +415,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_hlchange_ev.Publish 
             |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
             |> Observable.subscribe markAllDirty
-
-            m_tick_ev.Publish
-            |> tick_throttle
-            |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
-            |> Observable.subscribe flush
 
             States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
             States.Register.Watch "font" fontConfig
@@ -487,6 +461,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         member __.Resized = m_resize_ev.Publish
         member __.Input = m_input_ev.Publish
         member __.HasChildren = m_child_grids.Count <> 0
+        member __.Redraw cmd = redraw cmd
 
     member __.markClean = m_griddirty.Clear
 
@@ -589,32 +564,32 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
-        raiseInputEvent <| InputEvent.Key(e.Modifiers, e.Key)
+        raiseInputEvent <| InputEvent.Key(e.KeyModifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             m_mouse_pressed <- e.MouseButton
-            raiseInputEvent <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
+            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, e.MouseButton, e.ClickCount)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             m_mouse_pressed <- MouseButton.None
-            raiseInputEvent <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
+            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, e.MouseButton)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
-                raiseInputEvent <| InputEvent.MouseDrag(e.InputModifiers, y, x, m_mouse_pressed)
+                raiseInputEvent <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
+            raiseInputEvent <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
         raiseInputEvent <| InputEvent.TextInput(e.Text)
