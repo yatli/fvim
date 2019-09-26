@@ -334,8 +334,10 @@ let Start opts =
     States.Register.Bool "ui.messages"
     States.Register.Bool "ui.termcolors"
     States.Register.Bool "ui.hlstate"
+
     States.Register.String "background.composition"
     States.Register.Float "background.opacity"
+
 
     States.Register.Notify "remote.detach" (fun _ -> Detach())
     States.Register.Watch "ui" UpdateUICapabilities
@@ -480,8 +482,10 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIMessages" 1 (sprintf "call rpcnotify(%d, 'ui.messages', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUITermColors" 1 (sprintf "call rpcnotify(%d, 'ui.termcolors', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
+
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundOpacity" 1 (sprintf "call rpcnotify(%d, 'background.opacity', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 (sprintf "call rpcnotify(%d, 'background.composition', <args>)" myChannel))
+
 
         ()
     } 
