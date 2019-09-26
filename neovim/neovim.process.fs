@@ -262,7 +262,11 @@ type Nvim() =
         m_call { method = "nvim_input"; parameters = keys }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
-        m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
+        if ui_multigrid then
+            Task.FromResult({result=Ok(box "hey")})
+            //m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
+        else
+            m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
         let opts = hashmap [

@@ -382,6 +382,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_popupmenu_vm.Show <- true
 
     let redraw(cmd: RedrawCommand) =
+        //trace "%A" cmd
         match cmd with
         | UnknownCommand x                                                   -> trace "unknown command %A" x
         | HighlightAttrDefine hls                                            -> hiattrDefine hls
@@ -389,12 +390,12 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
         | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
         | ModeChange(name, index)                                            -> changeMode name index
-        | GridResize(id, w, h) when id = GridId                              -> this.initBuffer h w
-        | GridClear id when id = GridId                                      -> clearBuffer()
+        | GridResize(id, w, h)                                               -> if id = GridId then this.initBuffer h w
+        | GridClear id                                                       -> if id = GridId then clearBuffer()
         | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = GridId then putBuffer line) lines
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
-        | GridDestroy id when id = GridId                                    -> ()
-        | GridScroll(id, top,bot,left,right,rows,cols) when id = GridId      -> scrollBuffer top bot left right rows cols
+        | GridDestroy id                                                     -> ()
+        | GridScroll(id, top,bot,left,right,rows,cols)                       -> if id = GridId then scrollBuffer top bot left right rows cols
         | Flush                                                              -> m_tick_ev.Trigger()
         | Bell                                                               -> bell false
         | VisualBell                                                         -> bell true
@@ -403,7 +404,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
         | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
-        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
+        | WinPos(grid, win, startrow, startcol, w, h)                        -> if GridId = 1 then setWinPos grid win startrow startcol w h
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()

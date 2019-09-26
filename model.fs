@@ -30,6 +30,7 @@ module ModelImpl =
 
     let nvim = Nvim()
     let ev_redraw     = Event<RedrawCommand[]>()
+    let ev_uiopt      = Event<unit>()
     let grids         = hashmap[]
 
     let add_grid(grid: IGridUI) =
@@ -310,8 +311,6 @@ let Start opts =
         (AvaloniaSynchronizationContext.Current) 
         (States.msg_dispatch)
 
-    ignore(States.Register.Notify "redraw" (fun cmds -> ev_redraw.Trigger (Array.map parse_redrawcmd cmds)))
-
     // rpc handlers
     States.Register.Bool "font.autosnap"
     States.Register.Bool "font.antialias"
@@ -335,8 +334,14 @@ let Start opts =
     States.Register.Bool "ui.termcolors"
     States.Register.Bool "ui.hlstate"
 
-    States.Register.Notify "remote.detach" (fun _ -> Detach())
-    States.Register.Watch "ui" UpdateUICapabilities
+    List.iter ignore [
+        ev_uiopt.Publish
+        |> Observable.throttle(TimeSpan.FromMilliseconds 20.0)
+        |> Observable.subscribe(UpdateUICapabilities)
+        States.Register.Notify "redraw" (fun cmds -> ev_redraw.Trigger (Array.map parse_redrawcmd cmds))
+        States.Register.Notify "remote.detach" (fun _ -> Detach())
+        States.Register.Watch "ui" ev_uiopt.Trigger
+    ]
 
     States.Register.Request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> async {
         States.clipboard_lines <- lines
@@ -479,6 +484,8 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUITermColors" 1 (sprintf "call rpcnotify(%d, 'ui.termcolors', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
 
+        // trigger ginit upon VimEnter
+        let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")
         ()
     } 
     |> Async.RunSynchronously
@@ -492,7 +499,6 @@ let OnGridReady(gridui: IGridUI) =
     add_grid gridui
 
     gridui.Input 
-    |> Observable.filter (fun _ -> not gridui.HasChildren)
     |> onInput
     |> nvim.pushSubscription
 
@@ -505,10 +511,7 @@ let OnGridReady(gridui: IGridUI) =
               gridui.GridWidth gridui.GridHeight
         task {
             let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
-            // TODO ideally this should be triggered in `nvim_command("autocmd VimEnter * call rpcrequest(1, 'vimenter')")`
-            // as per :help ui-start
-            let! _ = nvim.command "runtime! ginit.vim"
-            in ()
+            ()
         } |> ignore
 
 let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
