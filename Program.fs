@@ -84,4 +84,5 @@ let main(args: string[]) =
     | Error ex ->
         let crash = new CrashReportViewModel(ex)
         lifetime.MainWindow <- new CrashReport(DataContext = crash)
-        lifetime.Start(args)
+        ignore <| lifetime.Start(args)
+        -1

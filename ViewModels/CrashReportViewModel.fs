@@ -4,7 +4,7 @@ open ui
 open log
 open common
 
-type CrashReportViewModel(ex: exn) as this =
+type CrashReportViewModel(ex: exn) =
     inherit ViewModelBase()
     member __.MainMessage =
         ex.Message
