@@ -35,7 +35,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let m_popupmenu_vm           = new PopupMenuViewModel()
     let m_child_grids            = ObservableCollection<EditorViewModel>()
     let m_resize_ev              = Event<IGridUI>()
-    let m_input_ev               = Event<int*InputEvent>()
     let m_hlchange_ev            = Event<unit>()
 
     let mutable m_busy           = false
@@ -394,9 +393,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | x -> trace "unimplemented command: %A" x
 
-    let raiseInputEvent e =
-        m_input_ev.Trigger(GridId, e)
-
     do
         let fg,bg,sp,_ = this.GetDrawAttrs 0
         m_default_bg <- bg
@@ -560,37 +556,4 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         if gw <> gw' || gh <> gh' then 
             if this.TopLevel then
                 m_resize_ev.Trigger(this)
-
-    (*******************   Events   ***********************)
-
-    member __.OnKey (e: KeyEventArgs) = 
-        raiseInputEvent <| InputEvent.Key(e.KeyModifiers, e.Key)
-
-    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en then
-            let x, y = e.GetPosition root |> getPos
-            m_mouse_pressed <- e.MouseButton
-            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, e.MouseButton, e.ClickCount)
-
-    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en then
-            let x, y = e.GetPosition root |> getPos
-            m_mouse_pressed <- MouseButton.None
-            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, e.MouseButton)
-
-    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en && m_mouse_pressed <> MouseButton.None then
-            let x, y = e.GetPosition root |> getPos
-            if (x,y) <> m_mouse_pos then
-                m_mouse_pos <- x,y
-                raiseInputEvent <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
-
-    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en then
-            let x, y = e.GetPosition root |> getPos
-            let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
-
-    member __.OnTextInput (e: TextInputEventArgs) = 
-        raiseInputEvent <| InputEvent.TextInput(e.Text)
 
