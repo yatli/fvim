@@ -121,7 +121,9 @@ type Nvim() =
                    | :? System.IO.IOException
                    | :? System.Net.Sockets.SocketException
                    | :? ObjectDisposedException
-                       -> ex <- true
+                       as _ex -> 
+                           ex <- true
+                           trace "exception: %O" _ex
 
                 let ec = serverExitCode()
                 if ec.IsSome then
@@ -262,9 +264,9 @@ type Nvim() =
         m_call { method = "nvim_input"; parameters = keys }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
-        if ui_multigrid then
-            m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
-        else
+        (*if ui_multigrid then*)
+            (*m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }*)
+        (*else*)
             m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =

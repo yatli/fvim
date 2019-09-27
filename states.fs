@@ -78,7 +78,7 @@ let mutable font_lineheight    = LineHeightOption.Default
 // ui
 let mutable ui_available_opts  = Set.empty<string>
 let mutable ui_multigrid       = false
-let mutable ui_popupmenu       = false
+let mutable ui_popupmenu       = true
 let mutable ui_tabline         = false
 let mutable ui_cmdline         = false
 let mutable ui_wildmenu        = false
@@ -195,6 +195,7 @@ let msg_dispatch =
     | Crash code ->
         trace "model" "neovim crashed with code %d" code
         _appLifetime.Shutdown()
+    | Error err -> error "model" "neovim: %s" err
     | _ -> ()
 
 module Register =

@@ -39,7 +39,8 @@ module ModelImpl =
     let unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
-        | _ -> ()
+        | _ ->
+            trace "unicast into non-existing grid #%d: %A" id cmd
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
@@ -69,10 +70,11 @@ module ModelImpl =
         | SetOption _           | Busy _                        | Mouse _
         | Flush
         | HighlightAttrDefine _ | SemanticHighlightGroupSet _   | DefaultColorsSet _
-        | ModeInfoSet _         | ModeChange _                  | GridCursorGoto _
+        | ModeInfoSet _         | ModeChange _
             ->  broadcast cmd
         //  Unicast
         | GridResize(id,_,_)    | GridClear id                  | GridScroll(id,_,_,_,_,_,_) 
+        | GridCursorGoto(id,_,_)
             -> unicast id cmd
         | GridLine lines -> 
             lines 
