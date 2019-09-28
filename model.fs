@@ -30,21 +30,41 @@ module ModelImpl =
 
     let nvim = Nvim()
     let ev_uiopt      = Event<unit>()
-    let ev_flush     = Event<unit>()
+    let ev_flush      = Event<unit>()
     let grids         = hashmap[]
+    let pending_msgs  = hashmap[]
 
     let add_grid(grid: IGridUI) =
-        grids.[grid.Id] <- grid
+        let id = grid.Id
+        grids.[id] <- grid
+        let mutable nl = null
+        if pending_msgs.TryGetValue(id, &nl) then
+            ignore(pending_msgs.Remove id)
+            ignore(Dispatcher.UIThread.InvokeAsync(fun () ->
+                Seq.iter grid.Redraw nl))
 
     let unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
         | _ ->
-            trace "unicast into non-existing grid #%d: %A" id cmd
+            trace "unicast into non-existing grid #%d" id
+            let mutable nl = null
+            if not(pending_msgs.TryGetValue(id, &nl)) then
+                nl <- ResizeArray()
+                pending_msgs.[id] <- nl
+            nl.Add cmd
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
             grid.Redraw cmd
+
+    let broadcast_save id cmd =
+        let mutable found = false
+        for KeyValue(id',grid) in grids do
+            if id = id' then found <- true
+            grid.Redraw cmd
+        if not found then
+            unicast id cmd
 
     let bell (visual: bool) =
         // TODO
@@ -72,9 +92,10 @@ module ModelImpl =
         | HighlightAttrDefine _ | SemanticHighlightGroupSet _   | DefaultColorsSet _
         | ModeInfoSet _         | ModeChange _
             ->  broadcast cmd
+        | GridCursorGoto(id,_,_) 
+            -> broadcast_save id cmd
         //  Unicast
         | GridResize(id,_,_)    | GridClear id                  | GridScroll(id,_,_,_,_,_,_) 
-        | GridCursorGoto(id,_,_)
             -> unicast id cmd
         | GridLine lines -> 
             lines 
