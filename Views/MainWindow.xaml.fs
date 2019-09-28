@@ -80,36 +80,3 @@ type MainWindow() as this =
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
         ]
-
-    (*******************   Events   ***********************)
-
-    member __.OnKey (e: KeyEventArgs) = 
-        raiseInputEvent <| InputEvent.Key(e.KeyModifiers, e.Key)
-
-    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en then
-            let x, y = e.GetPosition root |> getPos
-            m_mouse_pressed <- e.MouseButton
-            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, e.MouseButton, e.ClickCount)
-
-    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en then
-            let x, y = e.GetPosition root |> getPos
-            m_mouse_pressed <- MouseButton.None
-            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, e.MouseButton)
-
-    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en && m_mouse_pressed <> MouseButton.None then
-            let x, y = e.GetPosition root |> getPos
-            if (x,y) <> m_mouse_pos then
-                m_mouse_pos <- x,y
-                raiseInputEvent <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
-
-    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
-        if m_mouse_en then
-            let x, y = e.GetPosition root |> getPos
-            let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
-
-    member __.OnTextInput (e: TextInputEventArgs) = 
-        raiseInputEvent <| InputEvent.TextInput(e.Text)

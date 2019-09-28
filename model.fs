@@ -146,23 +146,24 @@ module ModelImpl =
         if x.HasFlag flag then Some() else None
     let (|NoFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
         if x.HasFlag flag then None else Some()
-    let MB (x: MouseButton, c: int) = 
-        let name = x.ToString()
-        if c = 1 then name
-        else sprintf "%d-%s" c name
+    let MB (x: MouseButton) = 
+        match x with
+        | MouseButton.Left -> "left"
+        | MouseButton.Right -> "right"
+        | MouseButton.Middle -> "middle"
+    let DIR (dx: float, dy: float, horizontal: bool) =
+        match sign dx, sign dy, horizontal with
+        | -1, _, true   -> "right"
+        | _, _,  true   -> "left"
+        | _, -1, false  -> "down"
+        | _, _, false   -> "up"
+    let suffix (suf: string, r: int, c: int) =
+        sprintf "%s><%d,%d" suf r c
 
     let mutable accumulatedX = 0.0
     let mutable accumulatedY = 0.0
 
-    let DIR (dx: float, dy: float, horizontal: bool) =
-        match sign dx, sign dy, horizontal with
-        | -1, _, true   -> "Right"
-        | _, _,  true   -> "Left"
-        | _, -1, false  -> "Down"
-        | _, _, false   -> "Up"
-    let suffix (suf: string, r: int, c: int) =
-        sprintf "%s><%d,%d" suf r c
-    let (|Repeat|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
+    let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
         // | Key(HasFlag(KeyModifiers.Control), Key.H)                 
         // | Key(HasFlag(KeyModifiers.Control), Key.I)
@@ -177,14 +178,14 @@ module ModelImpl =
         | Key(_, Key.Return)                                          -> Special "CR"
         | Key(_, Key.Escape)                                          -> Special "Esc"
         | Key(_, Key.Space)                                           -> Special "Space"
-        | Key(HasFlag(KeyModifiers.Shift), Key.OemComma)            -> Special "LT"
+        | Key(HasFlag(KeyModifiers.Shift), Key.OemComma)              -> Special "LT"
         // note, on Windows '\' is recognized as OemPipe but on macOS it's OemBackslash
         | Key(NoFlag(KeyModifiers.Shift), 
              (Key.OemPipe | Key.OemBackslash))                        -> Special "Bslash"
         | Key(HasFlag(KeyModifiers.Shift), 
              (Key.OemPipe | Key.OemBackslash))                        -> Special "Bar"
         | Key(_, Key.Delete)                                          -> Special "Del"
-        | Key(HasFlag(KeyModifiers.Alt), Key.Escape)                -> Special "xCSI"
+        | Key(HasFlag(KeyModifiers.Alt), Key.Escape)                  -> Special "xCSI"
         | Key(_, Key.Up)                                              -> Special "Up"
         | Key(_, Key.Down)                                            -> Special "Down"
         | Key(_, Key.Left)                                            -> Special "Left"
@@ -207,44 +208,44 @@ module ModelImpl =
           (Key.NumPad0 | Key.NumPad1 | Key.NumPad2 | Key.NumPad3 
         |  Key.NumPad4 | Key.NumPad5 | Key.NumPad6 | Key.NumPad7 
         |  Key.NumPad8 | Key.NumPad9))                                -> Special("k" + string(x.ToString() |> Seq.last))
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemComma)            -> Normal ","
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemPeriod)           -> Normal "."
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemPeriod)          -> Normal ">"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.Oem2)                -> Normal "/"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.Oem2)               -> Normal "?"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemSemicolon)        -> Normal ";"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemSemicolon)       -> Normal ":"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemQuotes)           -> Normal "'"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemQuotes)          -> Normal "\""
-        |  Key(NoFlag(KeyModifiers.Shift), Key.Oem4)                -> Normal "["
-        |  Key(HasFlag(KeyModifiers.Shift), Key.Oem4)               -> Normal "{"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemCloseBrackets)    -> Normal "]"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemCloseBrackets)   -> Normal "}"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemMinus)            -> Normal "-"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemMinus)           -> Normal "_"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemPlus)             -> Normal "="
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemPlus)            -> Normal "+"
-        |  Key(NoFlag(KeyModifiers.Shift), Key.OemTilde)            -> Normal "`"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.OemTilde)           -> Normal "~"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D1)                 -> Normal "!"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D2)                 -> Normal "@"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D3)                 -> Normal "#"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D4)                 -> Normal "$"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D5)                 -> Normal "%"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D6)                 -> Normal "^"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D7)                 -> Normal "&"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D8)                 -> Normal "*"
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D9)                 -> Normal "("
-        |  Key(HasFlag(KeyModifiers.Shift), Key.D0)                 -> Normal ")"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemComma)              -> Normal ","
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemPeriod)             -> Normal "."
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemPeriod)            -> Normal ">"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.Oem2)                  -> Normal "/"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.Oem2)                 -> Normal "?"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemSemicolon)          -> Normal ";"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemSemicolon)         -> Normal ":"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemQuotes)             -> Normal "'"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemQuotes)            -> Normal "\""
+        |  Key(NoFlag(KeyModifiers.Shift), Key.Oem4)                  -> Normal "["
+        |  Key(HasFlag(KeyModifiers.Shift), Key.Oem4)                 -> Normal "{"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemCloseBrackets)      -> Normal "]"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemCloseBrackets)     -> Normal "}"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemMinus)              -> Normal "-"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemMinus)             -> Normal "_"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemPlus)               -> Normal "="
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemPlus)              -> Normal "+"
+        |  Key(NoFlag(KeyModifiers.Shift), Key.OemTilde)              -> Normal "`"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.OemTilde)             -> Normal "~"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D1)                   -> Normal "!"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D2)                   -> Normal "@"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D3)                   -> Normal "#"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D4)                   -> Normal "$"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D5)                   -> Normal "%"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D6)                   -> Normal "^"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D7)                   -> Normal "&"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D8)                   -> Normal "*"
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D9)                   -> Normal "("
+        |  Key(HasFlag(KeyModifiers.Shift), Key.D0)                   -> Normal ")"
         |  Key(_, (
            Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
         |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
-        |  Key(NoFlag(KeyModifiers.Shift), x)                       -> Normal (x.ToString().ToLowerInvariant())
+        |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
         |  Key(_, Key.None)                                           -> Unrecognized
         |  Key(_, x)                                                  -> Normal (x.ToString())
-        |  MousePress(_, r, c, but, cnt)                              -> Special(MB(but, cnt) + suffix("Mouse", c, r))
-        |  MouseRelease(_, r, c, but)                                 -> Special(MB(but, 1) + suffix("Release", c, r))
-        |  MouseDrag(_, r, c, but   )                                 -> Special(MB(but, 1) + suffix("Drag", c, r))
+        |  MousePress(_, r, c, but, combo)                            -> Mouse(MB but, "press", r, c, combo)
+        |  MouseRelease(_, r, c, but)                                 -> Mouse(MB but, "release", r, c, 1)
+        |  MouseDrag(_, r, c, but   )                                 -> Mouse(MB but, "drag", r, c, 1)
         |  MouseWheel(_, r, c, dx, dy)                                -> 
             // duh! don't like this
             accumulatedX <- accumulatedX + dx
@@ -257,7 +258,7 @@ module ModelImpl =
                     accumulatedX <- accumulatedX - truncate accumulatedX
                 else
                     accumulatedY <- accumulatedY - truncate accumulatedY
-                Repeat(int rpt, "ScrollWheel" + suffix(dir, c, r))
+                Mouse("wheel", dir, r, c, int rpt)
             else
                 Unrecognized
         |  TextInput txt                                              -> TextInput txt
@@ -293,39 +294,52 @@ module ModelImpl =
 
     let mutable _imeArmed = false
 
-    let onInput: (IObservable<int*InputEvent> -> IDisposable) =
-        // filter out pure modifiers
-        Observable.filter (fun (_, x) -> 
-            match x with
-            | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin))
-                -> false
-            | _ -> true) >>
-        // translate to nvim keycode
-        Observable.map(fun (gridid, x) ->
-            trace "grid #%d: OnInput: %A" gridid x
+    let onInput (input: IObservable<int*InputEvent>) =
+        let inputClassifier = 
+            input
+            // filter out pure modifiers
+            |> Observable.filter (fun (_, x) -> 
+                match x with
+                | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin)) 
+                    -> false
+                | _ -> true)
+            // translate to nvim input sequence
+            |> Observable.map(fun (gridid, x) ->
+                trace "grid #%d: OnInput: %A" gridid x
 
-            match x with
-            | ImeEvent    -> _imeArmed <- true
-            | TextInput _ -> ()
-            | _           -> _imeArmed <- false
-            // TODO anything that cancels ime input state?
+                match x with
+                | ImeEvent    -> _imeArmed <- true
+                | TextInput _ -> ()
+                | _           -> _imeArmed <- false
+                // TODO anything that cancels ime input state?
 
-            match x with
-            | (Repeat(n, sp)) & (ModifiersPrefix pref) -> List.replicate n (sprintf "<%s-%s>" pref sp)
-            | (Special sp) & (ModifiersPrefix pref) -> [ sprintf "<%s-%s>" pref sp ]
-            | (Special sp)                          -> [ sprintf "<%s>" sp ]
-            | (Repeat(n, sp))                       -> List.replicate n (sprintf "<%s>" sp)
-            | (Normal n) & (ModifiersPrefix pref)   -> [ sprintf "<%s-%s>" pref n ]
-            | (Normal n)                            -> [ n ]
-            | ImeEvent                              -> []
-            | TextInput txt when _imeArmed          -> [ txt ]
-            | x                                     -> trace "rejected: %A" x; []
-        ) >>
-        // hook up nvim_input
-        Observable.subscribe (fun keys ->
-            for k in keys do
-                ignore <| nvim.input [|k|]
-        )
+                match x with
+                | (Special sp) & (ModifiersPrefix pref) -> Choice1Of3(sprintf "<%s-%s>" pref sp)
+                | (Special sp)                          -> Choice1Of3(sprintf "<%s>" sp)
+                | (Normal n) & (ModifiersPrefix pref)   -> Choice1Of3(sprintf "<%s-%s>" pref n)
+                | (Normal n)                            -> Choice1Of3 n 
+                | (Mouse m)                             -> Choice2Of3(gridid, m, (|ModifiersPrefix|_|)x)
+                | ImeEvent                              -> Choice3Of3 ()
+                | TextInput txt when _imeArmed          -> Choice1Of3 txt
+                | x                                     -> trace "rejected: %A" x; Choice3Of3 ()
+            )
+        let key   = inputClassifier |> Observable.choose (function | Choice1Of3 x -> Some x | _ -> None)
+        let mouse = inputClassifier |> Observable.choose (function | Choice2Of3 x -> Some x | _ -> None)
+        Disposables.compose [
+            key |> Observable.subscribe(fun x -> 
+                nvim.input x
+                |> ignore
+            )
+            mouse |> Observable.subscribe(fun (grid, (but, act, r, c, rep), mods) -> 
+                let mods = match mods with Some mods -> mods | _ -> ""
+                async {
+                    for _ in 1..rep do
+                        let! _ = Async.AwaitTask(nvim.input_mouse but act mods grid r c)
+                        ()
+                } 
+                |> Async.RunSynchronously
+            )
+        ]
 
 let Detach() =
     nvim.stop(0)

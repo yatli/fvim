@@ -259,9 +259,11 @@ type Nvim() =
 
     //  ========================== NeoVim API ===============================
 
-    member __.input (keys: string[]) =
-        let keys = Array.map (fun x -> box x) keys
-        m_call { method = "nvim_input"; parameters = keys }
+    member __.input (key: string) =
+        m_call { method = "nvim_input"; parameters = [| box key |] }
+
+    member __.input_mouse (button: string) (action: string) (mods: string) (grid: int) (row: int) (col: int)  =
+        m_call { method = "nvim_input_mouse"; parameters = [| box button; box action; box mods; box grid; box row; box col |] }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
         (*if ui_multigrid then*)
