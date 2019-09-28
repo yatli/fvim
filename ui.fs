@@ -266,27 +266,29 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPain
     //  ctx.PushClip(region)
 
     //  DrawText accepts the coordinate of the baseline.
-    //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
-    let h = region.Bottom - region.Y
-    //  total_padding = padding space 1 + padding space 2
-    let total_padding = h - ((float fg.FontMetrics.Bottom - float fg.FontMetrics.Top) )
-    (*let baseline      = region.Y + ceil((total_padding / 2.0) - (float fg.FontMetrics.Top))*)
-    let baseline      = region.Y - (float fg.FontMetrics.Top)
-    let region = region.WithY(region.Y + baseline - baseline)
+
+    let region = region.ToSKRect()
+
+    let h = region.Bottom - region.Top
+    let h' = fg.FontMetrics.Bottom - fg.FontMetrics.Top
+    let total_padding = h - h'
+    let prop = h / h'
+    let baseline = region.Top + ceil((total_padding / 2.0f) - (fg.FontMetrics.Top))
+    (*let baseline = ceil( region.Bottom - (fg.FontMetrics.Bottom * prop))*)
     (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
-    let fontPos       = Point(region.X, baseline)
+    let fontPos = SKPoint(region.Left, baseline)
 
     let skia = ctx :?> ISkiaDrawingContextImpl
 
     //lol wat??
     //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
 
-    skia.SkCanvas.DrawRect(region.ToSKRect(), bg)
+    skia.SkCanvas.DrawRect(region, bg)
     if not <| String.IsNullOrWhiteSpace text then
         if shaper.IsSome then
             skia.SkCanvas.DrawShapedText(shaper.Value, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
         else 
-            skia.SkCanvas.DrawText(text.TrimEnd(), fontPos.ToSKPoint(), fg)
+            skia.SkCanvas.DrawText(text.TrimEnd(), fontPos, fg)
 
 
     // Text bounding box drawing:
@@ -307,11 +309,11 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPain
 
     if underline then
         let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
-        let p1 = fontPos + Point(0.0, float <| underline_pos)
-        let p2 = p1 + Point(region.Width, 0.0)
+        let p1 = fontPos + SKPoint(0.0f, underline_pos)
+        let p2 = p1 + SKPoint(region.Width, 0.0f)
         sp.Style <- SKPaintStyle.Stroke
         //sppaint.StrokeWidth <- sp_thickness
-        skia.SkCanvas.DrawLine(p1.ToSKPoint(), p2.ToSKPoint(), sp)
+        skia.SkCanvas.DrawLine(p1, p2, sp)
 
     if undercurl then
         let underline_pos  = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
