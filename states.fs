@@ -77,7 +77,7 @@ let mutable font_lineheight    = LineHeightOption.Default
 
 // ui
 let mutable ui_available_opts  = Set.empty<string>
-let mutable ui_multigrid       = false
+let mutable ui_multigrid       = true
 let mutable ui_popupmenu       = true
 let mutable ui_tabline         = false
 let mutable ui_cmdline         = false

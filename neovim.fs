@@ -266,9 +266,9 @@ type Nvim() =
         m_call { method = "nvim_input_mouse"; parameters = [| box button; box action; box mods; box grid; box row; box col |] }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
-        (*if ui_multigrid then*)
-            (*m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }*)
-        (*else*)
+        if ui_multigrid then
+            m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
+        else
             m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
