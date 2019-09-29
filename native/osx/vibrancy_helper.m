@@ -20,6 +20,7 @@ void vh_init() {
 
 int32_t vh_add_view(NSView* view) {
     if(!view) {
+        printf("vh_add_view: view is null\n");
         return -1;
     }
 
@@ -30,6 +31,8 @@ int32_t vh_add_view(NSView* view) {
     NSVisualEffectView* vibrantView = [ 
         [NSVisualEffectView alloc] 
             initWithFrame: [[view window] frame]];
+
+    printf("allocated vibrantView: %llx\n", (uint64_t)vibrantView);
 
     [vibrantView setBlendingMode:       NSVisualEffectBlendingModeBehindWindow];
     [vibrantView setAutoresizingMask:   NSViewWidthSizable|NSViewHeightSizable];
@@ -43,6 +46,8 @@ int32_t vh_add_view(NSView* view) {
     s_id_arr[s_arr_size] = viewId;
     s_view_arr[s_arr_size] = vibrantView;
     ++s_arr_size;
+
+    printf("vibrancy OK\n");
 
     return viewId;
 }
