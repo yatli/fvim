@@ -2,6 +2,10 @@
   "profiles": {
     "fvim": {
       "commandName": "Project"
+    },
+    "norc": {
+      "commandName": "Project",
+      "commandLineArgs": "-u NORC"
     }
   }
 }

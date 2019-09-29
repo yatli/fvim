@@ -1,6 +1,6 @@
 namespace FVim
 
-open neovim.def
+open def
 open log
 open common
 open Avalonia.Media.Imaging

@@ -1,8 +1,9 @@
 ﻿namespace FVim
 
-open neovim.def
+open def
 open log
 open common
+open ui
 
 open ReactiveUI
 open Avalonia.Markup.Xaml
@@ -12,6 +13,9 @@ open Avalonia.Interactivity
 open Avalonia
 open Avalonia.Data
 open Avalonia.ReactiveUI
+open System.Runtime.InteropServices
+
+#nowarn "0025"
 
 open System.Runtime.InteropServices
 open System.Runtime
@@ -44,6 +48,13 @@ type MainWindow() as this =
 
         DragDrop.SetAllowDrop(this, true)
 
+        let flushop = 
+            if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+                fun () -> 
+                    let editor: Avalonia.VisualTree.IVisual = this.GetEditor()
+                    editor.InvalidateVisual()
+            else this.InvalidateVisual
+
         this.Watch [
             this.Closing.Subscribe (fun e -> Model.OnTerminating e)
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
@@ -73,6 +84,8 @@ type MainWindow() as this =
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
 
+            Model.Flush |> Observable.subscribe flushop
+
             this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
                 if e.Data.Contains(DataFormats.FileNames) then
                     Model.EditFiles <| e.Data.GetFileNames()
@@ -86,6 +99,9 @@ type MainWindow() as this =
 
         ]
         AvaloniaXamlLoader.Load this
+
+    member this.GetEditor() =
+        this.LogicalChildren.[0] :?> Avalonia.VisualTree.IVisual
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> MainWindowViewModel
@@ -114,4 +130,3 @@ type MainWindow() as this =
                 m_bgcolor <- c.Value
                 configBackground())
         ]
-
