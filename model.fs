@@ -423,6 +423,7 @@ let Start opts =
 
     States.Register.String "background.composition"
     States.Register.Float "background.opacity"
+    States.Register.Float "background.altopacity"
 
 
     List.iter ignore [
@@ -577,6 +578,7 @@ let Start opts =
 
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundOpacity" 1 (sprintf "call rpcnotify(%d, 'background.opacity', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 (sprintf "call rpcnotify(%d, 'background.composition', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundAltOpacity" 1 (sprintf "call rpcnotify(%d, 'background.altopacity', <args>)" myChannel))
 
 
         // trigger ginit upon VimEnter

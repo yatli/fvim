@@ -90,6 +90,7 @@ let mutable ui_hlstate         = false
 // background
 let mutable background_composition = ""
 let mutable background_opacity     = 1.0
+let mutable background_altopacity  = 1.0
 
 [<Literal>]
 let uiopt_rgb            = "rgb"

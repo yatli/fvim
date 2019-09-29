@@ -60,8 +60,11 @@ let GetDrawAttrs hlid =
         bg <- GetReverseColor bg
         sp <- GetReverseColor sp
 
-    if bg = default_bg && (States.background_composition = "acrylic" || States.background_composition = "blur") then
-        bg <- Avalonia.Media.Color(0uy, bg.R, bg.G, bg.B)
+    if (States.background_composition = "acrylic" || States.background_composition = "blur") then
+        let alpha = 
+            if bg = default_bg then 0uy
+            else byte(States.background_altopacity * 255.0)
+        bg <- Avalonia.Media.Color(alpha, bg.R, bg.G, bg.B)
     fg, bg, sp, attrs
 
 
