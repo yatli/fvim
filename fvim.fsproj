@@ -34,6 +34,7 @@
     <Compile Include="shell.fs" />
     <Compile Include="states.fs" />
     <Compile Include="ui.fs" />
+    <Compile Include="theme.fs" />
     <Compile Include="neovim.fs" />
     <Compile Include="model.fs" />
     <Compile Include="ViewModels\ViewModelBase.fs" />

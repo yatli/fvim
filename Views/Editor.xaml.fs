@@ -87,7 +87,7 @@ type Editor() as this =
             | _ -> " "
 
         let font, fontwide, fontsize = grid_vm.GetFontAttrs()
-        let fg, bg, sp, attrs = grid_vm.GetDrawAttrs hlid 
+        let fg, bg, sp, attrs = theme.GetDrawAttrs hlid 
         let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
 
         use fgpaint = new SKPaint()
@@ -129,7 +129,7 @@ type Editor() as this =
         let mutable wc: CharType             = wswidth (!prev).text
         let mutable sym: bool                = isProgrammingSymbol (!prev).text
         let mutable bold = 
-            let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!prev).hlid
+            let _,_,_,hl_attrs = theme.GetDrawAttrs (!prev).hlid
             hl_attrs.bold
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
@@ -153,7 +153,7 @@ type Editor() as this =
                 str <- []
                 if hlidchange then
                     prev <- current
-                    bold <- let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!current).hlid
+                    bold <- let _,_,_,hl_attrs = theme.GetDrawAttrs (!current).hlid
                             in hl_attrs.bold
             str <- mytext :: str
         drawBuffer ctx y x0 (x' + 1) (!prev).hlid str sym

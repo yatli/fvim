@@ -23,7 +23,7 @@ open SkiaSharp
 open FSharp.Control.Tasks.V2
 open System.Runtime.InteropServices
 
-let inline private trace x = FVim.log.trace "neovim.model" x
+let inline private trace x = FVim.log.trace "model" x
 
 [<AutoOpen>]
 module ModelImpl =
@@ -37,8 +37,9 @@ module ModelImpl =
     let add_grid(grid: IGridUI) =
         let id = grid.Id
         grids.[id] <- grid
-        let mutable nl = null
+        let mutable nl: ResizeArray<_> = null
         if pending_msgs.TryGetValue(id, &nl) then
+            trace "add_grid: flushing %d pending redraw events for grid #%d" nl.Count id
             ignore(pending_msgs.Remove id)
             ignore(Dispatcher.UIThread.InvokeAsync(fun () ->
                 Seq.iter grid.Redraw nl))
@@ -47,7 +48,7 @@ module ModelImpl =
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
         | _ ->
-            trace "unicast into non-existing grid #%d" id
+            trace "unicast into non-existing grid #%d: %A" id cmd
             let mutable nl = null
             if not(pending_msgs.TryGetValue(id, &nl)) then
                 nl <- ResizeArray()
@@ -78,30 +79,40 @@ module ModelImpl =
     let redraw cmd = 
         match cmd with
         //  Global
-        | UnknownCommand x     -> trace "unknown command %A" x
-        | GridDestroy id       -> ()
-        | SetTitle title       -> States.SetTitle title
-        | SetIcon icon         -> trace "icon: %s" icon // TODO
-        | Bell                 -> bell true
-        | VisualBell           -> bell false
-        | Flush                -> ev_flush.Trigger()
+        | UnknownCommand x                 -> trace "unknown command %A" x
+        | GridDestroy id                   -> trace "GridDestroy %d" id //TODO
+        | SetTitle title                   -> States.SetTitle title
+        | SetIcon icon                     -> trace "icon: %s" icon // TODO
+        | Bell                             -> bell true
+        | VisualBell                       -> bell false
+        | Flush                            -> ev_flush.Trigger()
+        | HighlightAttrDefine hls          -> theme.hiattrDefine hls
+        | SemanticHighlightGroupSet groups -> theme.setSemanticHighlightGroups groups
+        | DefaultColorsSet(fg,bg,sp,_,_)   -> theme.setDefaultColors fg bg sp
+        | SetOption opts                   -> Array.iter theme.setOption opts
+        | ModeInfoSet(cs_en, info)         -> theme.setModeInfo cs_en info
         //  Broadcast
         | PopupMenuShow _       | PopupMenuSelect _             | PopupMenuHide _
-        | SetOption _           | Busy _                        | Mouse _
-        | Flush
-        | HighlightAttrDefine _ | SemanticHighlightGroupSet _   | DefaultColorsSet _
-        | ModeInfoSet _         | ModeChange _
+        | Busy _                | Mouse _
+        | ModeChange _          | Flush
             ->  broadcast cmd
         | GridCursorGoto(id,_,_) 
             -> broadcast_save id cmd
         //  Unicast
-        | GridResize(id,_,_)    | GridClear id                  | GridScroll(id,_,_,_,_,_,_) 
+        | GridClear id          | GridScroll(id,_,_,_,_,_,_)    | WinPos(id, _, _, _, _, _)
+        | MsgSetPos(id, _, _, _)
             -> unicast id cmd
+        | GridResize(id, c, r) 
+            -> if not(grids.ContainsKey id) then
+                 // by default add to grid #1
+                 grids.[1].AddChild id r c
+                 |> add_grid
+                else
+                 unicast id cmd
         | GridLine lines -> 
             lines 
             |> Array.groupBy (fun (line: GridLine) -> line.grid)
             |> Array.iter (fun (id, lines) -> unicast id (GridLine lines))
-        | WinPos(grid, win, startrow, startcol, w, h) -> unicast 1 cmd
         | x -> trace "unimplemented command: %A" x
 
     let onGridResize(gridui: IGridUI) =

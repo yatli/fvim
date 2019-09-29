@@ -123,6 +123,7 @@ type IGridUI =
     abstract Input: IEvent<int*InputEvent>
     abstract HasChildren: bool
     abstract Redraw: RedrawCommand -> unit
+    abstract AddChild: int -> int -> int -> IGridUI
 
 open System.Runtime.InteropServices
 

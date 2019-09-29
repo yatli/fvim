@@ -5,10 +5,17 @@ open Avalonia
 open Avalonia.Controls
 open System
 
-type MainWindowViewModel(cfg: config.ConfigObject.Workspace option) as this =
+/// <summary>
+/// A MainWindow is a top-level container that holds a main grid as the root.
+/// Other grids may be anchored to the main grid as children.
+/// </summary>
+type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: EditorViewModel) as this =
     inherit ViewModelBase(Some 300.0, Some 300.0, Some 800.0, Some 600.0)
 
-    let mainGrid = EditorViewModel(1)
+    let mainGrid = 
+        if _maingrid.IsNone then EditorViewModel(1)
+        else _maingrid.Value
+
     let mutable m_windowState = WindowState.Normal
 
     do
