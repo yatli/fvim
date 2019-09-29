@@ -64,15 +64,25 @@ let main(args: string[]) =
     let _ = builder.SetupWithoutStarting()
     // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
-    try
-        Model.Start opts
-    with ex -> ()
-    let cfg = config.load()
-    let cwd = Environment.CurrentDirectory |> Path.GetFullPath
-    let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
-    let mainwin = new MainWindowViewModel(workspace)
-    lifetime.MainWindow <- MainWindow(DataContext = mainwin)
-    let ret = lifetime.Start(args)
+    let model_start = 
+        try 
+            Model.Start opts
+            Ok()
+        with ex -> Error ex
 
-    config.save cfg (int mainwin.X) (int mainwin.Y) mainwin.Width mainwin.Height mainwin.WindowState
-    ret
+    match model_start with
+    | Ok() ->
+        let cfg = config.load()
+        let cwd = Environment.CurrentDirectory |> Path.GetFullPath
+        let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
+        let mainwin = new MainWindowViewModel(workspace)
+        lifetime.MainWindow <- MainWindow(DataContext = mainwin)
+        let ret = lifetime.Start(args)
+
+        config.save cfg (int mainwin.X) (int mainwin.Y) mainwin.Width mainwin.Height mainwin.WindowState
+        ret
+    | Error ex ->
+        let crash = new CrashReportViewModel(ex)
+        lifetime.MainWindow <- new CrashReport(DataContext = crash)
+        ignore <| lifetime.Start(args)
+        -1
