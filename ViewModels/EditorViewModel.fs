@@ -125,7 +125,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     let cursorGoto id row col =
         m_cursor_vm.ingrid <- (id = GridId)
-        this.setCursorEnabled((id = GridId))
         if id = GridId then
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
