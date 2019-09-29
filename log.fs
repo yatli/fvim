@@ -13,7 +13,8 @@ let private _logsPub     = _logsSource.Publish |> Observable.map (fun (a,b) -> s
 let private _logsESource = Event<string*string>()
 let private _logsEPub    = _logsESource.Publish |> Observable.map (fun (a,b) -> sprintf "error: %s: %s" a b)
 
-let private _logsSink    = Observable.merge _logsPub _logsEPub |> Observable.filter(fun x -> _filter x) 
+let private _logsSink    = Observable.merge _logsPub _logsEPub 
+                           |> Observable.filter(fun x -> _filter x) 
 
 let mutable private _n_logsSink = 0
 

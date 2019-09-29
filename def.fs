@@ -1,13 +1,12 @@
-﻿module FVim.neovim.def
+﻿module FVim.def
 
 open FVim.log
 open FVim.common
-open FVim.States
 
 open Avalonia.Media
 open System.Collections.Generic
 
-let inline private trace fmt = trace "neovim.def" fmt
+let inline private trace fmt = trace "def" fmt
 
 [<Struct>]
 type CursorShape =
@@ -276,6 +275,18 @@ type RedrawCommand =
 | WinScrollOverReset
 ///  Close the window
 | WinClose of grid: int
+///  Display messages on `grid`.  The grid will be displayed at `row` on the
+///  default grid (grid=1), covering the full column width. `scrolled`
+///  indicates whether the message area has been scrolled to cover other
+///  grids. It can be useful to draw a separator then ('display' msgsep
+///  flag). The Builtin TUI draws a full line filled with `sep_char` and
+///  |hl-MsgSeparator| highlight.
+///  
+///  When |ext_messages| is active, no message grid is used, and this event
+///  will not be sent.
+| MsgSetPos of grid: int * row: int *  scrolled: bool * sep_char: string
+
+///  Set message position
 ///  -- popupmenu events --
 ///  Show |popupmenu-completion|. `items` is an array of completion items
 ///  to show; each item is an array of the form [word, kind, menu, info] as
@@ -547,6 +558,9 @@ let parse_redrawcmd (x: obj) =
     | C("win_scroll_over_start", _)                                                        -> WinScrollOverStart
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C1("win_close", [| (Integer32 grid) |])                                              -> WinClose(grid)
+    | C1("msg_set_pos", [| 
+        (Integer32 grid); (Integer32 row)
+        (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)
     | C1("popupmenu_show", [|
         P(parse_complete_item)items; (Integer32 selected); 
         (Integer32 row); (Integer32 col); (Integer32 grid) |])                             -> PopupMenuShow(items, selected, row, col, grid)

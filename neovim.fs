@@ -1,10 +1,10 @@
-module FVim.neovim.proc
+module FVim.neovim
 
 open def
-open FVim.getopt
-open FVim.log
-open FVim.common
-open FVim.States
+open getopt
+open log
+open common
+open States
 
 open MessagePack
 
@@ -121,7 +121,9 @@ type Nvim() =
                    | :? System.IO.IOException
                    | :? System.Net.Sockets.SocketException
                    | :? ObjectDisposedException
-                       -> ex <- true
+                       as _ex -> 
+                           ex <- true
+                           trace "exception: %O" _ex
 
                 let ec = serverExitCode()
                 if ec.IsSome then
@@ -252,17 +254,22 @@ type Nvim() =
         this.events
         |> Observable.observeOnContext ctx
         |> Observable.synchronize
-        |> Observable.subscribe        fn
+        |> Observable.subscribe fn
         |> this.pushSubscription
 
     //  ========================== NeoVim API ===============================
 
-    member __.input (keys: string[]) =
-        let keys = Array.map (fun x -> box x) keys
-        m_call { method = "nvim_input"; parameters = keys }
+    member __.input (key: string) =
+        m_call { method = "nvim_input"; parameters = [| box key |] }
+
+    member __.input_mouse (button: string) (action: string) (mods: string) (grid: int) (row: int) (col: int)  =
+        m_call { method = "nvim_input_mouse"; parameters = [| box button; box action; box mods; box grid; box row; box col |] }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
-        m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
+        if ui_multigrid then
+            m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
+        else
+            m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
         let opts = hashmap [

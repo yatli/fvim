@@ -1,8 +1,9 @@
 ﻿namespace FVim
 
-open neovim.def
+open def
 open log
 open common
+open ui
 
 open ReactiveUI
 open Avalonia.Markup.Xaml
@@ -12,12 +13,17 @@ open Avalonia.Interactivity
 open Avalonia
 open Avalonia.Data
 open Avalonia.ReactiveUI
+open System.Runtime.InteropServices
+
+#nowarn "0025"
 
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()
 
     static let XProp = AvaloniaProperty.Register<MainWindow,int>("PosX")
     static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
+
+    let m_input_ev = Event<InputEvent>()
 
     do
         #if DEBUG
@@ -26,6 +32,13 @@ type MainWindow() as this =
         #endif
 
         DragDrop.SetAllowDrop(this, true)
+
+        let flushop = 
+            if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+                fun () -> 
+                    let editor: Avalonia.VisualTree.IVisual = this.GetEditor()
+                    editor.InvalidateVisual()
+            else this.InvalidateVisual
 
         this.Watch [
             this.Closing.Subscribe (fun e -> Model.OnTerminating e)
@@ -36,6 +49,8 @@ type MainWindow() as this =
             States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
+
+            Model.Flush |> Observable.subscribe flushop
 
             this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
                 if e.Data.Contains(DataFormats.FileNames) then
@@ -50,6 +65,9 @@ type MainWindow() as this =
 
         ]
         AvaloniaXamlLoader.Load this
+
+    member this.GetEditor() =
+        this.LogicalChildren.[0] :?> Avalonia.VisualTree.IVisual
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> MainWindowViewModel
@@ -73,4 +91,3 @@ type MainWindow() as this =
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
         ]
-

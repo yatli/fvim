@@ -16,6 +16,7 @@ open System
 open System.IO
 open getopt
 open Shell
+open MessagePack.Formatters
 
 // Avalonia configuration, don't remove; also used by visual designer.
 [<CompiledName "BuildAvaloniaApp">]
@@ -30,6 +31,33 @@ let buildAvaloniaApp() =
         .With(new MacOSPlatformOptions(ShowInDock=true))
         .LogToDebug()
 
+type MsgPackFormatter(resolver: IFormatterResolver) = 
+    let m_formatter = resolver.GetFormatter<obj>()
+    interface IMessagePackFormatter<obj> with
+        member this.Serialize(bytes: byref<byte []>, offset: int, value: obj, formatterResolver: IFormatterResolver): int = 
+            m_formatter.Serialize(&bytes, offset, value, formatterResolver)
+        member x.Deserialize(bytes: byte[] , offset: int, formatterResolver: IFormatterResolver , readSize: byref<int>) =
+            if MessagePackBinary.GetMessagePackType(bytes, offset) = MessagePackType.Extension then
+                let result = MessagePackBinary.ReadExtensionFormat(bytes, offset, &readSize)
+                if result.TypeCode = 1y then 
+                    let mutable _size = 0
+                    m_formatter.Deserialize(result.Data, 0, formatterResolver, &_size)
+                else 
+                    m_formatter.Deserialize(bytes, offset, formatterResolver, &readSize)
+            else
+                m_formatter.Deserialize(bytes, offset, formatterResolver, &readSize)
+
+type MsgPackResolver() =
+    static let s_formatter = box(MsgPackFormatter(MessagePack.Resolvers.StandardResolver.Instance))
+    static let s_resolver = MessagePack.Resolvers.StandardResolver.Instance
+    interface IFormatterResolver with
+        member x.GetFormatter<'a>() =
+            if typeof<'a> = typeof<obj> then
+                s_formatter :?> IMessagePackFormatter<'a>
+            else
+                s_resolver.GetFormatter<'a>()
+
+
 [<EntryPoint>]
 [<CompiledName "Main">]
 let main(args: string[]) =
@@ -37,10 +65,12 @@ let main(args: string[]) =
     let _ = Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
 
     CompositeResolver.RegisterAndSetAsDefault(
-        ImmutableCollectionResolver.Instance,
-        FSharpResolver.Instance,
-        StandardResolver.Instance
+        MsgPackResolver()
+    //  ImmutableCollectionResolver.Instance,
+    //  FSharpResolver.Instance,
+    //  StandardResolver.Instance
     )
+
     AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
         let filename = Path.Combine(config.configdir, sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")))
         use dumpfile = new StreamWriter(filename)

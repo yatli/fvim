@@ -25,7 +25,6 @@ type Editor() as this =
 
     static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
-    let mutable m_render_queued = false
     let mutable m_saved_size  = Size(100.0,100.0)
     let mutable m_saved_pos   = PixelPoint(300, 300)
     let mutable m_saved_state = WindowState.Normal
@@ -88,7 +87,7 @@ type Editor() as this =
             | _ -> " "
 
         let font, fontwide, fontsize = grid_vm.GetFontAttrs()
-        let fg, bg, sp, attrs = grid_vm.GetDrawAttrs hlid 
+        let fg, bg, sp, attrs = theme.GetDrawAttrs hlid 
         let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
 
         use fgpaint = new SKPaint()
@@ -130,7 +129,7 @@ type Editor() as this =
         let mutable wc: CharType             = wswidth (!prev).text
         let mutable sym: bool                = isProgrammingSymbol (!prev).text
         let mutable bold = 
-            let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!prev).hlid
+            let _,_,_,hl_attrs = theme.GetDrawAttrs (!prev).hlid
             hl_attrs.bold
         //  in each line we do backward rendering.
         //  the benefit is that the italic fonts won't be covered by later drawings
@@ -154,7 +153,7 @@ type Editor() as this =
                 str <- []
                 if hlidchange then
                     prev <- current
-                    bold <- let _,_,_,hl_attrs = grid_vm.GetDrawAttrs (!current).hlid
+                    bold <- let _,_,_,hl_attrs = theme.GetDrawAttrs (!current).hlid
                             in hl_attrs.bold
             str <- mytext :: str
         drawBuffer ctx y x0 (x' + 1) (!prev).hlid str sym
@@ -185,12 +184,6 @@ type Editor() as this =
             fn viewModel
         | _ -> Unchecked.defaultof<_>
 
-    let redraw tick =
-        if not m_render_queued then
-            trace "render tick %d" tick
-            m_render_queued <- true
-            this.InvalidateVisual()
-
     let findChildEditor (vm: obj) =
         this.Children |> Seq.tryFind(fun x -> x.DataContext = vm)
 
@@ -198,7 +191,6 @@ type Editor() as this =
         grid_vm <- vm
         trace "viewmodel connected"
         vm.Watch [
-            vm.ObservableForProperty(fun x -> x.RenderTick).Subscribe(fun tick -> redraw <| tick.GetValue())
             vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.merge
                 (vm.ObservableForProperty(fun x -> x.BufferWidth))
@@ -302,7 +294,6 @@ type Editor() as this =
             (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
         (*trace "base rendering"*)
         base.Render ctx
-        m_render_queued <- false
         (*trace "render end"*)
 
     override this.MeasureOverride(size) =

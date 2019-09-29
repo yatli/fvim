@@ -4,7 +4,7 @@ open common
 open log
 open ui
 open wcwidth
-open neovim.def
+open def
 
 open ReactiveUI
 open Avalonia
@@ -23,8 +23,10 @@ open System.Reactive.Disposables
 open SkiaSharp
 open System.Runtime.InteropServices
 
-type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_glyphsize: Size, ?_measuredsize: Size, ?_fontsize: float, ?_gridscale: float,
-                     ?_hldefs: HighlightAttr[], ?_modedefs: ModeInfo[], ?_guifont: string, ?_guifontwide: string, ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
+#nowarn "0025"
+
+type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
+                     ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
     let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
@@ -33,41 +35,25 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let m_popupmenu_vm           = new PopupMenuViewModel()
     let m_child_grids            = ObservableCollection<EditorViewModel>()
     let m_resize_ev              = Event<IGridUI>()
-    let m_input_ev               = Event<int*InputEvent>()
-    let m_hlchange_ev            = Event<unit>()
-    let m_tick_ev                = Event<unit>()
+    let m_input_ev               = Event<int * InputEvent>()
 
     let mutable m_busy           = false
-
     let mutable m_mouse_en       = true
     let mutable m_mouse_pressed  = MouseButton.None
     let mutable m_mouse_pos      = 0,0
-
-    let mutable m_default_fg     = Colors.White
-    let mutable m_default_bg     = Colors.Black
-    let mutable m_default_sp     = Colors.Red
-
-    let mutable m_hi_defs        = match _hldefs with
-                                     | None -> Array.create<HighlightAttr> 256 HighlightAttr.Default
-                                     | Some arr -> arr.Clone() :?> HighlightAttr[]
-    let mutable m_mode_defs      = match _modedefs with
-                                     | None -> Array.empty<ModeInfo>
-                                     | Some arr -> arr.Clone() :?> ModeInfo[]
-    let mutable m_semhl          = Map.empty
-
-    let mutable m_guifont        = _d DefaultFont     _guifont
-    let mutable m_guifontwide    = _d DefaultFontWide _guifontwide
-    let mutable m_fontsize       = _d 16.0 _fontsize
-    let mutable m_glyphsize      = _d (Size(10.0, 10.0)) _glyphsize
 
     let mutable m_gridsize       = _d { rows = 10; cols= 10 } _gridsize
     let mutable m_gridscale      = _d 1.0 _gridscale
     let mutable m_gridfullscreen = false
     let mutable m_gridbuffer     = Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
     let mutable m_griddirty      = GridRegion()
+    let mutable m_fontsize       = theme.fontsize
+    let mutable m_glyphsize      = Size(10.0, 10.0)
 
     let mutable m_fb_h           = 10.0
     let mutable m_fb_w           = 10.0
+
+    let raiseInputEvent e = m_input_ev.Trigger(GridId, e)
 
     let toggleFullScreen(gridid: int) =
         if gridid = GridId then
@@ -82,77 +68,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let markAllDirty () =
         m_griddirty.Clear()
         m_griddirty.Union{ row = 0; col = 0; height = m_gridsize.rows; width = m_gridsize.cols }
-
-    let flush() = 
-        trace "flush."
-        this.RenderTick <- this.RenderTick + 1
-
-    let fontConfig() =
-        m_fontsize <- max m_fontsize 1.0
-        // It turns out the space " " advances farest...
-        // So we measure it as the width.
-        let s, w, h = MeasureText(" ", m_guifont, m_guifontwide, m_fontsize, m_gridscale)
-        m_glyphsize <- Size(w, h)
-        m_fontsize <- s
-
-        trace "fontConfig: guifont=%s guifontwide=%s size=%A" m_guifont m_guifontwide m_glyphsize
-        // sync font to cursor vm
-        this.cursorConfig()
-        // sync font to popupmenu vm
-        m_popupmenu_vm.SetFont(m_guifont, m_fontsize)
-        markAllDirty()
-        m_resize_ev.Trigger(this)
-
-    let setHighlight x =
-        if m_hi_defs.Length < x.id + 1 then
-            Array.Resize(&m_hi_defs, x.id + 100)
-        m_hi_defs.[x.id] <- x
-        if x.id = 0 then
-            m_default_fg <- x.rgb_attr.foreground.Value
-            m_default_bg <- x.rgb_attr.background.Value
-            m_default_sp <- x.rgb_attr.special.Value
-            this.RaisePropertyChanged("BackgroundBrush")
-        m_hlchange_ev.Trigger()
-
-    let setSemanticHighlightGroups grp =
-        m_semhl <- grp
-        // update popupmenu color
-        let [ nfg, nbg, _, _
-              sfg, sbg, _, _
-              scfg, scbg, _, _
-              _, bbg, _, _ ] = 
-            [
-                SemanticHighlightGroup.Pmenu
-                SemanticHighlightGroup.PmenuSel
-                SemanticHighlightGroup.PmenuSbar
-                SemanticHighlightGroup.VertSplit
-            ] 
-            |> List.map (m_semhl.TryFind >> Option.defaultValue 1 >> this.GetDrawAttrs)
-
-        m_popupmenu_vm.SetColors(nfg, nbg, sfg, sbg, scfg, scbg, bbg)
-
-    let setDefaultColors fg bg sp = 
-
-        let bg = 
-            if fg = bg && bg = sp then GetReverseColor bg
-            else bg
-
-        setHighlight {
-            id = 0
-            info = [||]
-            cterm_attr = RgbAttr.Empty
-            rgb_attr = { 
-                foreground = Some fg
-                background = Some bg
-                special = Some sp
-                reverse = false
-                italic = false
-                bold = false
-                underline = false
-                undercurl = false
-            }
-        }
-        trace "setDefaultColors: %A %A %A" fg bg sp
 
     let clearBuffer () =
         m_gridbuffer <- Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
@@ -202,30 +117,22 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             hlid <- m_gridbuffer.[row, col].hlid
             col <- col - 1
             ligature <- isProgrammingSymbol m_gridbuffer.[row, col].text
-            italic <- m_hi_defs.[hlid].rgb_attr.italic 
+            italic <- theme.hi_defs.[hlid].rgb_attr.italic 
         let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
         
 
         markDirty dirty
 
-    let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
-        m_mode_defs <- info
-        this.setCursorEnabled cs_en
-
     let cursorGoto id row col =
         m_cursor_vm.ingrid <- (id = GridId)
-        m_cursor_vm.row <- row
-        m_cursor_vm.col <- col
+        if id = GridId then
+            m_cursor_vm.row <- row
+            m_cursor_vm.col <- col
         this.cursorConfig()
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
         this.cursorConfig()
-
-    let bell (visual: bool) =
-        // TODO
-        trace "neovim: bell: %A" visual
-        ()
 
     let setBusy (v: bool) =
         trace "neovim: busy: %A" v
@@ -233,7 +140,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         this.setCursorEnabled <| not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
         //else this.Cursor <- Cursor(StandardCursorType.Arrow)
-        //flush()
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -290,61 +196,22 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         then
             this.cursorConfig()
 
-    let setOption (opt: UiOption) = 
-        trace "setOption: %A" opt
-
-        let (|FN|_|) (x: string) =
-            // try to parse with 'font\ name:hNN'
-            match x.Split(':') with
-            | [|name; size|] when size.Length > 0 && size.[0] = 'h' -> Some(name.Trim('\'', '"'), size.Substring(1).TrimEnd('\'','"') |> float)
-            | _ -> None
-
-        let mutable config_font = true
-
-        match opt with
-        | Guifont(FN(name, sz))             -> m_guifont     <- name; m_fontsize <- sz
-        | GuifontWide(FN(name, sz))         -> m_guifontwide <- name; m_fontsize <- sz
-        | Guifont("+") | GuifontWide("+")   -> m_fontsize    <- m_fontsize + 1.0
-        | Guifont("-") | GuifontWide("-")   -> m_fontsize    <- m_fontsize - 1.0
-        | Guifont(".+") | GuifontWide(".+") -> m_fontsize    <- m_fontsize + 0.1
-        | Guifont(".-") | GuifontWide(".-") -> m_fontsize    <- m_fontsize - 0.1
-        | _                                 -> config_font  <- false
-
-        if config_font then fontConfig()
-
     let setMouse (en:bool) =
         m_mouse_en <- en
 
-    let hiattrDefine (hls: HighlightAttr[]) =
-        Array.iter setHighlight hls
-
-    let setWinPos grid win startrow startcol w h =
-        trace "setWinPos: grid = %A, win = %A, startrow = %A, startcol = %A, w = %A, h = %A" grid win startrow startcol w h
-        let existing =  m_child_grids 
-                     |> Seq.indexed
-                     |> Seq.tryPick (function | (i, a) when (a :> IGridUI).Id = grid  -> Some(i, a)
-                                              | _ -> None)
-        let origin: Point = this.GetPoint startrow startcol
-        let child_size    = this.GetPoint h w
-        trace "setWinPos: child will be positioned at %A" origin
-        match existing with
-        | Some(i, child) -> 
-            (* manually resize and position the child grid as per neovim docs *)
-            trace "setWinPos: update parameters: h = %d w = %d X = %f Y = %f" h w origin.X origin.Y
-            child.initBuffer h w
-            child.X <- origin.X
-            child.Y <- origin.Y
-        | None -> 
-            let child = new EditorViewModel(
-                            grid, this, {rows=h; cols=w}, m_glyphsize, 
-                            Size(child_size.X, child_size.Y), m_fontsize, m_gridscale, m_hi_defs, m_mode_defs, 
-                            m_guifont, m_guifontwide, m_cursor_vm.modeidx, origin.X, origin.Y)
-            m_child_grids.Add child
-            //let wnd = Window()
-            //wnd.Height  <- child_size.Y
-            //wnd.Width   <- child_size.X
-            //wnd.Content <- anchor.child
-            //wnd.Show()
+    let setWinPos startrow startcol r c =
+        let parent = 
+            match parent with
+            | Some p -> p
+            | None -> failwith "setWinPos: no parent"
+        let grid = GridId
+        trace "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
+        (* manually resize and position the child grid as per neovim docs *)
+        let origin: Point = parent.GetPoint startrow startcol
+        trace "setWinPos: update parameters: c = %d r = %d X = %f Y = %f" c r origin.X origin.Y
+        this.initBuffer r c
+        this.X <- origin.X
+        this.Y <- origin.Y
 
     let hidePopupMenu() =
         m_popupmenu_vm.Show <- false
@@ -382,49 +249,50 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_popupmenu_vm.Show <- true
 
     let redraw(cmd: RedrawCommand) =
+        //trace "%A" cmd
         match cmd with
-        | UnknownCommand x                                                   -> trace "unknown command %A" x
-        | HighlightAttrDefine hls                                            -> hiattrDefine hls
-        | SemanticHighlightGroupSet groups                                   -> setSemanticHighlightGroups groups
-        | DefaultColorsSet(fg,bg,sp,_,_)                                     -> setDefaultColors fg bg sp
-        | ModeInfoSet(cs_en, info)                                           -> setModeInfo cs_en info
-        | ModeChange(name, index)                                            -> changeMode name index
-        | GridResize(id, w, h) when id = GridId                              -> this.initBuffer h w
-        | GridClear id when id = GridId                                      -> clearBuffer()
-        | GridLine lines                                                     -> Array.iter (fun (line: GridLine) -> if line.grid = GridId then putBuffer line) lines
+        | GridResize(_, c, r)                                                -> this.initBuffer r c
+        | GridClear _                                                        -> clearBuffer()
+        | GridLine lines                                                     -> Array.iter putBuffer lines
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
-        | GridDestroy id when id = GridId                                    -> ()
-        | GridScroll(id, top,bot,left,right,rows,cols) when id = GridId      -> scrollBuffer top bot left right rows cols
-        | Flush                                                              -> m_tick_ev.Trigger()
-        | Bell                                                               -> bell false
-        | VisualBell                                                         -> bell true
+        | GridScroll(_, top,bot,left,right,rows,cols)                        -> scrollBuffer top bot left right rows cols
+        | ModeChange(name, index)                                            -> changeMode name index
         | Busy is_busy                                                       -> setBusy is_busy
-        | SetTitle title                                                     -> States.SetTitle title
-        | SetIcon icon                                                       -> trace "icon: %s" icon // TODO
-        | SetOption opts                                                     -> Array.iter setOption opts
         | Mouse en                                                           -> setMouse en
-        | WinPos(grid, win, startrow, startcol, w, h) when GridId = 1        -> setWinPos grid win startrow startcol w h
+        | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c
+        | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 1 m_gridsize.cols
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | x -> trace "unimplemented command: %A" x
 
-    let raiseInputEvent e =
-        m_input_ev.Trigger(GridId, e)
+    let fontConfig() =
+        // It turns out the space " " advances farest...
+        // So we measure it as the width.
+        let s, w, h = MeasureText(" ", theme.guifont, theme.guifontwide, theme.fontsize, m_gridscale)
+        m_glyphsize <- Size(w, h)
+        m_fontsize <- s
+        trace "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
 
+        // sync font to cursor vm
+        this.cursorConfig()
+        // sync font to popupmenu vm
+        m_popupmenu_vm.SetFont(theme.guifont, theme.fontsize)
+        markAllDirty()
+        m_resize_ev.Trigger(this)
+
+    let hlConfig(id) =
+        if id = 0 then
+            this.RaisePropertyChanged("BackgroundBrush")
+        markAllDirty()
+
+    let pumConfig colors =
+        m_popupmenu_vm.SetColors colors
     do
-        let fg,bg,sp,_ = this.GetDrawAttrs 0
-        m_default_bg <- bg
-        m_default_fg <- fg
-        m_default_sp <- sp
         fontConfig()
-
-        let tick_throttle =
-            if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
-            else Observable.throttle(TimeSpan.FromMilliseconds 10.0)
+        this.setCursorEnabled theme.cursor_enabled
 
         this.Watch [
-            Model.Redraw (Array.iter redraw)
 
             m_popupmenu_vm.ObservableForProperty(fun x -> x.Selection)
             |> Observable.subscribe (fun x -> selectPopupMenuActive <| x.GetValue())
@@ -432,14 +300,19 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_popupmenu_vm.Commit
             |> Observable.subscribe commitPopupMenu
 
-            m_hlchange_ev.Publish 
-            |> Observable.throttle(TimeSpan.FromMilliseconds 100.0) 
-            |> Observable.subscribe markAllDirty
+            theme.hlchange_ev.Publish 
+            |> Observable.subscribe hlConfig 
 
-            m_tick_ev.Publish
-            |> tick_throttle
-            |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
-            |> Observable.subscribe flush
+            theme.fontconfig_ev.Publish
+            |> Observable.subscribe fontConfig
+
+            theme.cursoren_ev.Publish
+            |> Observable.subscribe (fun en ->
+                if m_cursor_vm.ingrid then 
+                    this.setCursorEnabled en)
+
+            theme.pumconfig_ev.Publish
+            |> Observable.subscribe pumConfig
 
             States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
             States.Register.Watch "font" fontConfig
@@ -457,21 +330,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.MarkAllDirty() = markAllDirty()
 
     member __.GetFontAttrs() =
-        m_guifont, m_guifontwide, m_fontsize
-
-    member __.GetDrawAttrs hlid = 
-        let attrs = m_hi_defs.[hlid].rgb_attr
-
-        let mutable fg = Option.defaultValue m_default_fg attrs.foreground
-        let mutable bg = Option.defaultValue m_default_bg attrs.background
-        let mutable sp = Option.defaultValue m_default_sp attrs.special
-
-        if attrs.reverse then
-            fg <- GetReverseColor fg
-            bg <- GetReverseColor bg
-            sp <- GetReverseColor sp
-
-        fg, bg, sp, attrs
+        theme.guifont, theme.guifontwide, m_fontsize
 
 
     member private __.initBuffer nrow ncol =
@@ -486,6 +345,12 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         member __.Resized = m_resize_ev.Publish
         member __.Input = m_input_ev.Publish
         member __.HasChildren = m_child_grids.Count <> 0
+        member __.Redraw cmd = redraw cmd
+        member __.AddChild id r c =
+            let child_size = this.GetPoint r c
+            let child = new EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
+            m_child_grids.Add child
+            child :> IGridUI
 
     member __.markClean = m_griddirty.Clear
 
@@ -494,13 +359,13 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         Point(double(col) * m_glyphsize.Width, double(row) * m_glyphsize.Height)
 
     member __.cursorConfig() =
-        if m_mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
+        if theme.mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
         elif m_gridbuffer.GetLength(0) <= m_cursor_vm.row || m_gridbuffer.GetLength(1) <= m_cursor_vm.col then ()
         else
-        let mode              = m_mode_defs.[m_cursor_vm.modeidx]
+        let mode              = theme.mode_defs.[m_cursor_vm.modeidx]
         let hlid              = m_gridbuffer.[m_cursor_vm.row, m_cursor_vm.col].hlid
         let hlid              = Option.defaultValue hlid mode.attr_id
-        let fg, bg, sp, attrs = this.GetDrawAttrs hlid
+        let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
         let origin            = this.GetPoint m_cursor_vm.row m_cursor_vm.col
         let text              = m_gridbuffer.[m_cursor_vm.row, m_cursor_vm.col].text
         let text_type         = wswidth text
@@ -515,8 +380,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         // do not use the default colors for cursor
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
-        m_cursor_vm.typeface       <- m_guifont
-        m_cursor_vm.wtypeface      <- m_guifontwide
+        m_cursor_vm.typeface       <- theme.guifont
+        m_cursor_vm.wtypeface      <- theme.guifontwide
         m_cursor_vm.fontSize       <- m_fontsize
         m_cursor_vm.text           <- text
         m_cursor_vm.fg             <- fg
@@ -561,7 +426,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             m_gridscale <- v
 
     member __.BackgroundBrush
-        with get(): SolidColorBrush = SolidColorBrush(m_default_bg)
+        with get(): SolidColorBrush = SolidColorBrush(theme.default_bg)
 
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w
@@ -588,33 +453,32 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
-        raiseInputEvent <| InputEvent.Key(e.Modifiers, e.Key)
+        raiseInputEvent <| InputEvent.Key(e.KeyModifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             m_mouse_pressed <- e.MouseButton
-            raiseInputEvent <| InputEvent.MousePress(e.InputModifiers, y, x, e.MouseButton, e.ClickCount)
+            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, e.MouseButton, e.ClickCount)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             m_mouse_pressed <- MouseButton.None
-            raiseInputEvent <| InputEvent.MouseRelease(e.InputModifiers, y, x, e.MouseButton)
+            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, e.MouseButton)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
-                raiseInputEvent <| InputEvent.MouseDrag(e.InputModifiers, y, x, m_mouse_pressed)
+                raiseInputEvent <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent <| InputEvent.MouseWheel(e.InputModifiers, y, x, dx, dy)
+            raiseInputEvent <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
         raiseInputEvent <| InputEvent.TextInput(e.Text)
-

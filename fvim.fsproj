@@ -30,13 +30,15 @@
     <Compile Include="config.fs" />
     <Compile Include="getopt.fs" />
     <Compile Include="log.fs" />
+    <Compile Include="def.fs" />
     <Compile Include="wcwidth.fs" />
     <Compile Include="shell.fs" />
     <Compile Include="states.fs" />
     <Compile Include="ui.fs" />
-    <Compile Include="neovim\neovim.def.fs" />
-    <Compile Include="neovim\neovim.process.fs" />
+    <Compile Include="theme.fs" />
+    <Compile Include="neovim.fs" />
     <Compile Include="model.fs" />
+    <Compile Include="ViewModels\ViewModelBase.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />
     <Compile Include="ViewModels\CompletionItemViewModel.fs" />
     <Compile Include="ViewModels\PopupMenuViewModel.fs" />
@@ -70,12 +72,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.8.999-cibuild0004079-beta" />
+    <PackageReference Include="Avalonia" Version="0.8.999-cibuild0004313-beta" />
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2019013001" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.8.999-cibuild0004079-beta" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.999-cibuild0004079-beta" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.8.999-cibuild0004313-beta" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.8.999-cibuild0004313-beta" />
     <PackageReference Include="FSharp.Control.Reactive" Version="4.2.0" />
-    <PackageReference Include="FSharp.Data" Version="3.1.1" />
+    <PackageReference Include="FSharp.Data" Version="3.3.2" />
     <PackageReference Include="GitInfo" Version="2.0.20">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
