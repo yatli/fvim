@@ -27,7 +27,7 @@ let buildAvaloniaApp() =
         .UseReactiveUI()
         .With(new Win32PlatformOptions(UseDeferredRendering=false, AllowEglInitialization=true))
         .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=true))
-        .With(new X11PlatformOptions(UseEGL=true, UseGpu=true))
+        .With(new X11PlatformOptions(UseEGL=true, UseGpu=false))
         .With(new MacOSPlatformOptions(ShowInDock=true))
         .LogToDebug()
 

@@ -388,11 +388,43 @@ module internal osx =
     [<DllImport("fvim-ext")>]
     extern int32 vh_add_view(nativeint hwnd);
 
+    if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
+        vh_init()
+
+
+module internal linux =
+    type PropertyMode =
+    | Replace = 0
+    | Prepend = 1
+    | Append = 2
+
+    type AtomType =
+    | XA_ATOM = 4
+    | XA_CARDINAL = 6
+    | XA_STRING = 31
+
+    [<DllImport ("libX11.so.6")>]
+    extern int32 XChangeProperty(
+        nativeint display, 
+        nativeint window, 
+        nativeint property, 
+        nativeint _type, 
+        int32 format, 
+        PropertyMode mode, 
+        nativeint data, 
+        int32 nelements)
+
+    [<DllImport ("libX11.so.6")>]
+    extern nativeint XInternAtom(
+        nativeint display,
+        string atomName,
+        bool onlyIfExists)
+
+
+
 open win32
 open osx
-
-if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
-    vh_init()
+open linux
 
 type WindowBackgroundComposition =
     | SolidBackground of color: Color
@@ -442,12 +474,39 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
             win.Background <- SolidColorBrush(c)
             ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)
     elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+
+        let x11win = win.PlatformImpl
+        let x11win_type = x11win.GetType()
+
+        let x11info_field = x11win_type.GetField("_x11", BindingFlags.NonPublic ||| BindingFlags.Instance)
+        let x11info_type = x11info_field.FieldType
+        let x11info = x11info_field.GetValue(x11win)
+
+        let x11display_field = x11info_type.GetProperty("Display")
+        let x11display_handle = x11display_field.GetValue(x11info) :?> nativeint
+        let x11win_handle = x11win.Handle.Handle
+
+        let blur_atom = XInternAtom(x11display_handle, "_KDE_NET_WM_BLUR_BEHIND_REGION", false)
+        let blur_param = [|0; 0; 1920; 1080|]
+
+        trace "ui" "blur_atom = %A" blur_atom
+        use pblur_param = fixed blur_param
+
+        ignore <| XChangeProperty(
+            x11display_handle, 
+            x11win_handle, 
+            blur_atom, 
+            nativeint AtomType.XA_CARDINAL, 
+            32, 
+            PropertyMode.Replace, 
+            NativeInterop.NativePtr.toNativeInt pblur_param,
+            4)
+
         match composition with
         | SolidBackground c ->
             win.Background <- SolidColorBrush(c)
         | GaussianBlur(op, c)
         | AdvancedBlur(op, c) ->
-            (*let c = Color(byte(op * 255.0), c.R, c.G, c.B)*)
-            let c = Color(0uy,0uy,0uy,0uy)
+            let c = Color(byte(op * 255.0), c.R, c.G, c.B)
             win.Background <- SolidColorBrush(c)
             (*ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)*)
