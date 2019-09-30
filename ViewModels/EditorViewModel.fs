@@ -288,6 +288,32 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     let pumConfig colors =
         m_popupmenu_vm.SetColors colors
+
+    let updateMouseButton (pp: PointerPoint) =
+        let k = pp.Properties.PointerUpdateKind
+        match k with
+        | PointerUpdateKind.LeftButtonPressed -> 
+            m_mouse_pressed <- MouseButton.Left
+            m_mouse_pressed
+        | PointerUpdateKind.RightButtonPressed -> 
+            m_mouse_pressed <- MouseButton.Right
+            m_mouse_pressed
+        | PointerUpdateKind.MiddleButtonPressed -> 
+            m_mouse_pressed <- MouseButton.Middle
+            m_mouse_pressed
+        | PointerUpdateKind.LeftButtonReleased -> 
+            m_mouse_pressed <- MouseButton.None
+            MouseButton.Left
+        | PointerUpdateKind.RightButtonReleased -> 
+            m_mouse_pressed <- MouseButton.None
+            MouseButton.Right
+        | PointerUpdateKind.MiddleButtonReleased -> 
+            m_mouse_pressed <- MouseButton.None
+            MouseButton.Middle
+        | _ -> 
+            // unrecognized event, do not update our state
+            MouseButton.None
+
     do
         fontConfig()
         this.setCursorEnabled theme.cursor_enabled
@@ -458,14 +484,14 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
-            m_mouse_pressed <- e.MouseButton
-            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, e.MouseButton, e.ClickCount)
+            let button = updateMouseButton(e.GetPointerPoint null)
+            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
-            m_mouse_pressed <- MouseButton.None
-            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, e.MouseButton)
+            let button = updateMouseButton(e.GetPointerPoint null)
+            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
