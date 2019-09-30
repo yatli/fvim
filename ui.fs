@@ -17,6 +17,8 @@ open SkiaSharp.HarfBuzz
 open System
 open System.Reflection
 
+#nowarn "0009"
+
 type InputEvent = 
 | Key          of mods: KeyModifiers * key: Key
 | MousePress   of mods: KeyModifiers * row: int * col: int * button: MouseButton
@@ -474,6 +476,17 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
             win.Background <- SolidColorBrush(c)
             ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)
     elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+        (**
+        useful pointers:
+            https://github.com/mono/mono/blob/c5b88ec4f323f2bdb7c7d0a595ece28dae66579c/mcs/class/System.Windows.Forms/System.Windows.Forms/X11Structs.cs
+            https://github.com/mono/mono/tree/c5b88ec4f323f2bdb7c7d0a595ece28dae66579c/mcs/class/System.Windows.Forms/System.Windows.Forms
+            https://github.com/AvaloniaUI/Avalonia/tree/master/src/Avalonia.X11
+            libX11 doc: https://www.x.org/releases/X11R7.6/doc/libX11/specs/libX11/libX11.html
+            XChangeProperty in action: https://github.com/KanoComputing/kdesk/blob/master/src/kdesk-blur/kdesk-blur.cpp
+        tip: use `xprop` to test
+            xprop -f _KDE_NET_WM_BLUR_BEHIND_REGION 32c -set _KDE_NET_WM_BLUR_BEHIND_REGION '0'
+        and then, do `xprop` without arguments to inspect a window. setting the right data type is crucial!
+        *)
 
         let x11win = win.PlatformImpl
         let x11win_type = x11win.GetType()
@@ -486,12 +499,12 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
         let x11display_handle = x11display_field.GetValue(x11info) :?> nativeint
         let x11win_handle = x11win.Handle.Handle
 
-        let blur_atom = XInternAtom(x11display_handle, "_KDE_NET_WM_BLUR_BEHIND_REGION", false)
-        let blur_param = [|0; 0; 1920; 1080|]
-
-        trace "ui" "blur_atom = %A" blur_atom
+        let blur_param = [|0|]
         use pblur_param = fixed blur_param
 
+
+        // KDE
+        let blur_atom = XInternAtom(x11display_handle, "_KDE_NET_WM_BLUR_BEHIND_REGION", false)
         ignore <| XChangeProperty(
             x11display_handle, 
             x11win_handle, 
@@ -500,7 +513,19 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
             32, 
             PropertyMode.Replace, 
             NativeInterop.NativePtr.toNativeInt pblur_param,
-            4)
+            1)
+
+        // Deepin
+        let blur_atom = XInternAtom(x11display_handle, "_NET_WM_DEEPIN_BLUR_REGION_ROUNDED", false)
+        ignore <| XChangeProperty(
+            x11display_handle, 
+            x11win_handle, 
+            blur_atom, 
+            nativeint AtomType.XA_CARDINAL, 
+            32, 
+            PropertyMode.Replace, 
+            NativeInterop.NativePtr.toNativeInt pblur_param,
+            1)
 
         match composition with
         | SolidBackground c ->
