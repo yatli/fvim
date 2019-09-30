@@ -275,7 +275,7 @@ module ModelImpl =
         |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
         |  Key(_, Key.None)                                           -> Unrecognized
         |  Key(_, x)                                                  -> Normal (x.ToString())
-        |  MousePress(_, r, c, but, combo)                            -> Mouse(MB but, "press", r, c, combo)
+        |  MousePress(_, r, c, but)                                   -> Mouse(MB but, "press", r, c, 1)
         |  MouseRelease(_, r, c, but)                                 -> Mouse(MB but, "release", r, c, 1)
         |  MouseDrag(_, r, c, but   )                                 -> Mouse(MB but, "drag", r, c, 1)
         |  MouseWheel(_, r, c, dx, dy)                                -> 
@@ -309,7 +309,7 @@ module ModelImpl =
         | Key(m & HasFlag(KeyModifiers.Shift), Key.Space) when States.key_disableShiftSpace
             -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~KeyModifiers.Shift), Key.Space)
         | Key(m, _)
-        | MousePress(m, _, _, _, _) 
+        | MousePress(m, _, _, _) 
         | MouseRelease(m, _, _, _) 
         | MouseDrag(m, _, _, _) 
         | MouseWheel(m, _, _, _, _) 
