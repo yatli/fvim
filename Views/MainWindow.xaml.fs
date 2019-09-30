@@ -47,6 +47,7 @@ type MainWindow() as this =
         #endif
 
         DragDrop.SetAllowDrop(this, true)
+        configBackground()
 
         let flushop = 
             if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then

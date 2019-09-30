@@ -441,5 +441,13 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
             let c = Color(byte(op * 255.0), c.R, c.G, c.B)
             win.Background <- SolidColorBrush(c)
             ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)
-        ()
-
+    elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+        match composition with
+        | SolidBackground c ->
+            win.Background <- SolidColorBrush(c)
+        | GaussianBlur(op, c)
+        | AdvancedBlur(op, c) ->
+            (*let c = Color(byte(op * 255.0), c.R, c.G, c.B)*)
+            let c = Color(0uy,0uy,0uy,0uy)
+            win.Background <- SolidColorBrush(c)
+            (*ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)*)
