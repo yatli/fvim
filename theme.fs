@@ -56,9 +56,9 @@ let GetDrawAttrs hlid =
     let mutable sp = Option.defaultValue default_sp attrs.special
 
     if attrs.reverse then
-        fg <- GetReverseColor fg
-        bg <- GetReverseColor bg
-        sp <- GetReverseColor sp
+        let tmp = fg
+        fg <- bg
+        bg <- tmp
 
     fg, bg, sp, attrs
 
