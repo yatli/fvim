@@ -165,8 +165,10 @@ let private InvalidateFontCache () =
 ignore(States.Register.Watch "font" InvalidateFontCache)
 
 let GetReverseColor (c: Color) =
-    let inv = UInt32.MaxValue - c.ToUint32()
-    Color.FromUInt32(inv ||| 0xFF000000u)
+    let r = 255uy - c.R
+    let g = 255uy - c.G
+    let b = 255uy - c.B
+    Color(255uy, r, g, b)
 
 let GetTypeface(txt, italic, bold, font, wfont) =
     let w = wswidth txt

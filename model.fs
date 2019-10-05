@@ -197,13 +197,57 @@ module ModelImpl =
 
     let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
-        // | Key(HasFlag(KeyModifiers.Control), Key.H)                 
+        // | Key(HasFlag(KeyModifiers.Control), Key.H)
         // | Key(HasFlag(KeyModifiers.Control), Key.I)
         // | Key(HasFlag(KeyModifiers.Control), Key.J)
         // | Key(HasFlag(KeyModifiers.Control), Key.M)
         // | Key(HasFlag(KeyModifiers.Control), Key.Oem4) // Oem4 is '['
         // | Key(HasFlag(KeyModifiers.Control), Key.L) // if ^L is sent as <FF> then neovim discards the key.
-        | Key(_, Key.CapsLock)                                        -> Unrecognized  // avoid sending "capslock" key sequence
+
+        //  Avoid sending key sequence, e.g. "capslock"
+        | Key(_, Key.None)              | Key(_, Key.Cancel)     
+        | Key(_, Key.Clear)             | Key(_, Key.Pause)
+        | Key(_, Key.CapsLock)          | Key(_, Key.Capital)
+        | Key(_, Key.HangulMode)        // | Key(_, Key.KanaMode)   
+        | Key(_, Key.JunjaMode)         | Key(_, Key.FinalMode)
+        | Key(_, Key.KanjiMode)         // | Key(_, Key.HanjaMode)
+        | Key(_, Key.Select)            | Key(_, Key.Print)
+        | Key(_, Key.Execute)           | Key(_, Key.PrintScreen)
+        | Key(_, Key.Apps)              | Key(_, Key.Sleep)
+        | Key(_, Key.BrowserBack)       | Key(_, Key.BrowserForward)
+        | Key(_, Key.BrowserRefresh)    | Key(_, Key.BrowserStop)
+        | Key(_, Key.BrowserSearch)     | Key(_, Key.BrowserFavorites) 
+        | Key(_, Key.BrowserHome)
+        | Key(_, Key.VolumeUp)          | Key(_, Key.VolumeDown)
+        | Key(_, Key.VolumeMute)
+        | Key(_, Key.MediaNextTrack)    | Key(_, Key.MediaPreviousTrack)
+        | Key(_, Key.MediaStop)         | Key(_, Key.MediaPlayPause)
+        | Key(_, Key.LaunchMail)        | Key(_, Key.SelectMedia)
+        | Key(_, Key.LaunchApplication1)| Key(_, Key.LaunchApplication2)
+        | Key(_, Key.Oem8)              
+        | Key(_, Key.AbntC1)            | Key(_, Key.AbntC2)
+        | Key(_, Key.System)            
+        | Key(_, Key.OemAttn)   //| Key(_, Key.DbeAlphanumeric)   
+        | Key(_, Key.OemFinish) // | Key(_, Key.DbeKatakana)       
+        | Key(_, Key.DbeHiragana) // | Key(_, Key.OemCopy)           
+        | Key(_, Key.DbeSbcsChar) // | Key(_, Key.OemAuto)           
+        | Key(_, Key.DbeDbcsChar) // | Key(_, Key.OemEnlw)           
+        | Key(_, Key.OemBackTab) // | Key(_, Key.DbeRoman)          
+        | Key(_, Key.DbeNoRoman) // | Key(_, Key.Attn)              
+        | Key(_, Key.CrSel) // | Key(_, Key.DbeEnterWordRegisterMode)
+        | Key(_, Key.ExSel) // | Key(_, Key.DbeEnterImeConfigureMode)
+        | Key(_, Key.EraseEof) // | Key(_, Key.DbeFlushString)    
+        | Key(_, Key.Play) // | Key(_, Key.DbeCodeInput)      
+        | Key(_, Key.DbeNoCodeInput)    | Key(_, Key.Zoom)
+        | Key(_, Key.NoName) //| Key(_, Key.DbeDetermineString)
+        | Key(_, Key.DbeEnterDialogConversionMode) // | Key(_, Key.Pa1)
+        | Key(_, Key.OemClear)
+        | Key(_, Key.DeadCharProcessed) 
+        | Key(_, Key.FnLeftArrow)       | Key(_, Key.FnRightArrow)
+        | Key(_, Key.FnUpArrow)         | Key(_, Key.FnDownArrow)
+
+            -> Unrecognized  
+
         | Key(_, Key.Back)                                            -> Special "BS"
         | Key(_, Key.Tab)                                             -> Special "Tab"
         | Key(_, Key.LineFeed)                                        -> Special "NL"
@@ -229,9 +273,12 @@ module ModelImpl =
         | Key(_, Key.PageUp)                                          -> Special "PageUp"
         | Key(_, Key.PageDown)                                        -> Special "PageDown"
         | Key(_, x &
-          (Key.F1 | Key.F2 | Key.F3 | Key.F4 
-        |  Key.F5 | Key.F6 | Key.F7 | Key.F8 
-        |  Key.F9 | Key.F10 | Key.F11 | Key.F12))                     -> Special(x.ToString())
+          (Key.F1  | Key.F2  | Key.F3  | Key.F4 
+        |  Key.F5  | Key.F6  | Key.F7  | Key.F8 
+        |  Key.F9  | Key.F10 | Key.F11 | Key.F12
+        |  Key.F13 | Key.F14 | Key.F15 | Key.F16
+        |  Key.F17 | Key.F18 | Key.F19 | Key.F20
+        |  Key.F21 | Key.F22 | Key.F23 | Key.F24))                    -> Special(x.ToString())
         | Key(NoFlag(KeyModifiers.Shift), x &
           (Key.D0 | Key.D1 | Key.D2 | Key.D3 
         |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
@@ -269,11 +316,16 @@ module ModelImpl =
         |  Key(HasFlag(KeyModifiers.Shift), Key.D8)                   -> Normal "*"
         |  Key(HasFlag(KeyModifiers.Shift), Key.D9)                   -> Normal "("
         |  Key(HasFlag(KeyModifiers.Shift), Key.D0)                   -> Normal ")"
+        |  Key(_, Key.Multiply)                                       -> Special("kMultiply")
+        |  Key(_, Key.Add)                                            -> Special("kPlus")
+        |  Key(_, Key.Subtract)                                       -> Special("kMinus")
+        |  Key(_, Key.Divide)                                         -> Special("kDivide")
+        // TODO|  Key(_, Key.Decimal) -> ???
+        // TODO|  Key(_, Key.Separator) -> ???
         |  Key(_, (
            Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
         |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
         |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
-        |  Key(_, Key.None)                                           -> Unrecognized
         |  Key(_, x)                                                  -> Normal (x.ToString())
         |  MousePress(_, r, c, but)                                   -> Mouse(MB but, "press", r, c, 1)
         |  MouseRelease(_, r, c, but)                                 -> Mouse(MB but, "release", r, c, 1)
@@ -295,7 +347,6 @@ module ModelImpl =
                 Unrecognized
         |  TextInput txt                                              -> TextInput txt
         |  _                                                          -> Unrecognized
-    //| Key.Oem
     let rec (|ModifiersPrefix|_|) (x: InputEvent) =
         match x with
         // -------------- keys with special form do not carry shift modifiers
