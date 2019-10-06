@@ -34,15 +34,20 @@ type MainWindow() as this =
             this.WindowState <- m_saved_state
             this.PlatformImpl.Resize(m_saved_size)
             this.Position <- m_saved_pos
-            this.HasSystemDecorations <- true
+            this.HasSystemDecorations <- not this.ViewModel.UseCustomTitleBar
         else
-            m_saved_size             <- this.ClientSize
-            m_saved_pos              <- this.Position
-            m_saved_state            <- this.WindowState
+            //  The order of actions is very important.
+            //  1. Remove decorations
+            //  2. Save current states
+            //  3. Turn window state to normal
+            //  4. Position window to TopLeft, and resize
             let screen                = this.Screens.ScreenFromVisual(this)
             let screenBounds          = screen.Bounds
             let sz                    = screenBounds.Size.ToSizeWithDpi(96.0 * (this:>IRenderRoot).RenderScaling)
             this.HasSystemDecorations <- false
+            m_saved_size              <- this.ClientSize
+            m_saved_pos               <- this.Position
+            m_saved_state             <- this.WindowState
             this.WindowState          <- WindowState.Normal
             this.Position             <- screenBounds.TopLeft
             this.PlatformImpl.Resize(sz)
@@ -103,6 +108,7 @@ type MainWindow() as this =
         let mutable firstPoschange = true
         let mutable deltaX = 0
         let mutable deltaY = 0
+        this.ViewModel <- ctx
 
         trace "mainwindow" "set position: %d, %d" pos.X pos.Y
         this.Position <- pos
@@ -118,6 +124,6 @@ type MainWindow() as this =
                     this.SetValue(XProp, p.Point.X - deltaX)
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
-            ctx.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
-            ctx.ObservableForProperty(fun x -> x.UseCustomTitleBar).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
+            ctx.ObservableForProperty((fun x -> x.Fullscreen), skipInitial=true).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
+            ctx.ObservableForProperty((fun x -> x.UseCustomTitleBar), skipInitial=true).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
         ]

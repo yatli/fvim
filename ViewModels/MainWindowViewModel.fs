@@ -51,8 +51,9 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     member this.Fullscreen
         with get() : bool = m_fullscreen
         and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&m_fullscreen, v)
+            m_fullscreen <- v
             this.RaisePropertyChanged("CustomTitleBarHeight")
+            this.RaisePropertyChanged("Fullscreen")
 
     member this.WindowState
         with get(): WindowState = m_windowState
@@ -61,7 +62,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
 
     member this.CustomTitleBarHeight 
         with get() =
-            if m_customTitleBar && (not m_fullscreen) then GridLength 26.0
+            if this.UseCustomTitleBar && (not this.Fullscreen) then GridLength 26.0
             else GridLength 0.0
 
     member this.UseCustomTitleBar

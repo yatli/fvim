@@ -7,7 +7,7 @@
         x:Class="FVim.MainWindow"
         CanResize="True"
         Icon="..\Assets\fvim.png"
-        Title="fvim"
+        Title="{Binding Title}"
         Height="{Binding Height, Mode=TwoWay}"
         Width="{Binding Width, Mode=TwoWay}"
         WindowState="{Binding WindowState, Mode=TwoWay}"
