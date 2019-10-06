@@ -354,8 +354,9 @@ module internal win32 =
         | ACCENT_ENABLE_GRADIENT = 1
         | ACCENT_ENABLE_TRANSPARENTGRADIENT = 2
         | ACCENT_ENABLE_BLURBEHIND = 3
-        | ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
-        | ACCENT_INVALID_STATE = 5
+        | ACCENT_ENABLE_ACRYLICBLURBEHIND = 4   // RS4 1803
+        | ACCENT_ENABLE_HOSTBACKDROP = 5        // RS5 1809
+        | ACCENT_INVALID_STATE = 6
 
     [<Struct>]
     [<StructLayout(LayoutKind.Sequential)>]
@@ -370,6 +371,7 @@ module internal win32 =
     type WindowCompositionAttribute =
         // ...
         | WCA_ACCENT_POLICY = 19
+        | WCA_USEDARKMODECOLORS = 26
         // ...
 
 
@@ -437,7 +439,7 @@ type WindowBackgroundComposition =
 let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition: WindowBackgroundComposition)=
 
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
-        let flag, opacity, bgcolor = 
+        let state, opacity, bgcolor = 
             match composition with
             | SolidBackground c -> 
                 win.Background <- SolidColorBrush(c)
@@ -454,9 +456,9 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
 
         let accent = 
             { 
-                AccentState = flag
+                AccentState = state
                 GradientColor = (opacity <<< 24) ||| (bgcolor &&& 0xFFFFFFu) 
-                AccentFlags = 0u
+                AccentFlags = 0x2u
                 AnimationId = 0u
             }
         let accentStructSize = Marshal.SizeOf(accent);
