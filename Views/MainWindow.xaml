@@ -13,6 +13,13 @@
         WindowState="{Binding WindowState, Mode=TwoWay}"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        Content="{Binding MainGrid}"
         >
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="{Binding CustomTitleBarHeight}" />
+      <RowDefinition Height="1*" />
+    </Grid.RowDefinitions>
+    <fvim:TitleBar Grid.Row="0" IsVisible="{Binding UseCustomTitleBar}" HorizontalAlignment="Stretch" />
+    <fvim:Editor Grid.Row="1" DataContext="{Binding MainGrid}" />
+  </Grid>
 </Window>

@@ -1,5 +1,8 @@
 ﻿namespace FVim
 
+open log
+open common
+
 open ReactiveUI
 open Avalonia
 open Avalonia.Controls
@@ -16,7 +19,16 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
         if _maingrid.IsNone then EditorViewModel(1)
         else _maingrid.Value
 
+    let trace fmt = trace (sprintf "MainWindowVM #%d" mainGrid.GridId) fmt
+
     let mutable m_windowState = WindowState.Normal
+    let mutable m_customTitleBar = false
+    let mutable m_fullscreen = false
+
+    let toggleFullScreen(gridid: int) =
+        if gridid = mainGrid.GridId then
+            this.Fullscreen <- not this.Fullscreen
+            trace "ToggleFullScreen %A" this.Fullscreen
 
     do
         match cfg with
@@ -29,11 +41,31 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             | true, v -> this.WindowState <- v
             | _ -> ()
         | None -> ()
+        this.Watch [
+            States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+            States.Register.Notify "UseCustomTitleBar" (fun [| Bool(v) |] -> this.UseCustomTitleBar <- v )
+        ]
 
     member __.MainGrid = mainGrid
+
+    member this.Fullscreen
+        with get() : bool = m_fullscreen
+        and set(v) =
+            ignore <| this.RaiseAndSetIfChanged(&m_fullscreen, v)
+            this.RaisePropertyChanged("CustomTitleBarHeight")
 
     member this.WindowState
         with get(): WindowState = m_windowState
         and set(v) = 
             ignore <| this.RaiseAndSetIfChanged(&m_windowState, v)
 
+    member this.CustomTitleBarHeight 
+        with get() =
+            if m_customTitleBar && (not m_fullscreen) then GridLength 26.0
+            else GridLength 0.0
+
+    member this.UseCustomTitleBar
+        with get() = m_customTitleBar
+        and set(v) = 
+            ignore <| this.RaiseAndSetIfChanged(&m_customTitleBar, v)
+            this.RaisePropertyChanged("CustomTitleBarHeight")

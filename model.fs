@@ -621,6 +621,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIMessages" 1 (sprintf "call rpcnotify(%d, 'ui.messages', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUITermColors" 1 (sprintf "call rpcnotify(%d, 'ui.termcolors', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUseCustomTitleBar" 1 (sprintf "call rpcnotify(%d, 'UseCustomTitleBar', <args>)" myChannel))
 
         // trigger ginit upon VimEnter
         let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")

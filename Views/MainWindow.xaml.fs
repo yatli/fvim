@@ -12,8 +12,10 @@ open Avalonia.Input
 open Avalonia.Interactivity
 open Avalonia
 open Avalonia.Data
+open Avalonia.VisualTree
 open Avalonia.ReactiveUI
 open System.Runtime.InteropServices
+open Avalonia.Rendering
 
 #nowarn "0025"
 
@@ -23,7 +25,33 @@ type MainWindow() as this =
     static let XProp = AvaloniaProperty.Register<MainWindow,int>("PosX")
     static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
 
-    let m_input_ev = Event<InputEvent>()
+    let mutable m_saved_size  = Size(100.0,100.0)
+    let mutable m_saved_pos   = PixelPoint(300, 300)
+    let mutable m_saved_state = WindowState.Normal
+
+    let toggleFullscreen(v) =
+        if not v then
+            this.WindowState <- m_saved_state
+            this.PlatformImpl.Resize(m_saved_size)
+            this.Position <- m_saved_pos
+            this.HasSystemDecorations <- true
+        else
+            m_saved_size             <- this.ClientSize
+            m_saved_pos              <- this.Position
+            m_saved_state            <- this.WindowState
+            let screen                = this.Screens.ScreenFromVisual(this)
+            let screenBounds          = screen.Bounds
+            let sz                    = screenBounds.Size.ToSizeWithDpi(96.0 * (this:>IRenderRoot).RenderScaling)
+            this.HasSystemDecorations <- false
+            this.WindowState          <- WindowState.Normal
+            this.Position             <- screenBounds.TopLeft
+            this.PlatformImpl.Resize(sz)
+
+    let toggleTitleBar(custom) =
+        if custom then
+            this.HasSystemDecorations <- false
+        else 
+            this.HasSystemDecorations <- not this.ViewModel.Fullscreen
 
     do
         #if DEBUG
@@ -90,4 +118,6 @@ type MainWindow() as this =
                     this.SetValue(XProp, p.Point.X - deltaX)
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
+            ctx.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
+            ctx.ObservableForProperty(fun x -> x.UseCustomTitleBar).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
         ]

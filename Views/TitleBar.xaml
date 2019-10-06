@@ -1,0 +1,31 @@
+<UserControl 
+  xmlns      = "https://github.com/avaloniaui"
+  xmlns:x    = "http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d    = "http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
+  Focusable  = "False"
+  Design.Width="400"
+  FontFamily="{Binding FontFamily}" 
+  FontSize="{Binding FontSize}" 
+  Foreground="{Binding Foreground}"
+  Background="{Binding Background}"
+  x:Class   = "FVim.TitleBar">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="32" />
+      <ColumnDefinition Width="1*" />
+      <ColumnDefinition Width="32" />
+      <ColumnDefinition Width="32" />
+      <ColumnDefinition Width="32" />
+    </Grid.ColumnDefinitions>
+    <Image Source="/Assets/fvim.png" Grid.Column="0" Margin="3,3,3,3" Stretch="Uniform" Height="16" />
+    <TextBlock Text="FVim" Grid.Column="1" Name="Title" VerticalAlignment="Center" />
+    <Button Content="_" Grid.Column="2" />
+    <Button Content="口" Grid.Column="3" />
+    <Button Content="X" Grid.Column="4" />
+  </Grid>
+</UserControl>
