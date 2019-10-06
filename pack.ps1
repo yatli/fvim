@@ -12,6 +12,8 @@ foreach($i in $plat) {
     if ($i -eq "win-x64") {
 # replace the coreclr hosting exe with an icon-patched one
         Copy-Item lib/fvim-win10.exe bin/Release/netcoreapp3.0/$i/publish/FVim.exe
+    } elseif ($i -eq "win7-x64") {
+        Copy-Item lib/fvim-win7.exe bin/Release/netcoreapp3.0/$i/publish/FVim.exe
     }
     Compress-Archive -Path bin/Release/netcoreapp3.0/$i/publish/* -DestinationPath publish/fvim-$i.zip -Force
 }

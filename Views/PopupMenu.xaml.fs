@@ -6,7 +6,6 @@ open Avalonia.Markup.Xaml
 open Avalonia.Controls
 open Avalonia.Data
 
-open System.Linq
 open FVim.log
 
 open FSharp.Control.Reactive
@@ -23,11 +22,10 @@ type PopupMenu() as this =
         AvaloniaXamlLoader.Load(this)
         let lst = this.FindControl<ListBox>("List")
         this.Watch [
-            lst.SelectionChanged.Subscribe(fun x -> for item in x.AddedItems do lst.ScrollIntoView item)
-            (*this.ViewModelConnected.Subscribe(fun vm -> vm.Watch [*)
-                (*vm.ObservableForProperty(fun x -> x.SelectBackground)*)
-                (*|> Observable.subscribe(fun selectBg -> lst.Resources.["HighlightBrush"] <- selectBg.Value)*)
-            (*])*)
+            lst.SelectionChanged.Subscribe(fun x -> 
+                let items = x.AddedItems
+                if items.Count > 0 then Some items.[0] else None
+                |> Option.iter lst.ScrollIntoView)
         ]
 
     override this.OnKeyDown(e) =

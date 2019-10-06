@@ -88,8 +88,9 @@ type PopupMenuViewModel() =
     member this.SetItems(items: CompleteItem[], textArea: Rect, lineHeight: float, desiredSizeVec: Point, editorSizeVec: Point) =
         m_items.Clear()
 
-        // new completion items coming in while old still being added?
-        // cancel them, otherwise it blocks the UI thread/add dups.
+        //  New completion items coming in while old still being added?
+        //  Cancel them, otherwise it blocks the UI thread/add dups.
+        //  --------------------------------
         if m_cancelSrc <> null then
             m_cancelSrc.Cancel()
             m_cancelSrc.Dispose()
