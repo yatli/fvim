@@ -22,10 +22,10 @@ let mutable default_fg     = Colors.White
 let mutable default_bg     = Colors.Black
 let mutable default_sp     = Colors.Red
 
-let hlchange_ev   = Event<int>()
-let fontconfig_ev = Event<unit>()
-let cursoren_ev   = Event<bool>()
-let pumconfig_ev  = Event<Color*Color*Color*Color*Color*Color*Color>()
+let hlchange_ev    = Event<int>()
+let fontconfig_ev  = Event<unit>()
+let cursoren_ev    = Event<bool>()
+let themeconfig_ev = Event<Color*Color*Color*Color*Color*Color*Color>()
 
 let fontConfig() =
     fontsize <- max fontsize 1.0
@@ -90,7 +90,7 @@ let setSemanticHighlightGroups grp =
         ] 
         |> List.map (semhl.TryFind >> Option.defaultValue 1 >> GetDrawAttrs)
 
-    pumconfig_ev.Trigger(nfg, nbg, sfg, sbg, scfg, scbg, bbg)
+    themeconfig_ev.Trigger(nfg, nbg, sfg, sbg, scfg, scbg, bbg)
 
 let setDefaultColors fg bg sp = 
 

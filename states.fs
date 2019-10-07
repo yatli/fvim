@@ -177,7 +177,6 @@ let parseLineHeightOption (v: obj) =
     | _ -> None
 
 let Shutdown code = _appLifetime.Shutdown code
-let SetTitle title = _appLifetime.MainWindow.Title <- title
 
 let msg_dispatch =
     function

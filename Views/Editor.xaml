@@ -7,8 +7,12 @@
   Focusable  = "True"
   x:Class    = "FVim.Editor"
   Background = "Transparent"
+  Design.Height="300"
+  Design.Width="400"
   >
-
+  <Design.DataContext>
+    <fvim:EditorSampleData />
+  </Design.DataContext>
   <fvim:Cursor
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"

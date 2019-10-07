@@ -44,7 +44,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     let mutable m_gridsize       = _d { rows = 10; cols= 10 } _gridsize
     let mutable m_gridscale      = _d 1.0 _gridscale
-    let mutable m_gridfullscreen = false
     let mutable m_gridbuffer     = Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
     let mutable m_griddirty      = GridRegion()
     let mutable m_fontsize       = theme.fontsize
@@ -54,11 +53,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let mutable m_fb_w           = 10.0
 
     let raiseInputEvent e = m_input_ev.Trigger(GridId, e)
-
-    let toggleFullScreen(gridid: int) =
-        if gridid = GridId then
-            trace "ToggleFullScreen"
-            this.Fullscreen <- not this.Fullscreen
 
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
@@ -286,9 +280,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             this.RaisePropertyChanged("BackgroundColor")
         markAllDirty()
 
-    let pumConfig colors =
-        m_popupmenu_vm.SetColors colors
-
     let updateMouseButton (pp: PointerPoint) =
         let k = pp.Properties.PointerUpdateKind
         match k with
@@ -337,10 +328,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
                 if m_cursor_vm.ingrid then 
                     this.setCursorEnabled en)
 
-            theme.pumconfig_ev.Publish
-            |> Observable.subscribe pumConfig
-
-            States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
             States.Register.Watch "font" fontConfig
 
         ] 
@@ -433,11 +420,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
     (*******************   Exposed properties   ***********************)
-
-    member this.Fullscreen
-        with get() : bool = m_gridfullscreen
-        and set(v) =
-            ignore <| this.RaiseAndSetIfChanged(&m_gridfullscreen, v)
 
     member this.CursorInfo
         with get() : CursorViewModel = m_cursor_vm

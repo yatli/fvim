@@ -26,13 +26,9 @@ type Editor() as this =
 
     static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
 
-    let mutable m_saved_size  = Size(100.0,100.0)
-    let mutable m_saved_pos   = PixelPoint(300, 300)
-    let mutable m_saved_state = WindowState.Normal
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_scale: float            = 1.0
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
-    let mutable (m_visualroot: IVisual) = this :> IVisual
 
     let mutable m_debug = false
     let mutable m_alphaLUT: byte[] = Array.create 256 0uy
@@ -156,26 +152,6 @@ type Editor() as this =
             str <- mytext :: str
         drawBuffer ctx y x0 (x' + 1) (!prev).hlid str sym
 
-    let toggleFullscreen(v) =
-        let win = this.GetVisualRoot() :?> Window
-
-        if not v then
-            win.WindowState <- m_saved_state
-            win.PlatformImpl.Resize(m_saved_size)
-            win.Position <- m_saved_pos
-            win.HasSystemDecorations <- true
-        else
-            m_saved_size             <- win.ClientSize
-            m_saved_pos              <- win.Position
-            m_saved_state            <- win.WindowState
-            let screen                = win.Screens.ScreenFromVisual(this)
-            let screenBounds          = screen.Bounds
-            let sz                    = screenBounds.Size.ToSizeWithDpi(96.0 * this.GetVisualRoot().RenderScaling)
-            win.HasSystemDecorations <- false
-            win.WindowState          <- WindowState.Normal
-            win.Position             <- screenBounds.TopLeft
-            win.PlatformImpl.Resize(sz)
-
     let doWithDataContext fn =
         match this.DataContext with
         | :? EditorViewModel as viewModel ->
@@ -189,7 +165,6 @@ type Editor() as this =
         grid_vm <- vm
         trace "viewmodel connected"
         vm.Watch [
-            vm.ObservableForProperty(fun x -> x.Fullscreen).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             Observable.merge
                 (vm.ObservableForProperty(fun x -> x.BufferWidth))
                 (vm.ObservableForProperty(fun x -> x.BufferHeight))
@@ -250,7 +225,6 @@ type Editor() as this =
         m_alphaLUT.[255] <- 255uy
 
         this.Watch [
-            this.AttachedToVisualTree.Subscribe(fun e -> m_visualroot <- e.Root)
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType
             |> Observable.subscribe onViewModelConnected
@@ -267,10 +241,10 @@ type Editor() as this =
             //  Input handling
             this.TextInput |> subscribeAndHandleInput(fun e vm -> vm.OnTextInput e)
             this.KeyDown   |> subscribeAndHandleInput(fun e vm -> vm.OnKey e)
-            this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e m_visualroot)
-            this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e m_visualroot)
-            this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e m_visualroot)
-            this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e m_visualroot)
+            this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this)
+            this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
+            this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
+            this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this)
         ]
         AvaloniaXamlLoader.Load(this)
 
