@@ -73,7 +73,7 @@ type MainWindow() as this =
     let dragThreshold = 5.0
 
     let getDragEdge (pos: Point) =
-        if this.ViewModel.CustomTitleBar then
+        if this.ViewModel.CustomTitleBar && not this.ViewModel.Fullscreen && this.WindowState <> WindowState.Maximized then
             let l = pos.X <= dragThreshold
             let r = this.Width - pos.X <= dragThreshold
             let b = this.Height - pos.Y <= dragThreshold
