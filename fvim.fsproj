@@ -25,7 +25,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="DesignTime\TitleBarSampleData.fs" />
+    <Compile Include="DesignTime\EditorSampleData.fs" />
     <Compile Include="DesignTime\CrashReportSampleData.fs" />
+    <Compile Include="DesignTime\MainWindowSampleData.fs" />
     <Compile Include="common.fs" />
     <Compile Include="config.fs" />
     <Compile Include="getopt.fs" />
@@ -39,6 +42,8 @@
     <Compile Include="neovim.fs" />
     <Compile Include="model.fs" />
     <Compile Include="ViewModels\ViewModelBase.fs" />
+    <Compile Include="ViewModels\ThemableViewModelBase.fs" />
+    <Compile Include="ViewModels\TitleBarViewModel.fs" />
     <Compile Include="ViewModels\CursorViewModel.fs" />
     <Compile Include="ViewModels\CompletionItemViewModel.fs" />
     <Compile Include="ViewModels\PopupMenuViewModel.fs" />
@@ -52,6 +57,7 @@
     <Compile Include="Views\Editor.xaml.fs" />
     <Compile Include="Views\Cursor.xaml.fs" />
     <Compile Include="Views\CrashReport.xaml.fs" />
+    <Compile Include="Views\TitleBar.xaml.fs" />
     <Compile Include="App.xaml.fs" />
     <Compile Include="Program.fs" />
     <ApplicationDefinition Include="fvim.config" />

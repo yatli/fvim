@@ -33,6 +33,7 @@ module ModelImpl =
     let ev_flush      = Event<unit>()
     let grids         = hashmap[]
     let pending_msgs  = hashmap[]
+    let windows       = hashmap[]
 
     let add_grid(grid: IGridUI) =
         let id = grid.Id
@@ -43,6 +44,12 @@ module ModelImpl =
             ignore(pending_msgs.Remove id)
             ignore(Dispatcher.UIThread.InvokeAsync(fun () ->
                 Seq.iter grid.Redraw nl))
+
+    let add_window(win: IWindow) = 
+        let id = win.RootId
+        windows.[id] <- win
+
+    let setTitle id title = windows.[id].Title <- title
 
     let unicast id cmd = 
         match grids.TryGetValue id with
@@ -81,7 +88,7 @@ module ModelImpl =
         //  Global
         | UnknownCommand x                 -> trace "unknown command %A" x
         | GridDestroy id                   -> trace "GridDestroy %d" id //TODO
-        | SetTitle title                   -> States.SetTitle title
+        | SetTitle title                   -> setTitle 1 title
         | SetIcon icon                     -> trace "icon: %s" icon // TODO
         | Bell                             -> bell true
         | VisualBell                       -> bell false
@@ -601,7 +608,6 @@ let Start opts =
 
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothmove', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 (sprintf "call rpcnotify(%d, 'cursor.smoothblink', <args>)" myChannel))
-        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontLineHeight" 1 (sprintf "call rpcnotify(%d, 'font.lineheight', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 (sprintf "call rpcnotify(%d, 'font.autosnap', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontAntialias" 1 (sprintf "call rpcnotify(%d, 'font.antialias', <args>)" myChannel))
@@ -621,6 +627,8 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIMessages" 1 (sprintf "call rpcnotify(%d, 'ui.messages', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUITermColors" 1 (sprintf "call rpcnotify(%d, 'ui.termcolors', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCustomTitleBar" 1 (sprintf "call rpcnotify(%d, 'CustomTitleBar', <args>)" myChannel))
 
         // trigger ginit upon VimEnter
         let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")
@@ -632,6 +640,9 @@ let Flush =
     ev_flush.Publish
     |> flush_throttle
     |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
+
+let OnWindowReady(win: IWindow) =
+    add_window win
 
 
 // connect the grid redraw commands and events

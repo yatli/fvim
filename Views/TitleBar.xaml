@@ -1,0 +1,49 @@
+<UserControl 
+  xmlns      = "https://github.com/avaloniaui"
+  xmlns:x    = "http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d    = "http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
+  Focusable  = "False"
+  Design.Width="400"
+  FontFamily="{Binding FontFamily}" 
+  FontSize="{Binding FontSize}" 
+  Foreground="{Binding NormalForeground}"
+  Background="{Binding NormalBackground}"
+  x:Class   = "FVim.TitleBar">
+  <Design.DataContext>
+    <fvim:TitleBarSampleData />
+  </Design.DataContext>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="32" />
+      <ColumnDefinition Width="1*" />
+      <ColumnDefinition Width="32" />
+      <ColumnDefinition Width="32" />
+      <ColumnDefinition Width="32" />
+    </Grid.ColumnDefinitions>
+    <Grid.Styles>
+      <Style Selector="Button">
+        <Setter Property="Background" Value="{Binding NormalBackground}" />
+        <Setter Property="Foreground" Value="{Binding NormalForeground}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+      </Style>
+      <Style Selector="Button[IsPointerOver=True]">
+        <Setter Property="Background" Value="{Binding SelectBackground}" />
+        <Setter Property="Foreground" Value="{Binding SelectForeground}" />
+      </Style>
+      <Style Selector="Button[IsPressed=True]">
+        <Setter Property="Background" Value="{Binding HoverBackground}" />
+        <Setter Property="Foreground" Value="{Binding HoverForeground}" />
+      </Style>
+    </Grid.Styles>
+    <Image Source="/Assets/fvim.png" Grid.Column="0" Margin="3,3,3,3" Stretch="Uniform" Height="16" />
+    <TextBlock Text="{Binding $parent[fvim:TitleBar].Title}" Grid.Column="1" Name="Title" VerticalAlignment="Center" />
+    <Button Name="MinimizeButton" Content="_" Grid.Column="2" Focusable="False" />
+    <Button Name="MaximizeButton" Content="O" Grid.Column="3" Focusable="False" />
+    <Button Name="CloseButton" Content="X" Grid.Column="4" Focusable="False" />
+  </Grid>
+</UserControl>
