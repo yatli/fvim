@@ -21,18 +21,33 @@ type TitleBar() as this =
             | WindowState.Maximized -> WindowState.Normal
             | x -> x
 
+    let mutable m_butmin:Button = null
+    let mutable m_butmax:Button = null
+    let mutable m_butclose:Button = null
+
     do
         AvaloniaXamlLoader.Load(this)
         this.Watch [
-            this.DoubleTapped |> Observable.subscribe (fun ev -> 
+            this.DoubleTapped.Subscribe(fun ev -> 
                 ev.Handled <- true
                 toggleMaximize())
-            this.PointerMoved |> Observable.subscribe (fun ev -> 
-                ev.Handled <- true
-                if ev.GetPointerPoint(null).Properties.IsLeftButtonPressed then
-                    root().BeginMoveDrag()
-                )
+            this.PointerMoved.Subscribe(fun ev -> 
+                if this.IsPointerOver && ev.GetPointerPoint(null).Properties.IsLeftButtonPressed then
+                    ev.Handled <- true
+                    root().BeginMoveDrag())
         ]
+
+    override __.OnTemplateApplied _ =
+        m_butmin <- this.FindControl("MinimizeButton")
+        m_butmax <- this.FindControl("MaximizeButton")
+        m_butclose <- this.FindControl("CloseButton")
+
+        this.Watch [
+            m_butmin.Click.Subscribe(fun _ -> root().WindowState <- WindowState.Minimized)
+            m_butmax.Click.Subscribe(fun _ -> toggleMaximize())
+            m_butclose.Click.Subscribe(fun _ -> root().Close())
+        ]
+
 
     member __.Title
         with get() = this.GetValue(TitleProperty)

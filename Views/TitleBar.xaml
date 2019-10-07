@@ -13,7 +13,6 @@
   x:Class   = "FVim.TitleBar">
   <Design.DataContext>
     <fvim:TitleBarSampleData />
-    
   </Design.DataContext>
   <Grid>
     <Grid.RowDefinitions>
@@ -26,10 +25,25 @@
       <ColumnDefinition Width="32" />
       <ColumnDefinition Width="32" />
     </Grid.ColumnDefinitions>
+    <Grid.Styles>
+      <Style Selector="Button">
+        <Setter Property="Background" Value="{Binding NormalBackground}" />
+        <Setter Property="Foreground" Value="{Binding NormalForeground}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+      </Style>
+      <Style Selector="Button[IsPointerOver=True]">
+        <Setter Property="Background" Value="{Binding SelectBackground}" />
+        <Setter Property="Foreground" Value="{Binding SelectForeground}" />
+      </Style>
+      <Style Selector="Button[IsPressed=True]">
+        <Setter Property="Background" Value="{Binding HoverBackground}" />
+        <Setter Property="Foreground" Value="{Binding HoverForeground}" />
+      </Style>
+    </Grid.Styles>
     <Image Source="/Assets/fvim.png" Grid.Column="0" Margin="3,3,3,3" Stretch="Uniform" Height="16" />
     <TextBlock Text="{Binding $parent[fvim:TitleBar].Title}" Grid.Column="1" Name="Title" VerticalAlignment="Center" />
-    <Button Content="_" Grid.Column="2" Focusable="False" Background="{Binding NormalBackground}" Foreground="{Binding NormalForeground}" BorderBrush="Transparent" />
-    <Button Content="O" Grid.Column="3" Focusable="False" Background="{Binding NormalBackground}" Foreground="{Binding NormalForeground}" BorderBrush="Transparent" />
-    <Button Content="X" Grid.Column="4" Focusable="False" Background="{Binding NormalBackground}" Foreground="{Binding NormalForeground}" BorderBrush="Transparent" />
+    <Button Name="MinimizeButton" Content="_" Grid.Column="2" Focusable="False" />
+    <Button Name="MaximizeButton" Content="O" Grid.Column="3" Focusable="False" />
+    <Button Name="CloseButton" Content="X" Grid.Column="4" Focusable="False" />
   </Grid>
 </UserControl>
