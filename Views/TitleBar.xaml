@@ -8,9 +8,13 @@
   Design.Width="400"
   FontFamily="{Binding FontFamily}" 
   FontSize="{Binding FontSize}" 
-  Foreground="{Binding Foreground}"
-  Background="{Binding Background}"
+  Foreground="{Binding NormalForeground}"
+  Background="{Binding NormalBackground}"
   x:Class   = "FVim.TitleBar">
+  <Design.DataContext>
+    <fvim:TitleBarSampleData />
+    
+  </Design.DataContext>
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition />
@@ -23,9 +27,9 @@
       <ColumnDefinition Width="32" />
     </Grid.ColumnDefinitions>
     <Image Source="/Assets/fvim.png" Grid.Column="0" Margin="3,3,3,3" Stretch="Uniform" Height="16" />
-    <TextBlock Text="FVim" Grid.Column="1" Name="Title" VerticalAlignment="Center" />
-    <Button Content="_" Grid.Column="2" />
-    <Button Content="口" Grid.Column="3" />
-    <Button Content="X" Grid.Column="4" />
+    <TextBlock Text="{Binding $parent[fvim:TitleBar].Title}" Grid.Column="1" Name="Title" VerticalAlignment="Center" />
+    <Button Content="_" Grid.Column="2" Focusable="False" />
+    <Button Content="O" Grid.Column="3" Focusable="False" />
+    <Button Content="X" Grid.Column="4" Focusable="False" />
   </Grid>
 </UserControl>

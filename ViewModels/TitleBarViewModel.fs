@@ -3,7 +3,7 @@
 open ReactiveUI
 
 type TitleBarViewModel() =
-    inherit ViewModelBase()
+    inherit ThemableViewModelBase()
 
     let mutable m_onright = true
     let mutable m_title = ""

@@ -3,19 +3,23 @@
 open Avalonia.Markup.Xaml
 open Avalonia.VisualTree
 open Avalonia.Controls
+open Avalonia
+open Avalonia.Rendering
 
 type TitleBar() as this =
     inherit ViewBase<TitleBarViewModel>()
 
+    static let TitleProperty = AvaloniaProperty.Register<TitleBar, string>("Title")
+
+    let root() = (this:>IVisual).VisualRoot :?> MainWindow
+
     let toggleMaximize() =
-        let win = (this:>IVisual).VisualRoot :?> MainWindow
+        let win = root()
         win.WindowState <-
             match win.WindowState with
             | WindowState.Normal -> WindowState.Maximized
             | WindowState.Maximized -> WindowState.Normal
             | x -> x
-
-    let mutable m_dragmoving = false
 
     do
         AvaloniaXamlLoader.Load(this)
@@ -23,19 +27,13 @@ type TitleBar() as this =
             this.DoubleTapped |> Observable.subscribe (fun ev -> 
                 ev.Handled <- true
                 toggleMaximize())
-            this.PointerPressed |> Observable.subscribe (fun ev -> 
-                ev.Handled <- true
-                m_dragmoving <- ev.GetPointerPoint(null).Properties.IsLeftButtonPressed
-                ())
-            this.PointerPressed |> Observable.subscribe (fun ev -> 
-                ev.Handled <- true
-                m_dragmoving <- ev.GetPointerPoint(null).Properties.IsLeftButtonPressed
-                ())
             this.PointerMoved |> Observable.subscribe (fun ev -> 
                 ev.Handled <- true
-                if m_dragmoving then
-                    ())
-            this.PointerLeave |> Observable.subscribe (fun ev -> 
-                ev.Handled <- true
-                m_dragmoving <- false)
+                if ev.GetPointerPoint(null).Properties.IsLeftButtonPressed then
+                    root().BeginMoveDrag()
+                )
         ]
+
+    member __.Title
+        with get() = this.GetValue(TitleProperty)
+        and set(v) = this.SetValue(TitleProperty, v)

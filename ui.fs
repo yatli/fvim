@@ -125,6 +125,10 @@ type IGridUI =
     abstract Redraw: RedrawCommand -> unit
     abstract AddChild: int -> int -> int -> IGridUI
 
+type IWindow =
+    abstract Title: string with get, set
+    abstract RootId: int
+
 open System.Runtime.InteropServices
 
 let DefaultFont =

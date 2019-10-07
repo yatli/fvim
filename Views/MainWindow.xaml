@@ -14,12 +14,24 @@
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         >
+  <Design.DataContext>
+    <fvim:MainWindowSampleData />
+  </Design.DataContext>
   <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{Binding BorderSize}"/>
+      <ColumnDefinition Width="1*"/>
+      <ColumnDefinition Width="{Binding BorderSize}"/>
+    </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
       <RowDefinition Height="{Binding CustomTitleBarHeight}" />
-      <RowDefinition Height="1*" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="{Binding BorderSize}"/>
     </Grid.RowDefinitions>
-    <fvim:TitleBar Grid.Row="0" IsVisible="{Binding UseCustomTitleBar}" HorizontalAlignment="Stretch" />
-    <fvim:Editor Grid.Row="1" DataContext="{Binding MainGrid}" />
+    <fvim:TitleBar Grid.Row="0" Grid.Column="1" IsVisible="{Binding CustomTitleBar}" HorizontalAlignment="Stretch" Title="{Binding Title}"/>
+    <fvim:Editor Grid.Row="1" Grid.Column="1" DataContext="{Binding MainGrid}" />
+    <Panel Name="LeftBorder" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" IsVisible="{Binding CustomTitleBar}" />
+    <Panel Name="RightBorder" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" IsVisible="{Binding CustomTitleBar}" />
+    <Panel Name="BottomBorder" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding CustomTitleBar}" />
   </Grid>
 </Window>

@@ -280,9 +280,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             this.RaisePropertyChanged("BackgroundBrush")
         markAllDirty()
 
-    let pumConfig colors =
-        m_popupmenu_vm.SetColors colors
-
     let updateMouseButton (pp: PointerPoint) =
         let k = pp.Properties.PointerUpdateKind
         match k with
@@ -330,9 +327,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             |> Observable.subscribe (fun en ->
                 if m_cursor_vm.ingrid then 
                     this.setCursorEnabled en)
-
-            theme.pumconfig_ev.Publish
-            |> Observable.subscribe pumConfig
 
             States.Register.Watch "font" fontConfig
 

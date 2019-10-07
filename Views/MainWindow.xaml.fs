@@ -34,7 +34,7 @@ type MainWindow() as this =
             this.WindowState <- m_saved_state
             this.PlatformImpl.Resize(m_saved_size)
             this.Position <- m_saved_pos
-            this.HasSystemDecorations <- not this.ViewModel.UseCustomTitleBar
+            this.HasSystemDecorations <- not this.ViewModel.CustomTitleBar
         else
             //  The order of actions is very important.
             //  1. Remove decorations
@@ -125,5 +125,5 @@ type MainWindow() as this =
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
             ctx.ObservableForProperty((fun x -> x.Fullscreen), skipInitial=true).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
-            ctx.ObservableForProperty((fun x -> x.UseCustomTitleBar), skipInitial=true).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
+            ctx.ObservableForProperty((fun x -> x.CustomTitleBar), skipInitial=true).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
         ]

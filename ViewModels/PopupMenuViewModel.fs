@@ -6,29 +6,16 @@ open log
 open ReactiveUI
 open System.Collections.ObjectModel
 open System.Threading
-open FVim.common.helpers
 open Avalonia
-open Avalonia.Media
 open Avalonia.Threading
-#nowarn "0025"
 
 type PopupMenuViewModel() =
-    inherit ViewModelBase()
+    inherit ThemableViewModelBase()
 
     let mutable m_show = false
     let mutable m_selection = -1
     let mutable m_fontFamily = Avalonia.Media.FontFamily("")
     let mutable m_fontSize = 12.0
-
-    //  Colors
-    let mutable m_normalFg: IBrush = Brushes.Black :> IBrush
-    let mutable m_normalBg: IBrush = Brushes.White :> IBrush
-    let mutable m_selectFg: IBrush = Brushes.Black :> IBrush
-    let mutable m_selectBg: IBrush = Brushes.AliceBlue :> IBrush
-    let mutable m_hoverBg:  IBrush = Brushes.AliceBlue :> IBrush
-    let mutable m_scrollbarFg: IBrush = Brushes.DimGray :> IBrush
-    let mutable m_scrollbarBg: IBrush = Brushes.Gray :> IBrush
-    let mutable m_border: IBrush = Brushes.DarkGray :> IBrush
 
     let m_items = ObservableCollection<CompletionItemViewModel>()
     let mutable m_cancelSrc: CancellationTokenSource = new CancellationTokenSource()
@@ -47,43 +34,11 @@ type PopupMenuViewModel() =
     member this.Items with get() = m_items
     member this.FontFamily with get() = m_fontFamily
     member this.FontSize with get() = m_fontSize
-    member this.NormalForeground with get() = m_normalFg
-    member this.NormalBackground with get() = m_normalBg
-    member this.SelectForeground with get() = m_selectFg
-    member this.SelectBackground with get() = m_selectBg
-    member this.HoverBackground with get() = m_hoverBg
-    member this.ScrollbarForeground with get() = m_scrollbarFg
-    member this.ScrollbarBackground with get() = m_scrollbarBg
-    member this.BorderColor with get() = m_border
     member this.Commit = m_itemCommit.Publish
-    
 
     member this.SetFont(fontfamily, fontsize) =
         ignore <| this.RaiseAndSetIfChanged(&m_fontFamily, Avalonia.Media.FontFamily(fontfamily), "FontFamily")
         ignore <| this.RaiseAndSetIfChanged(&m_fontSize, fontsize, "FontSize")
-
-    member this.SetColors(nfg: Color, nbg: Color, sfg: Color, sbg: Color, scfg: Color, scbg: Color, bbg: Color) =
-        let tobrush (x: Color) = SolidColorBrush(x) :> IBrush
-        let (/) (x: Color) (y: float) = 
-            Color(
-                byte(float x.A), 
-                byte(float x.R / y), 
-                byte(float x.G / y), 
-                byte(float x.B / y))
-        let (+) (x: Color) (y: Color) = Color(x.A + y.A, x.R + y.R, x.G + y.G, x.B + y.B)
-        let hbg = sbg / 2.0 + nbg / 2.0
-        let [nfg; nbg; sfg; sbg; hbg; scfg; scbg; bbg] = List.map tobrush [ nfg; nbg; sfg; sbg; hbg; scfg; scbg; bbg ]
-
-        [
-            this.RaiseAndSetIfChanged(&m_normalFg,    nfg,  "NormalForeground")
-            this.RaiseAndSetIfChanged(&m_normalBg,    nbg,  "NormalBackground")
-            this.RaiseAndSetIfChanged(&m_selectFg,    sfg,  "SelectForeground")
-            this.RaiseAndSetIfChanged(&m_selectBg,    sbg,  "SelectBackground")
-            this.RaiseAndSetIfChanged(&m_hoverBg,     hbg,  "HoverBackground")
-            this.RaiseAndSetIfChanged(&m_scrollbarFg, scfg, "ScrollbarForeground")
-            this.RaiseAndSetIfChanged(&m_scrollbarBg, scbg, "ScrollbarBackground")
-            this.RaiseAndSetIfChanged(&m_border,      bbg,  "BorderColor")
-        ] |> ignore
 
     member this.SetItems(items: CompleteItem[], textArea: Rect, lineHeight: float, desiredSizeVec: Point, editorSizeVec: Point) =
         m_items.Clear()
