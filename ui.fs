@@ -277,14 +277,14 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPain
     let region' = region
     let region = region.ToSKRect()
 
+    //  DrawText accepts the coordinate of the baseline.
+    //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
     let h = region.Bottom - region.Top
-    let h' = fg.FontMetrics.Bottom - fg.FontMetrics.Top
-    let total_padding = h - h'
-    let prop = h / h'
-    let baseline = region.Top + ceil((total_padding / 2.0f) - (fg.FontMetrics.Top))
-    (*let baseline = ceil( region.Bottom - (fg.FontMetrics.Bottom * prop))*)
+    //  total_padding = padding space 1 + padding space 2
+    let total_padding = h - ((fg.FontMetrics.Bottom - fg.FontMetrics.Top))
+    let baseline      = region.Top + ceil((total_padding / 2.0f) - fg.FontMetrics.Top)
     (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
-    let fontPos = SKPoint(region.Left, baseline)
+    let fontPos       = SKPoint(region.Left, baseline)
 
     let skia = ctx :?> ISkiaDrawingContextImpl
 
