@@ -30,14 +30,17 @@ type MainWindow() as this =
 
     let mutable m_bgcolor: Color = Color()
     let mutable m_bgopacity: float = 1.0
-    let mutable m_bgblur = false
+    let mutable m_bgcomp = States.NoComposition
     let mutable m_bgacrylic = false
 
     let configBackground() =
+        m_bgcomp <- States.background_composition
+        m_bgopacity <- States.background_opacity
         let comp =
-            if m_bgacrylic then ui.AdvancedBlur(m_bgopacity, m_bgcolor)
-            elif m_bgblur then ui.GaussianBlur(m_bgopacity, m_bgcolor)
-            else ui.SolidBackground m_bgcolor
+          match m_bgcomp with
+          | States.Acrylic -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+          | States.Blur -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
+          | _ -> ui.SolidBackground m_bgcolor
         trace "mainwindow" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
         
@@ -130,25 +133,8 @@ type MainWindow() as this =
             this.Bind(XProp, Binding("X", BindingMode.TwoWay))
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
 
-            States.Register.Watch "background.composition" (fun () ->
-                match States.background_composition.ToLower() with
-                | "blur" ->
-                    m_bgblur <- true
-                    m_bgacrylic <- false
-                | "acrylic" ->
-                    m_bgblur <- false
-                    m_bgacrylic <- true
-                | "none" | _ -> 
-                    m_bgblur <- false
-                    m_bgacrylic <- false
-                configBackground()
-                )
-
-            States.Register.Watch "background.opacity" (fun () ->
-                m_bgopacity <- States.background_opacity
-                configBackground()
-                )
-
+            States.Register.Watch "background.composition" configBackground
+            States.Register.Watch "background.opacity" configBackground
             States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
@@ -205,6 +191,7 @@ type MainWindow() as this =
         let mutable deltaX = 0
         let mutable deltaY = 0
         this.ViewModel <- ctx
+        toggleTitleBar ctx.CustomTitleBar
 
         trace "mainwindow" "set position: %d, %d" pos.X pos.Y
         this.Position <- pos

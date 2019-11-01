@@ -479,7 +479,7 @@ let Start opts =
     States.Register.Bool "ui.termcolors"
     States.Register.Bool "ui.hlstate"
 
-    States.Register.String "background.composition"
+    States.Register.Prop<States.BackgroundComposition> States.parseBackgroundComposition "background.composition"
     States.Register.Float "background.opacity"
     States.Register.Float "background.altopacity"
 

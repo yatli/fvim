@@ -60,7 +60,7 @@ let GetDrawAttrs hlid =
         fg <- bg
         bg <- tmp
 
-    if (States.background_composition = "acrylic" || States.background_composition = "blur") then
+    if (States.background_composition <> States.BackgroundComposition.NoComposition) then
         let alpha = 
             if bg = default_bg then 0uy
             else byte(States.background_altopacity * 255.0)

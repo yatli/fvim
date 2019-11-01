@@ -44,6 +44,9 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             match Enum.TryParse<WindowState>(cfg.Mainwin.State) with
             | true, v -> this.WindowState <- v
             | _ -> ()
+            match cfg.Mainwin.CustomTitleBar with
+            | Some true -> m_customTitleBar <- true
+            | _ -> ()
         | None -> ()
         this.Watch [
             States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
