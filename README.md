@@ -83,6 +83,14 @@ FVimToggleFullScreen
 FVimCursorSmoothMove v:true
 FVimCursorSmoothBlink v:true
 
+" Background composition
+FVimBackgroundComposition 'acrylic'   " 'none', 'blur' or 'acrylic'
+FVimBackgroundOpacity 0.85            " value between 0 and 1, default bg opacity.
+FVimBackgroundAltOpacity 0.85         " value between 0 and 1, non-default bg opacity.
+
+" Title bar tweaks
+FVimCustomTitleBar v:true             " themed with colorscheme
+
 " Debug UI overlay
 FVimDrawFPS v:true
 
@@ -140,6 +148,9 @@ FVim-args:
                                 Windows named pipe (PipeName).
 
     --setup                     Registers FVim as a text editor, and updates
+                                file association and icons. Requires UAC
+                                elevation on Windows.
+    --uninstall                 Unregisters FVim as a text editor, and removes
                                 file association and icons. Requires UAC
                                 elevation on Windows.
 
