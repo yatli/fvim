@@ -12,6 +12,7 @@ type ServerOptions =
 type Intent =
     | Start
     | Setup
+    | Uninstall
     | Daemon of port: uint16 option * pipe: string option
 
 type Options =
@@ -50,6 +51,7 @@ let parseOptions (args: string[]) =
     let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
     let connect             = eat2 "--connect"
     let setup               = eat1 "--setup"
+    let uninstall           = eat1 "--uninstall"
     let tryDaemon           = eat1 "--tryDaemon"
     let runDaemon           = eat1 "--daemon"
     let port                = eat2 "--daemonPort" >>= ParseUInt16
@@ -101,6 +103,7 @@ let parseOptions (args: string[]) =
 
     let intent = 
         if setup then Setup
+        elif uninstall then Uninstall
         elif runDaemon then Daemon(port, pipe)
         else Start
 

@@ -84,6 +84,7 @@ let main(args: string[]) =
     FVim.log.init opts
     match opts.intent with
     | Setup -> setup()
+    | Uninstall -> uninstall()
     | Daemon(port, pipe) -> daemon port pipe opts
     | Start -> 
 

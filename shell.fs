@@ -73,21 +73,21 @@ let private win32RegisterFileAssociation() =
 
         use shell = key.CreateSubKey("shell")
 
-        shell.SetValue("", "open")
+        shell.SetValue("", "edit")
 
         let () =
-            use _open = shell.CreateSubKey("open")
-            _open.SetValue("", "Open with FVim")
-            _open.SetValue("Icon", fvicon)
-            use command = _open.CreateSubKey("command")
+            use _edit = shell.CreateSubKey("edit")
+            _edit.SetValue("", "Open with FVim")
+            _edit.SetValue("Icon", fvicon)
+            use command = _edit.CreateSubKey("command")
             command.SetValue("", sprintf "\"%s\" --tryDaemon \"%%1\"" exe)
         in ()
 
         let () =
-            use _open = shell.CreateSubKey("new")
-            _open.SetValue("", "Open with new FVim")
-            _open.SetValue("Icon", fvicon)
-            use command = _open.CreateSubKey("command")
+            use _edit = shell.CreateSubKey("new")
+            _edit.SetValue("", "Open with new FVim")
+            _edit.SetValue("Icon", fvicon)
+            use command = _edit.CreateSubKey("command")
             command.SetValue("", sprintf "\"%s\" \"%%1\"" exe)
         in ()
     
@@ -115,10 +115,31 @@ let private win32RegisterFileAssociation() =
         use extKey = HKCR.CreateSubKey(ext)
         extKey.SetValue("", progId)
 
+let private win32UnregisterFileAssociation() =
+  trace "unregistering file associations..."
+  let HKCR = Registry.ClassesRoot
+  let HKLM = Registry.LocalMachine
+
+  HKLM.DeleteSubKeyTree(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\FVim.exe", false)
+  HKCR.DeleteSubKeyTree(@"Applications\FVim.exe", false)
+  HKLM.DeleteSubKeyTree(@"SOFTWARE\Classes\Applications\FVim.exe", false)
+
+  for (ico,ext) in FVimIcons do
+      let progId = "FVim" + ext
+      HKCR.DeleteSubKeyTree(progId, false)
+
 let setup() =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         if win32CheckUAC() then
             win32RegisterFileAssociation()
+
+    // setup finished.
+    0
+
+let uninstall() =
+    if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
+        if win32CheckUAC() then
+            win32UnregisterFileAssociation()
 
     // setup finished.
     0
