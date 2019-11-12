@@ -90,10 +90,9 @@ let main(args: string[]) =
 
     // Avalonia initialization
     let builder = buildAvaloniaApp()
-    let lifetime = new ClassicDesktopStyleApplicationLifetime(builder.Instance)
+    let lifetime = new ClassicDesktopStyleApplicationLifetime()
     lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
-    builder.Instance.ApplicationLifetime <- lifetime
-    let _ = builder.SetupWithoutStarting()
+    let _ = builder.SetupWithLifetime(lifetime)
     // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
     let model_start = 

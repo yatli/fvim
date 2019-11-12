@@ -31,7 +31,6 @@ type MainWindow() as this =
     let mutable m_bgcolor: Color = Color()
     let mutable m_bgopacity: float = 1.0
     let mutable m_bgcomp = States.NoComposition
-    let mutable m_bgacrylic = false
 
     let configBackground() =
         m_bgcomp <- States.background_composition
@@ -53,10 +52,10 @@ type MainWindow() as this =
 
     let m_cursor_ns = Cursor(StandardCursorType.SizeNorthSouth)
     let m_cursor_we = Cursor(StandardCursorType.SizeWestEast)
-    let m_cursor_ne = Cursor(StandardCursorType.TopLeftCorner)
-    let m_cursor_nw = Cursor(StandardCursorType.TopRightCorner)
-    let m_cursor_se = Cursor(StandardCursorType.BottomLeftCorner)
-    let m_cursor_sw = Cursor(StandardCursorType.BottomRightCorner)
+    let m_cursor_ne = Cursor(StandardCursorType.TopRightCorner)
+    let m_cursor_nw = Cursor(StandardCursorType.TopLeftCorner)
+    let m_cursor_se = Cursor(StandardCursorType.BottomRightCorner)
+    let m_cursor_sw = Cursor(StandardCursorType.BottomLeftCorner)
 
     let setCursor c =
         this.Cursor <- c
@@ -165,7 +164,7 @@ type MainWindow() as this =
                 match getDragEdge <| ev.GetPosition(this) with
                 | Some edge ->
                     ev.Handled <- true
-                    this.BeginResizeDrag(edge)
+                    this.BeginResizeDrag(edge, ev)
                 | _ -> ())
                 , RoutingStrategies.Tunnel)
 

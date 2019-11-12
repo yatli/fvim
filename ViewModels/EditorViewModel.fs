@@ -465,13 +465,13 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
-            let button = updateMouseButton(e.GetPointerPoint null)
+            let button = updateMouseButton(e.GetCurrentPoint null)
             raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
-            let button = updateMouseButton(e.GetPointerPoint null)
+            let button = updateMouseButton(e.GetCurrentPoint null)
             raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 

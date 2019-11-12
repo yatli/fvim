@@ -31,10 +31,10 @@ type TitleBar() as this =
             this.DoubleTapped.Subscribe(fun ev -> 
                 ev.Handled <- true
                 toggleMaximize())
-            this.PointerMoved.Subscribe(fun ev -> 
-                if this.IsPointerOver && ev.GetPointerPoint(null).Properties.IsLeftButtonPressed then
-                    ev.Handled <- true
-                    root().BeginMoveDrag())
+            this.PointerPressed.Subscribe(fun ev ->
+                ev.Handled <- true
+                root().BeginMoveDrag(ev)
+                )
         ]
 
     override __.OnTemplateApplied _ =

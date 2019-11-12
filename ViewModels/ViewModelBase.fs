@@ -14,19 +14,19 @@ open System.Runtime.CompilerServices
 [<Extension>]
 type ActivatableExt() =
     [<Extension>]
-    static member inline Watch (this: IActivatable, xs: IDisposable seq) =
+    static member inline Watch (this: IActivatableView, xs: IDisposable seq) =
         this.WhenActivated(fun (disposables: CompositeDisposable) ->
             xs |> Seq.iter (fun x -> x.DisposeWith(disposables) |> ignore)) |> ignore
     [<Extension>]
-    static member inline Watch (this: ISupportsActivation, xs: IDisposable seq) =
+    static member inline Watch (this: IActivatableViewModel, xs: IDisposable seq) =
         this.WhenActivated(fun (disposables: CompositeDisposable) ->
             xs |> Seq.iter (fun x -> x.DisposeWith(disposables) |> ignore)) |> ignore
     [<Extension>]
-    static member inline Do (this: IActivatable, fn: unit -> unit) =
+    static member inline Do (this: IActivatableView, fn: unit -> unit) =
         do fn()
         Disposable.Empty
     [<Extension>]
-    static member inline Do (this: ISupportsActivation, fn: unit -> unit) =
+    static member inline Do (this: IActivatableViewModel, fn: unit -> unit) =
         do fn()
         Disposable.Empty
 
@@ -45,7 +45,7 @@ type ViewModelBase(_x: float option, _y: float option, _w: float option, _h: flo
     new() = ViewModelBase(None, None, None, None)
     new(_posX: float option, _posY: float option, _size: Size option) = ViewModelBase(_posX, _posY, Option.map(fun (s: Size) -> s.Width) _size, Option.map(fun (s: Size) -> s.Height) _size)
 
-    interface ISupportsActivation with
+    interface IActivatableViewModel with
         member __.Activator = activator
 
     member this.X
