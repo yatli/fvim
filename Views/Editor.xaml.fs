@@ -19,6 +19,7 @@ open System
 open System.Collections.Specialized
 open FSharp.Control.Reactive
 open Avalonia.Data
+open Avalonia.Visuals.Media.Imaging
 
 type Editor() as this =
     inherit Canvas()
@@ -30,6 +31,9 @@ type Editor() as this =
     let mutable grid_vm: EditorViewModel     = Unchecked.defaultof<_>
 
     let mutable m_debug = false
+    let mutable m_alphaLUT: byte[] = Array.create 256 0uy
+    let mutable m_normalLUT: byte[] = Array.create 256 0uy
+    let mutable m_nullLUT: byte[] = Array.create 256 0uy
 
     let trace fmt = 
         let nr =
@@ -38,17 +42,11 @@ type Editor() as this =
         trace ("editor #" + nr) fmt
 
 
-    let image() = this.FindControl<Image>("FrameBuffer")
-
     let resizeFrameBuffer() =
         grid_scale <- this.GetVisualRoot().RenderScaling
-        let image = image()
-        image.Source <- null
         if grid_fb <> null then
             grid_fb.Dispose()
-            grid_fb <- null
         grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
-        image.Source <- grid_fb
 
     //-------------------------------------------------------------------------
     //           = The rounding error of the rendering system =
@@ -219,6 +217,13 @@ type Editor() as this =
 
 
     do
+
+        // setup color filter LUTs
+        for i = 0 to 255 do
+            m_alphaLUT.[i] <- 0uy
+            m_normalLUT.[i] <- byte i
+        m_alphaLUT.[255] <- 255uy
+
         this.Watch [
             this.GetObservable(Editor.DataContextProperty)
             |> Observable.ofType
@@ -260,14 +265,27 @@ type Editor() as this =
                 if m_debug then
                     drawDebug grid_dc
 
+                // doesn't work yet
+                let skia = grid_dc :?> ISkiaDrawingContextImpl
+                use paint = new SKPaint()
+                paint.Color <- SKColor(255uy, 255uy, 255uy, 255uy)
+                use table = SKColorFilter.CreateTable(m_alphaLUT, m_normalLUT, m_normalLUT, m_normalLUT)
+                use shader = SKShader.CreateColorFilter(SKShader.CreateEmpty(), table)
+                paint.Shader <- shader
+                skia.SkCanvas.DrawPaint(paint)
+
                 grid_dc.PopClip()
                 timer.Stop()
                 trace "drawing end, time = %dms." timer.ElapsedMilliseconds
                 grid_vm.markClean()
+            let src_rect = Rect(0.0,0.0,float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
+            let tgt_rect = Rect(0.0,0.0,grid_fb.Size.Width, grid_fb.Size.Height)
+
+            ctx.DrawImage(grid_fb, 1.0, src_rect, tgt_rect, BitmapInterpolationMode.Default)
 
             (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
         (*trace "base rendering"*)
-        base.Render ctx
+        (*base.Render ctx*)
         (*trace "render end"*)
 
     override this.MeasureOverride(size) =

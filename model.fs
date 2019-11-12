@@ -479,6 +479,11 @@ let Start opts =
     States.Register.Bool "ui.termcolors"
     States.Register.Bool "ui.hlstate"
 
+    States.Register.Prop<States.BackgroundComposition> States.parseBackgroundComposition "background.composition"
+    States.Register.Float "background.opacity"
+    States.Register.Float "background.altopacity"
+
+
     List.iter ignore [
         ev_uiopt.Publish
         |> Observable.throttle(TimeSpan.FromMilliseconds 20.0)
@@ -547,7 +552,7 @@ let Start opts =
         let clientVersion = 
             hashmap [
                 "major", "0"
-                "minor", "1"
+                "minor", "2"
                 "prerelease", "dev"
             ]
         let clientType = "ui"
@@ -629,6 +634,11 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIHlState" 1 (sprintf "call rpcnotify(%d, 'ui.hlstate', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimDrawFPS" 1 (sprintf "call rpcnotify(%d, 'DrawFPS', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimCustomTitleBar" 1 (sprintf "call rpcnotify(%d, 'CustomTitleBar', <args>)" myChannel))
+
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundOpacity" 1 (sprintf "call rpcnotify(%d, 'background.opacity', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 (sprintf "call rpcnotify(%d, 'background.composition', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundAltOpacity" 1 (sprintf "call rpcnotify(%d, 'background.altopacity', <args>)" myChannel))
+
 
         // trigger ginit upon VimEnter
         let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")

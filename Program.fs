@@ -16,6 +16,7 @@ open System
 open System.IO
 open getopt
 open Shell
+open common
 open MessagePack.Formatters
 
 // Avalonia configuration, don't remove; also used by visual designer.
@@ -27,7 +28,7 @@ let buildAvaloniaApp() =
         .UseReactiveUI()
         .With(new Win32PlatformOptions(UseDeferredRendering=false, AllowEglInitialization=true))
         .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=true))
-        .With(new X11PlatformOptions(UseEGL=true, UseGpu=true))
+        .With(new X11PlatformOptions(UseEGL=true, UseGpu=false))
         .With(new MacOSPlatformOptions(ShowInDock=true))
         .LogToDebug()
 
@@ -105,11 +106,17 @@ let main(args: string[]) =
         let cfg = config.load()
         let cwd = Environment.CurrentDirectory |> Path.GetFullPath
         let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
+        workspace 
+        >>= fun workspace -> workspace.Mainwin.BackgroundComposition
+        >>= fun comp -> States.parseBackgroundComposition(box comp)
+        >>= fun comp -> States.background_composition <- comp; None
+        |> ignore
+
         let mainwin = new MainWindowViewModel(workspace)
         lifetime.MainWindow <- MainWindow(DataContext = mainwin)
         let ret = lifetime.Start(args)
 
-        config.save cfg (int mainwin.X) (int mainwin.Y) mainwin.Width mainwin.Height mainwin.WindowState
+        config.save cfg (int mainwin.X) (int mainwin.Y) (mainwin.Width) (mainwin.Height) (mainwin.WindowState) (States.backgroundCompositionToString States.background_composition) mainwin.CustomTitleBar
         ret
     | Error ex ->
         let crash = new CrashReportViewModel(ex)

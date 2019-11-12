@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/Users/v-yadli/git/fvim/native/osx/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/cc -Dfvim_ext_EXPORTS   -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk -fPIC   -o CMakeFiles/fvim-ext.dir/vibrancy_helper.m.o   -c /Users/v-yadli/git/fvim/native/osx/vibrancy_helper.m",
+  "file": "/Users/v-yadli/git/fvim/native/osx/vibrancy_helper.m"
+}
+]

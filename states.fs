@@ -87,6 +87,16 @@ let mutable ui_messages        = false
 let mutable ui_termcolors      = false
 let mutable ui_hlstate         = false
 
+type BackgroundComposition =
+  | NoComposition
+  | Blur
+  | Acrylic
+
+// background
+let mutable background_composition = NoComposition
+let mutable background_opacity     = 1.0
+let mutable background_altopacity  = 1.0
+
 [<Literal>]
 let uiopt_rgb            = "rgb"
 [<Literal>]
@@ -139,7 +149,6 @@ module private Helper =
             error "states" "The property %s is not found" name
             None
 
-
 let parseHintLevel (v: obj) = 
     match v with
     | String v ->
@@ -170,6 +179,22 @@ let parseLineHeightOption (v: obj) =
             if v > 0.0 then Some(Absolute v) 
             else None
     | _ -> None
+
+let parseBackgroundComposition (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "none" -> Some NoComposition
+        | "blur" -> Some Blur
+        | "acrylic" -> Some Acrylic
+        | _ -> None
+    | _ -> None
+
+let backgroundCompositionToString = 
+  function
+    | NoComposition -> "none"
+    | Blur -> "blur"
+    | Acrylic -> "acrylic"
 
 let Shutdown code = _appLifetime.Shutdown code
 
@@ -239,4 +264,9 @@ module Register =
 
     let Bool = Prop<bool> (|Bool|_|)
     let String = Prop<string> (|String|_|)
+    let Float = Prop<float> (function
+        | Integer32 x -> Some(float x)
+        | :? float as x -> Some x
+        | _ -> None)
+
 

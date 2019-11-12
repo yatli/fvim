@@ -277,7 +277,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     let hlConfig(id) =
         if id = 0 then
-            this.RaisePropertyChanged("BackgroundBrush")
+            this.RaisePropertyChanged("BackgroundColor")
         markAllDirty()
 
     let updateMouseButton (pp: PointerPoint) =
@@ -344,7 +344,6 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
 
     member __.GetFontAttrs() =
         theme.guifont, theme.guifontwide, m_fontsize
-
 
     member private __.initBuffer nrow ncol =
         m_gridsize <- { rows = nrow; cols = ncol }
@@ -433,8 +432,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         and set(v) =
             m_gridscale <- v
 
-    member __.BackgroundBrush
-        with get(): SolidColorBrush = SolidColorBrush(theme.default_bg)
+    member __.BackgroundColor
+        with get(): Color = theme.default_bg
 
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w

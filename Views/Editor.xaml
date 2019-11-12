@@ -6,22 +6,13 @@
   xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
   Focusable  = "True"
   x:Class    = "FVim.Editor"
-  Background = "{Binding BackgroundBrush, Mode=OneWay}"
+  Background = "Transparent"
   Design.Height="300"
   Design.Width="400"
   >
   <Design.DataContext>
     <fvim:EditorSampleData />
   </Design.DataContext>
-  <Image 
-    Name                = "FrameBuffer"
-    Source              = "{Binding FrameBuffer,  Mode=OneWay}"
-    Width               = "{Binding BufferWidth,  Mode=OneWay}"
-    Height              = "{Binding BufferHeight, Mode=OneWay}"
-    HorizontalAlignment = "Left"
-    VerticalAlignment   = "Top"
-    Focusable           = "False"
-  />
   <fvim:Cursor
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"

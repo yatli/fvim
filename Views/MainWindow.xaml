@@ -13,6 +13,7 @@
         WindowState="{Binding WindowState, Mode=TwoWay}"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
+        Background="Transparent"
         >
   <Design.DataContext>
     <fvim:MainWindowSampleData />

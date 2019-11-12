@@ -18,12 +18,32 @@ open Avalonia.Interactivity
 
 #nowarn "0025"
 
+open System.Runtime.InteropServices
+open System.Runtime
+open Avalonia.Media
+
 type MainWindow() as this =
     inherit ReactiveWindow<MainWindowViewModel>()
 
     static let XProp = AvaloniaProperty.Register<MainWindow,int>("PosX")
     static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
 
+    let mutable m_bgcolor: Color = Color()
+    let mutable m_bgopacity: float = 1.0
+    let mutable m_bgcomp = States.NoComposition
+    let mutable m_bgacrylic = false
+
+    let configBackground() =
+        m_bgcomp <- States.background_composition
+        m_bgopacity <- States.background_opacity
+        let comp =
+          match m_bgcomp with
+          | States.Acrylic -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+          | States.Blur -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
+          | _ -> ui.SolidBackground m_bgcolor
+        trace "mainwindow" "configBackground: %A" comp
+        ui.SetWindowBackgroundComposition this comp
+        
     let mutable m_saved_size          = Size(100.0,100.0)
     let mutable m_saved_pos           = PixelPoint(300, 300)
     let mutable m_saved_state         = WindowState.Normal
@@ -98,6 +118,7 @@ type MainWindow() as this =
         #endif
 
         DragDrop.SetAllowDrop(this, true)
+        configBackground()
 
         let flushop = 
             if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
@@ -112,6 +133,8 @@ type MainWindow() as this =
             this.Bind(XProp, Binding("X", BindingMode.TwoWay))
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
 
+            States.Register.Watch "background.composition" configBackground
+            States.Register.Watch "background.opacity" configBackground
             States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
@@ -168,6 +191,7 @@ type MainWindow() as this =
         let mutable deltaX = 0
         let mutable deltaY = 0
         this.ViewModel <- ctx
+        toggleTitleBar ctx.CustomTitleBar
 
         trace "mainwindow" "set position: %d, %d" pos.X pos.Y
         this.Position <- pos
@@ -183,6 +207,11 @@ type MainWindow() as this =
                     this.SetValue(XProp, p.Point.X - deltaX)
                     this.SetValue(YProp, p.Point.Y - deltaY)
                 )
+            ctx.MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
+            |> Observable.subscribe(fun c -> 
+                trace "mainwindow" "update background color: %s" (c.Value.ToString())
+                m_bgcolor <- c.Value
+                configBackground())
             ctx.ObservableForProperty((fun x -> x.Fullscreen), skipInitial=true).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
             ctx.ObservableForProperty((fun x -> x.CustomTitleBar), skipInitial=true).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
         ]
