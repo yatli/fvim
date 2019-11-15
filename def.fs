@@ -174,6 +174,10 @@ with
         let _len (x: string option) = (_d "" x).Length
         x.word.Length + _len x.abbr + _len x.menu + _len x.info
 
+// The ids are arbitrary. Parsed from a string identifier.
+// However, this list is obtained from a full semantic hl group set.
+// Adding an arbitrary group string from :hi will not work,
+// because it's not transferred at all.
 type SemanticHighlightGroup =
     | SpecialKey   = 0
     | EndOfBuffer  = 1
@@ -512,6 +516,7 @@ let parse_complete_item =
 let parse_semantic_hlgroup =
     function
     | ObjArray [| (String key); (Integer32 id) |] ->
+        trace "parse_semantic_hlgroup: %s" key
         match SemanticHighlightGroup.TryParse key with
         | true, key -> Some(key, id)
         | _ -> None

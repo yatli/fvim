@@ -10,6 +10,7 @@ type TitleBar() as this =
     inherit ViewBase<TitleBarViewModel>()
 
     static let TitleProperty = AvaloniaProperty.Register<TitleBar, string>("Title")
+    static let IsActiveProperty = AvaloniaProperty.Register<TitleBar, bool>("IsActive")
 
     let root() = (this:>IVisual).VisualRoot :?> MainWindow
 
@@ -24,6 +25,7 @@ type TitleBar() as this =
     let mutable m_butmin:Button = null
     let mutable m_butmax:Button = null
     let mutable m_butclose:Button = null
+    let mutable m_title:TextBlock = null
 
     do
         AvaloniaXamlLoader.Load(this)
@@ -41,14 +43,25 @@ type TitleBar() as this =
         m_butmin <- this.FindControl("MinimizeButton")
         m_butmax <- this.FindControl("MaximizeButton")
         m_butclose <- this.FindControl("CloseButton")
+        m_title <- this.FindControl("Title")
 
         this.Watch [
             m_butmin.Click.Subscribe(fun _ -> root().WindowState <- WindowState.Minimized)
             m_butmax.Click.Subscribe(fun _ -> toggleMaximize())
             m_butclose.Click.Subscribe(fun _ -> root().Close())
+
+            this.GetObservable(IsActiveProperty).Subscribe(fun v ->
+              [m_butmin.Classes; m_butmax.Classes; m_butclose.Classes; m_title.Classes]
+            |> List.iter (
+                if v then fun x -> ignore <| x.Remove("inactive")
+                else fun x -> x.Add("inactive")))
         ]
 
 
     member __.Title
         with get() = this.GetValue(TitleProperty)
         and set(v) = this.SetValue(TitleProperty, v)
+
+    member __.IsActive
+        with get() = this.GetValue(IsActiveProperty)
+        and set(v) = this.SetValue(IsActiveProperty, v)
