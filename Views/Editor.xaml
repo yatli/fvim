@@ -20,7 +20,7 @@
     HorizontalAlignment = "Left"
     VerticalAlignment   = "Top"
     Focusable           = "False"
-    IsVisible           = "{Binding $parent[1].IsActive, Mode=OneWay}"
+    IsActive            = "{Binding $parent[Window].IsActive, Mode=OneWay}"
     >
   </fvim:Cursor>
 

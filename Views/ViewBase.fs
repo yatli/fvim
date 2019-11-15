@@ -10,7 +10,7 @@ type ViewBase< 'TViewModel when 'TViewModel :> ViewModelBase and 'TViewModel: no
     inherit UserControl()
 
     static let RenderTickProperty = AvaloniaProperty.Register<ViewBase< 'TViewModel >, int>("RenderTick")
-    static let ViewModelProp = AvaloniaProperty.Register<ViewBase< 'TViewModel >, 'TViewModel>("ViewModel")
+    static let ViewModelProperty = AvaloniaProperty.Register<ViewBase< 'TViewModel >, 'TViewModel>("ViewModel")
 
     let m_vm_connected = Event<'TViewModel>()
 
@@ -37,11 +37,11 @@ type ViewBase< 'TViewModel when 'TViewModel :> ViewModelBase and 'TViewModel: no
 
     interface IViewFor<'TViewModel> with
         member this.ViewModel
-            with get (): 'TViewModel = this.GetValue(ViewModelProp)
-            and set (v: 'TViewModel): unit = this.SetValue(ViewModelProp, v)
+            with get (): 'TViewModel = this.GetValue(ViewModelProperty)
+            and set (v: 'TViewModel): unit = this.SetValue(ViewModelProperty, v)
         member this.ViewModel
-            with get (): obj = this.GetValue(ViewModelProp) :> obj
-            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
+            with get (): obj = this.GetValue(ViewModelProperty) :> obj
+            and set (v: obj): unit = this.SetValue(ViewModelProperty, v)
 
     member this.OnRenderTick (fn: int -> unit) =
         this.GetObservable(RenderTickProperty).Subscribe fn

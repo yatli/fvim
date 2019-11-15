@@ -26,6 +26,8 @@ open System.Runtime.InteropServices
 type Cursor() as this =
     inherit ViewBase<CursorViewModel>()
 
+    static let IsActiveProperty = AvaloniaProperty.Register<Cursor, bool>("IsActive")
+
     let mutable cursor_timer: IDisposable = null
     let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
@@ -61,7 +63,8 @@ type Cursor() as this =
 
     let showCursor (v: bool) =
         let opacity = 
-            if v && this.ViewModel.enabled && this.ViewModel.ingrid
+            if (v && this.ViewModel.enabled && this.ViewModel.ingrid)
+               || not this.IsActive // don't blink if inactive
             then 1.0
             else 0.0
         this.Opacity <- opacity
@@ -94,13 +97,13 @@ type Cursor() as this =
 
     let setCursorAnimation() =
         let transitions = Transitions()
-        if States.cursor_smoothblink then 
+        if States.cursor_smoothblink && this.IsActive then 
             let blink_transition = DoubleTransition()
             blink_transition.Property <- Cursor.OpacityProperty
             blink_transition.Duration <- TimeSpan.FromMilliseconds(150.0)
             blink_transition.Easing   <- Easings.LinearEasing()
             transitions.Add(blink_transition)
-        if States.cursor_smoothmove then
+        if States.cursor_smoothmove && this.IsActive then
             let x_transition = DoubleTransition()
             x_transition.Property <- Canvas.LeftProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
@@ -118,18 +121,25 @@ type Cursor() as this =
     do
         this.Watch [
             this.OnRenderTick cursorConfig
+            this.GetObservable(IsActiveProperty) 
+            |> Observable.subscribe(fun v -> 
+              setCursorAnimation()
+              this.InvalidateVisual())
             States.Register.Watch "cursor" setCursorAnimation
+
         ] 
         AvaloniaXamlLoader.Load(this)
+
+    member this.IsActive
+      with get() = this.GetValue(IsActiveProperty)
+      and set(v) = this.SetValue(IsActiveProperty, v)
 
     override this.Render(ctx) =
         (*trace "cursor" "Render text: %s" this.ViewModel.text*)
 
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
-
         let scale = this.GetVisualRoot().RenderScaling
-
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
             let _, typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
@@ -137,6 +147,11 @@ type Cursor() as this =
             bgpaint.Color <- this.ViewModel.bg.ToSKColor()
             sppaint.Color <- this.ViewModel.sp.ToSKColor()
             let bounds = Rect(this.Bounds.Size)
+            let render_block (ctx: 'a) =
+                if this.IsActive then
+                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
+                else
+                    ctx.DrawRectangle(Pen(SolidColorBrush(this.ViewModel.bg)), bounds)
 
             try
                 match ctx.PlatformImpl with
@@ -145,14 +160,14 @@ type Cursor() as this =
                     SetOpacity fgpaint this.Opacity
                     SetOpacity bgpaint this.Opacity
                     SetOpacity sppaint this.Opacity
-                    RenderText(ctx.PlatformImpl, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
+                    render_block ctx.PlatformImpl
                 | _ ->
                     // deferred
                     let redraw = ensure_fb()
                     if redraw then
                         let dc = cursor_fb.CreateDrawingContext(null)
                         dc.PushClip(bounds)
-                        RenderText(dc, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
+                        render_block dc
                         dc.PopClip()
                         dc.Dispose()
                     ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
