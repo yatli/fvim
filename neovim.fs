@@ -39,6 +39,7 @@ type Nvim() =
     let mutable m_events      = None
     let mutable m_io          = Disconnected
     let mutable m_disposables = []
+    let m_cancelSrc           = new CancellationTokenSource()
 
     member __.Id = Guid.NewGuid()
 
@@ -121,19 +122,24 @@ type Nvim() =
                    | :? System.IO.IOException
                    | :? System.Net.Sockets.SocketException
                    | :? ObjectDisposedException
-                       as _ex -> 
-                           ex <- true
-                           trace "exception: %O" _ex
+                       as _ex -> ex <- true
 
                 let ec = serverExitCode()
                 if ec.IsSome then
-                    let code = ec.Value
-                    trace "end read loop: process exited, code = %d" code
-                    if code <> 0 then
-                        ob.OnNext([|box(Crash code)|])
+                  let code = ec.Value
+                  trace "end read loop: process exited, code = %d" code
+                  if code <> 0 then
+                    m_cancelSrc.Cancel()
+                    ob.OnNext([|box (Crash code)|])
+                  else
+                    ob.OnNext([|box Exit|])
                 else
-                    trace "end read loop."
+                  trace "end read loop."
+                  ob.OnNext([|box Exit|])
+
                 ob.OnCompleted()
+
+
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
         let reply (id: int) (rsp: Response) = async {
@@ -186,7 +192,6 @@ type Nvim() =
         let stdout = 
             _startRead()
             |> Observable.filter    intercept
-            |> Observable.concat    (Observable.single Exit)
 
         let events = Observable.merge stdout stderr
 
@@ -204,6 +209,8 @@ type Nvim() =
             let src = TaskCompletionSource<Response>()
             if not <| pending.TryAdd(myid, src)
             then failwith "call: cannot create call request"
+
+            use cancel_reg = m_cancelSrc.Token.Register(fun () -> src.TrySetCanceled() |> ignore)
 
             let payload = mkparams4 0 myid ev.method ev.parameters
             MessagePackSerializer.ToJson(payload) |> trace "call: %d -> %s" myid
@@ -225,7 +232,11 @@ type Nvim() =
 
     member __.stop (timeout: int) =
 
-        // Disconnect all the subscriptions first
+        // Send cancellation signal
+        m_cancelSrc.Cancel()
+        m_cancelSrc.Dispose()
+
+        // Disconnect all the subscriptions
         for (d: IDisposable) in m_disposables do
             d.Dispose()
 

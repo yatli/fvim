@@ -4,10 +4,12 @@ open ui
 open log
 open common
 
-type CrashReportViewModel(ex: exn) =
+type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
     inherit ViewModelBase()
     member __.MainMessage =
-        ex.Message
+        sprintf "Exit code: %d\n" code + 
+        ex.Message + "\n" + 
+        join msgs
     member __.StackTrace =
         ex.StackTrace.Split("\n")
     member __.TipMessage = 

@@ -31,6 +31,8 @@ type Event =
 
 let private _stateChangeEvent = Event<string>()
 let private _appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
+let mutable private _crashcode = 0
+let private _errormsgs = ResizeArray<string>()
 
 // request handlers are explicitly registered, 1:1, with no broadcast.
 let requestHandlers      = hashmap[]
@@ -198,6 +200,9 @@ let backgroundCompositionToString =
 
 let Shutdown code = _appLifetime.Shutdown code
 
+let get_crash_info() =
+  _crashcode, _errormsgs
+
 let msg_dispatch =
     function
     | Request(id, req, reply) -> 
@@ -216,12 +221,17 @@ let msg_dispatch =
         let event = getNotificationEvent req.method
         try event.Trigger req.parameters
         with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
-    | Exit -> _appLifetime.Shutdown()
-    | Crash code ->
-        trace "model" "neovim crashed with code %d" code
-        _appLifetime.Shutdown()
-    | Error err -> error "model" "neovim: %s" err
-    | _ -> ()
+    | Error err -> 
+      error "rpc" "neovim: %s" err
+      _errormsgs.Add err
+    | Exit -> 
+      trace "rpc" "shutting down application lifetime"
+      _appLifetime.Shutdown()
+    | Crash code -> 
+      trace "rpc" "neovim crashed with code %d" code
+      _crashcode <- code
+    | other -> 
+      trace "rpc" "unrecognized event: %A" other
 
 module Register =
     let Request name fn = 
