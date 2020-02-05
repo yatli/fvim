@@ -131,6 +131,9 @@ type MainWindow() as this =
             this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
             this.Bind(XProp, Binding("X", BindingMode.TwoWay))
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
+            this.GotFocus.Subscribe (fun _ -> Model.OnFocusGained())
+            this.LostFocus.Subscribe (fun _ -> Model.OnFocusLost())
+              (*"if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"*)
 
             States.Register.Watch "background.composition" configBackground
             States.Register.Watch "background.opacity" configBackground
@@ -167,6 +170,7 @@ type MainWindow() as this =
                     this.BeginResizeDrag(edge, ev)
                 | _ -> ())
                 , RoutingStrategies.Tunnel)
+
 
         ]
         AvaloniaXamlLoader.Load this

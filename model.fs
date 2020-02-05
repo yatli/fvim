@@ -691,6 +691,19 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
         in ()
     } |> ignore
 
+let OnFocusLost() =
+    task { 
+      let! _ = nvim.command "if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"
+      in ()
+    } |> ignore
+
+// see: https://github.com/equalsraf/neovim-qt/blob/e13251a6774ec8c38e7f124b524cc36e4453eb35/src/gui/shell.cpp#L1405
+let OnFocusGained() =
+    task { 
+      let! _ = nvim.command "if exists('#FocusGained') | doautocmd <nomodeline> FocusGained | endif"
+      in ()
+    } |> ignore
+
 let OnTerminated (args) =
     trace "terminating nvim..."
     nvim.stop 1
