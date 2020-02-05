@@ -103,7 +103,7 @@ type Editor() as this =
 
         let txt = String.Concat str
         let shaping = 
-            if txt.Length > 1 && txt.Length < 5 && issym then
+            if txt.Length > 1 && txt.Length < 5 && issym && States.font_ligature then
                 ValueSome shaper
             else ValueNone
 
