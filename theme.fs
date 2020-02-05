@@ -53,7 +53,7 @@ let GetDrawAttrs hlid =
 
     let mutable fg = Option.defaultValue default_fg attrs.foreground
     let mutable bg = Option.defaultValue default_bg attrs.background
-    let mutable sp = Option.defaultValue default_sp attrs.special
+    let mutable sp = Option.defaultValue fg attrs.special
 
     if attrs.reverse then
         let tmp = fg
