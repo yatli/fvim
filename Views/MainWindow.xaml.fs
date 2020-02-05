@@ -133,7 +133,6 @@ type MainWindow() as this =
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
             this.GotFocus.Subscribe (fun _ -> Model.OnFocusGained())
             this.LostFocus.Subscribe (fun _ -> Model.OnFocusLost())
-              (*"if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"*)
 
             States.Register.Watch "background.composition" configBackground
             States.Register.Watch "background.opacity" configBackground
