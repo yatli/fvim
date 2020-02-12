@@ -37,9 +37,10 @@ type MainWindow() as this =
         m_bgopacity <- States.background_opacity
         let comp =
           match m_bgcomp with
-          | States.Acrylic -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
-          | States.Blur -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
-          | _ -> ui.SolidBackground m_bgcolor
+          | States.Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+          | States.Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
+          | States.Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
+          | _                  -> ui.SolidBackground m_bgcolor
         trace "mainwindow" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
         

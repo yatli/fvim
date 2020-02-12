@@ -92,6 +92,7 @@ let mutable ui_hlstate         = false
 
 type BackgroundComposition =
   | NoComposition
+  | Transparent
   | Blur
   | Acrylic
 
@@ -190,6 +191,7 @@ let parseBackgroundComposition (v: obj) =
         | "none" -> Some NoComposition
         | "blur" -> Some Blur
         | "acrylic" -> Some Acrylic
+        | "transparent" -> Some Transparent
         | _ -> None
     | _ -> None
 
@@ -198,6 +200,7 @@ let backgroundCompositionToString =
     | NoComposition -> "none"
     | Blur -> "blur"
     | Acrylic -> "acrylic"
+    | Transparent -> "transparent" 
 
 let Shutdown code = _appLifetime.Shutdown code
 
