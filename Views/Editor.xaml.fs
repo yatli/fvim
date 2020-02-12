@@ -172,7 +172,7 @@ type Editor() as this =
                 if this.GetVisualRoot() <> null then resizeFrameBuffer())
 
             Observable.interval(TimeSpan.FromMilliseconds 100.0)
-            |> Observable.firstIf(fun _ -> this.IsInitialized)
+            |> Observable.firstIf(fun _ -> this.IsInitialized && vm.Height > 0.0 && vm.Width > 0.0)
             |> Observable.subscribe(fun _ -> 
                 Model.OnGridReady(vm :> IGridUI)
                 ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus)
@@ -264,15 +264,6 @@ type Editor() as this =
 
                 if m_debug then
                     drawDebug grid_dc
-
-                // doesn't work yet
-                let skia = grid_dc :?> ISkiaDrawingContextImpl
-                use paint = new SKPaint()
-                paint.Color <- SKColor(255uy, 255uy, 255uy, 255uy)
-                use table = SKColorFilter.CreateTable(m_alphaLUT, m_normalLUT, m_normalLUT, m_normalLUT)
-                use shader = SKShader.CreateColorFilter(SKShader.CreateEmpty(), table)
-                paint.Shader <- shader
-                skia.SkCanvas.DrawPaint(paint)
 
                 grid_dc.PopClip()
                 timer.Stop()

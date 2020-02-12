@@ -8,6 +8,9 @@ open Avalonia
 open Avalonia.Controls
 open System
 open ui
+open Avalonia.Media.Imaging
+open Avalonia.Media
+open Avalonia.Layout
 
 #nowarn "0025"
 
@@ -29,10 +32,33 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     let mutable m_fullscreen = false
     let mutable m_title = "FVim"
 
+    let mutable m_bgimg_src: Bitmap = null
+    let mutable m_bgimg_stretch     = Stretch.None
+    let mutable m_bgimg_w           = 0.0
+    let mutable m_bgimg_h           = 0.0
+    let mutable m_bgimg_opacity     = 1.0
+    let mutable m_bgimg_halign      = HorizontalAlignment.Left
+    let mutable m_bgimg_valign      = VerticalAlignment.Top
+
     let toggleFullScreen(gridid: int) =
         if gridid = mainGrid.GridId then
             this.Fullscreen <- not this.Fullscreen
             trace "ToggleFullScreen %A" this.Fullscreen
+
+    let updateBackgroundImage() =
+        if not <| Object.ReferenceEquals(m_bgimg_src, null) then
+            m_bgimg_src.Dispose()
+            m_bgimg_src <- null
+        try
+            let new_img = new Bitmap(States.background_image_file)
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, m_bgimg_src.Size.Width, "BackgroundImageW")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_h, m_bgimg_src.Size.Height, "BackgroundImageH")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_opacity, States.background_image_opacity, "BackgroundImageOpacity")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_halign, States.background_image_halign, "BackgroundImageHAlign")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_valign, States.background_image_valign, "BackgroundImageVAlign")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_stretch, States.background_image_stretch, "BackgroundImageStretch")
+        with _ -> ()
 
     do
         match cfg with
@@ -51,6 +77,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
         this.Watch [
             States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
             States.Register.Notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
+            States.Register.Watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
         Model.OnWindowReady this
 
@@ -91,6 +118,14 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             ignore <| this.RaiseAndSetIfChanged(&m_customTitleBar, v)
             this.RaisePropertyChanged("CustomTitleBarHeight")
             this.RaisePropertyChanged("BorderSize")
+
+    member __.BackgroundImage with get(): IBitmap = m_bgimg_src :> IBitmap
+    member __.BackgroundImageHAlign with get(): HorizontalAlignment = m_bgimg_halign
+    member __.BackgroundImageVAlign with get(): VerticalAlignment = m_bgimg_valign
+    member __.BackgroundImageW with get(): float = m_bgimg_w
+    member __.BackgroundImageH with get(): float = m_bgimg_h
+    member __.BackgroundImageOpacity with get(): float = m_bgimg_opacity
+    member __.BackgroundImageStretch with get(): Stretch = m_bgimg_stretch
 
     interface IWindow with
         member __.RootId = this.MainGrid.GridId

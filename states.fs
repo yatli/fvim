@@ -6,6 +6,8 @@ open log
 open def
 open System.Reflection
 open Avalonia.Threading
+open Avalonia.Media
+open Avalonia.Layout
 
 [<Struct>]
 type Request = 
@@ -92,13 +94,20 @@ let mutable ui_hlstate         = false
 
 type BackgroundComposition =
   | NoComposition
+  | Transparent
   | Blur
   | Acrylic
 
 // background
-let mutable background_composition = NoComposition
-let mutable background_opacity     = 1.0
-let mutable background_altopacity  = 1.0
+let mutable background_composition   = NoComposition
+let mutable background_opacity       = 1.0
+let mutable background_altopacity    = 1.0
+let mutable background_image_file    = ""
+let mutable background_image_opacity = 1.0
+let mutable background_image_stretch = Stretch.None
+let mutable background_image_halign  = HorizontalAlignment.Left
+let mutable background_image_valign  = VerticalAlignment.Top
+
 
 [<Literal>]
 let uiopt_rgb            = "rgb"
@@ -190,6 +199,40 @@ let parseBackgroundComposition (v: obj) =
         | "none" -> Some NoComposition
         | "blur" -> Some Blur
         | "acrylic" -> Some Acrylic
+        | "transparent" -> Some Transparent
+        | _ -> None
+    | _ -> None
+
+let parseStretch (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "none" -> Some Stretch.None
+        | "fill" -> Some Stretch.Fill
+        | "uniform" -> Some Stretch.Uniform
+        | "uniformfill" -> Some Stretch.UniformToFill
+        | _ -> None
+    | _ -> None
+
+let parseHorizontalAlignment (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "left" -> Some HorizontalAlignment.Left
+        | "center" -> Some HorizontalAlignment.Center
+        | "right" -> Some HorizontalAlignment.Right
+        | "stretch" -> Some HorizontalAlignment.Stretch
+        | _ -> None
+    | _ -> None
+
+let parseVerticalAlignment (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "top" -> Some VerticalAlignment.Top
+        | "center" -> Some VerticalAlignment.Center
+        | "bottom" -> Some VerticalAlignment.Bottom
+        | "stretch" -> Some VerticalAlignment.Stretch
         | _ -> None
     | _ -> None
 
@@ -198,6 +241,7 @@ let backgroundCompositionToString =
     | NoComposition -> "none"
     | Blur -> "blur"
     | Acrylic -> "acrylic"
+    | Transparent -> "transparent" 
 
 let Shutdown code = _appLifetime.Shutdown code
 
@@ -235,6 +279,7 @@ let msg_dispatch =
       trace "rpc" "unrecognized event: %A" other
 
 module Register =
+    /// Register an rpc handler.
     let Request name fn = 
         requestHandlers.Add(name, fun objs ->
             try fn objs
@@ -242,16 +287,19 @@ module Register =
                 error "Request" "exception thrown: %O" x
                 async { return { result = Result.Error(box x) } })
 
+    /// Register an event handler.
     let Notify name (fn: obj[] -> unit) = 
         (getNotificationEvent name).Publish.Subscribe(fun objs -> 
             try fn objs
             with x -> error "Notify" "exception thrown: %A" <| x.ToString())
 
+    /// Watch for registered state
     let Watch (name: string) fn =
         _stateChangeEvent.Publish
         |> Observable.filter (fun x -> x.StartsWith(name))
         |> Observable.subscribe (fun _ -> fn())
 
+    /// Registers a state variable. Raises notification on change.
     let Prop<'T> (parser: obj -> 'T option) (fullname: string) =
         let section = fullname.Split(".").[0]
         let fieldName = fullname.Replace(".", "_")

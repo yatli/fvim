@@ -436,7 +436,8 @@ open osx
 open linux
 
 type WindowBackgroundComposition =
-    | SolidBackground of color: Color
+    | SolidBackground of opacity: float * color: Color
+    | TransparentBackground of opacity: float * color: Color
     | GaussianBlur of opacity: float * color: Color
     | AdvancedBlur of opacity: float * color: Color
 
@@ -445,9 +446,13 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         let state, opacity, bgcolor = 
             match composition with
-            | SolidBackground c -> 
+            | SolidBackground (_, c) -> 
                 win.Background <- SolidColorBrush(c)
                 AccentState.ACCENT_DISABLED, 0u, 0u
+            | TransparentBackground (op, c) -> 
+                let c = Color(byte(op * 255.0), c.R, c.G, c.B)
+                win.Background <- SolidColorBrush(c)
+                AccentState.ACCENT_ENABLE_TRANSPARENTGRADIENT, 0u, 0u
             | GaussianBlur(op, c) ->
                 let c = Color(byte(op * 255.0), c.R, c.G, c.B)
                 win.Background <- SolidColorBrush(c)
@@ -475,8 +480,9 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
         Marshal.FreeHGlobal(accentPtr);
     elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
         match composition with
-        | SolidBackground c ->
+        | SolidBackground (_, c) ->
             win.Background <- SolidColorBrush(c)
+        | TransparentBackground(op, c) // TODO verify
         | GaussianBlur(op, c)
         | AdvancedBlur(op, c) ->
             let c = Color(byte(op * 255.0), c.R, c.G, c.B)
@@ -535,10 +541,10 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
             1)
 
         match composition with
-        | SolidBackground c ->
+        | SolidBackground (_, c) ->
             win.Background <- SolidColorBrush(c)
+        | TransparentBackground(op, c) // TODO verify
         | GaussianBlur(op, c)
         | AdvancedBlur(op, c) ->
             let c = Color(byte(op * 255.0), c.R, c.G, c.B)
             win.Background <- SolidColorBrush(c)
-            (*ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)*)

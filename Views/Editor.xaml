@@ -13,6 +13,7 @@
   <Design.DataContext>
     <fvim:EditorSampleData />
   </Design.DataContext>
+
   <fvim:Cursor
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
@@ -29,5 +30,7 @@
     ZIndex              = "10"
     Focusable           = "True"
     HorizontalAlignment = "Left"
-    VerticalAlignment   = "Top"/>
+    VerticalAlignment   = "Top"
+    />
+
 </Canvas>
