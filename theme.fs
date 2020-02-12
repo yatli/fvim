@@ -60,7 +60,9 @@ let GetDrawAttrs hlid =
         fg <- bg
         bg <- tmp
 
-    let alpha = byte(States.background_altopacity * 255.0)
+    let alpha =
+      if bg = default_bg then 0uy
+      else byte(States.background_altopacity * 255.0)
     bg <- Avalonia.Media.Color(alpha, bg.R, bg.G, bg.B)
     fg, bg, sp, attrs
 

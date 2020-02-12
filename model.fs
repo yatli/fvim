@@ -484,6 +484,7 @@ let Start opts =
     States.Register.Prop<States.BackgroundComposition> States.parseBackgroundComposition "background.composition"
     States.Register.Float "background.opacity"
     States.Register.Float "background.altopacity"
+    States.Register.Float "background.image.opacity"
     States.Register.String "background.image.file"
     States.Register.Prop<Stretch> States.parseStretch "background.image.stretch"
     States.Register.Prop<HorizontalAlignment> States.parseHorizontalAlignment "background.image.halign"
@@ -646,6 +647,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 (sprintf "call rpcnotify(%d, 'background.composition', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundAltOpacity" 1 (sprintf "call rpcnotify(%d, 'background.altopacity', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImage" 1 (sprintf "call rpcnotify(%d, 'background.image.file', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageOpacity" 1 (sprintf "call rpcnotify(%d, 'background.image.opacity', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageStretch" 1 (sprintf "call rpcnotify(%d, 'background.image.stretch', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageHAlign" 1 (sprintf "call rpcnotify(%d, 'background.image.halign', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageVAlign" 1 (sprintf "call rpcnotify(%d, 'background.image.valign', <args>)" myChannel))

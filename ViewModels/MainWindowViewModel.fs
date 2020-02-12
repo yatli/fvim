@@ -36,6 +36,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     let mutable m_bgimg_stretch     = Stretch.None
     let mutable m_bgimg_w           = 0.0
     let mutable m_bgimg_h           = 0.0
+    let mutable m_bgimg_opacity     = 1.0
     let mutable m_bgimg_halign      = HorizontalAlignment.Left
     let mutable m_bgimg_valign      = VerticalAlignment.Top
 
@@ -53,6 +54,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, m_bgimg_src.Size.Width, "BackgroundImageW")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_h, m_bgimg_src.Size.Height, "BackgroundImageH")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_opacity, States.background_image_opacity, "BackgroundImageOpacity")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_halign, States.background_image_halign, "BackgroundImageHAlign")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_valign, States.background_image_valign, "BackgroundImageVAlign")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_stretch, States.background_image_stretch, "BackgroundImageStretch")
@@ -122,6 +124,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     member __.BackgroundImageVAlign with get(): VerticalAlignment = m_bgimg_valign
     member __.BackgroundImageW with get(): float = m_bgimg_w
     member __.BackgroundImageH with get(): float = m_bgimg_h
+    member __.BackgroundImageOpacity with get(): float = m_bgimg_opacity
     member __.BackgroundImageStretch with get(): Stretch = m_bgimg_stretch
 
     interface IWindow with

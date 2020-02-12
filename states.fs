@@ -103,6 +103,7 @@ let mutable background_composition   = NoComposition
 let mutable background_opacity       = 1.0
 let mutable background_altopacity    = 1.0
 let mutable background_image_file    = ""
+let mutable background_image_opacity = 1.0
 let mutable background_image_stretch = Stretch.None
 let mutable background_image_halign  = HorizontalAlignment.Left
 let mutable background_image_valign  = VerticalAlignment.Top
