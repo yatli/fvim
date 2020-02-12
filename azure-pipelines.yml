@@ -45,7 +45,7 @@ jobs:
       targetType: 'inline'
       script: |
         sudo apt-get install ruby ruby-dev rubygems build-essential rpm
-        sudo gem install --no-ri --no-rdoc fpm
+        sudo gem install --no-document --no-rdoc fpm
   - task: Bash@3
     inputs:
       filePath: 'pack.sh'
