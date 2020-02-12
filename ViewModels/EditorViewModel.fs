@@ -432,9 +432,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         and set(v) =
             m_gridscale <- v
 
-    member __.BackgroundColor
-        with get(): Color = theme.default_bg
-
+    member __.BackgroundColor with get(): Color = theme.default_bg
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w
     member __.GlyphHeight with get(): float = m_glyphsize.Height

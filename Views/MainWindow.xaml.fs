@@ -40,7 +40,7 @@ type MainWindow() as this =
           | States.Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
           | States.Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
           | States.Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
-          | _                  -> ui.SolidBackground m_bgcolor
+          | _                  -> ui.SolidBackground(m_bgopacity, m_bgcolor)
         trace "mainwindow" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
         

@@ -16,6 +16,7 @@ open Avalonia.Input.Raw
 open FSharp.Control.Reactive
 open System.ComponentModel
 open SkiaSharp
+open Avalonia.Layout
 
 #nowarn "0058"
 #nowarn "0025"
@@ -483,6 +484,10 @@ let Start opts =
     States.Register.Prop<States.BackgroundComposition> States.parseBackgroundComposition "background.composition"
     States.Register.Float "background.opacity"
     States.Register.Float "background.altopacity"
+    States.Register.String "background.image.file"
+    States.Register.Prop<Stretch> States.parseStretch "background.image.stretch"
+    States.Register.Prop<HorizontalAlignment> States.parseHorizontalAlignment "background.image.halign"
+    States.Register.Prop<VerticalAlignment> States.parseVerticalAlignment "background.image.valign"
 
 
     List.iter ignore [
@@ -640,6 +645,10 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundOpacity" 1 (sprintf "call rpcnotify(%d, 'background.opacity', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 (sprintf "call rpcnotify(%d, 'background.composition', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundAltOpacity" 1 (sprintf "call rpcnotify(%d, 'background.altopacity', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImage" 1 (sprintf "call rpcnotify(%d, 'background.image.file', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageStretch" 1 (sprintf "call rpcnotify(%d, 'background.image.stretch', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageHAlign" 1 (sprintf "call rpcnotify(%d, 'background.image.halign', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimBackgroundImageVAlign" 1 (sprintf "call rpcnotify(%d, 'background.image.valign', <args>)" myChannel))
 
 
         // trigger ginit upon VimEnter
