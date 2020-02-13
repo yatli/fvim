@@ -25,19 +25,27 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 
 ### Features
 
-- HiDPI support -- try dragging it across two screens with different DPIs ;)
-- Proper font rendering -- respects font style, baseline, [ligatures](https://github.com/tonsky/FiraCode) etc.
-- Proper cursor rendering -- color, blink etc.
-- Built-in support for Nerd font -- no need to patch your fonts!
-- East Asia wide glyph display with font fallback options
-- Emojis!
-- High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
-- GPU acceleration
-- Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
-- Use the front end with a remote neovim: `fvim --ssh user@host`
-- Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
-- Host a daemon to preload NeoVim
-- Connect to a remote NeoVim backend: `fvim --connect localhost:9527`
+- Theming done the (Neo)Vim way
+  - Cursor color/blink
+  - Background image/composition
+  - Custom UI elements are themed with `colorscheme` settings
+  - And more!
+- Font handling
+  - Proper font rendering -- respects font style, baseline, [ligatures](https://github.com/tonsky/FiraCode) etc.
+  - Built-in support for Nerd font -- no need to patch your fonts!
+  - East Asia wide glyph display with font fallback options
+  - Fine-grained font tweaking knobs for personal font rendering
+  - Emojis!
+- GUI framework
+  - HiDPI support -- try dragging it across two screens with different DPIs ;)
+  - High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
+  - GPU acceleration
+- Remoting
+  - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
+  - Use the front end with a remote neovim: `fvim --ssh user@host`
+  - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
+  - Host a daemon to preload NeoVim
+  - Connect to a remote NeoVim backend: `fvim --connect localhost:9527`
 
 Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
@@ -51,7 +59,7 @@ if exists('g:fvim_loaded')
 endif
 ```
 
-Some work-in-progress fancy cursor effects:
+Some fancy cursor effects:
 ```vimL
 if exists('g:fvim_loaded')
     FVimCursorSmoothMove v:true
