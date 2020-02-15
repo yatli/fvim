@@ -702,6 +702,13 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
         in ()
     } |> ignore
 
+let SetPopupMenuHeight (h: int) =
+    trace "SetPopupMenuHeight: h=%d" h
+    task {
+        let! _ = nvim.command (sprintf "call nvim_ui_pum_set_height(%d)" h)
+        in ()
+    } |> ignore
+
 let OnFocusLost() =
     task { 
       let! _ = nvim.command "if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"

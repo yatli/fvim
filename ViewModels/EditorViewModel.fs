@@ -242,6 +242,9 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_popupmenu_vm.SetItems(items, startPos, cursorPos, m_glyphsize.Height, bounds, editorSize)
         m_popupmenu_vm.Show <- true
 
+        let h = int(m_popupmenu_vm.Height / m_glyphsize.Height)
+        Model.SetPopupMenuHeight h
+
     let redraw(cmd: RedrawCommand) =
         //trace "%A" cmd
         match cmd with
