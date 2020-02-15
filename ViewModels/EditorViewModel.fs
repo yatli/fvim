@@ -239,7 +239,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         let editorSize = this.GetPoint m_gridsize.rows m_gridsize.cols
 
         m_popupmenu_vm.Selection <- selected
-        m_popupmenu_vm.SetItems(items, Rect(startPos, cursorPos), m_glyphsize.Height, bounds, editorSize)
+        m_popupmenu_vm.SetItems(items, startPos, cursorPos, m_glyphsize.Height, bounds, editorSize)
         m_popupmenu_vm.Show <- true
 
     let redraw(cmd: RedrawCommand) =
