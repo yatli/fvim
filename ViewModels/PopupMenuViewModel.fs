@@ -5,9 +5,20 @@ open log
 
 open ReactiveUI
 open System.Collections.ObjectModel
+open System.Collections.Specialized
+open System.ComponentModel
 open System.Threading
 open Avalonia
 open Avalonia.Threading
+
+type ObservableFastCollection<'T>() =
+  inherit ObservableCollection<'T>()
+  member this.AddRange(xs: 'T[]) =
+    Array.iter this.Items.Add xs
+    this.OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+    this.OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+    this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+
 
 type PopupMenuViewModel() =
     inherit ThemableViewModelBase()
@@ -17,7 +28,7 @@ type PopupMenuViewModel() =
     let mutable m_fontFamily = Avalonia.Media.FontFamily("")
     let mutable m_fontSize = 12.0
 
-    let m_items = ObservableCollection<CompletionItemViewModel>()
+    let m_items = ObservableFastCollection<CompletionItemViewModel>()
     let mutable m_cancelSrc: CancellationTokenSource = new CancellationTokenSource()
     let m_itemCommit = Event<int>()
 
@@ -82,9 +93,8 @@ type PopupMenuViewModel() =
         this.Width <- region.Width
         this.Height <- region.Height
 
-        let addItem (x: CompletionItemViewModel) =
+        let updateItem (x: CompletionItemViewModel) =
             x.Height <- lineHeight
-            this.Items.Add x
 
         let chunks = 
             items 
@@ -100,7 +110,9 @@ type PopupMenuViewModel() =
                 let task = Dispatcher.UIThread.InvokeAsync(fun () -> 
                     // new items made their way to the UI thread, abort
                     if not token.IsCancellationRequested then 
-                        Array.iter addItem chunk)
+                      Array.iter updateItem chunk
+                      m_items.AddRange chunk
+                      )
                 do! Async.AwaitTask(task)
         }
 
