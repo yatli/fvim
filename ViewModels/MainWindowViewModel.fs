@@ -46,9 +46,6 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             trace "ToggleFullScreen %A" this.Fullscreen
 
     let updateBackgroundImage() =
-        if not <| Object.ReferenceEquals(m_bgimg_src, null) then
-            m_bgimg_src.Dispose()
-            m_bgimg_src <- null
         try
             let new_img = new Bitmap(States.background_image_file)
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
@@ -58,7 +55,8 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_halign, States.background_image_halign, "BackgroundImageHAlign")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_valign, States.background_image_valign, "BackgroundImageVAlign")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_stretch, States.background_image_stretch, "BackgroundImageStretch")
-        with _ -> ()
+        with _ -> 
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, null, "BackgroundImage")
 
     do
         match cfg with
