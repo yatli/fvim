@@ -705,7 +705,7 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
 let SetPopupMenuPos width height row col =
     trace "SetPopupMenuPos: w=%d h=%d r=%d c=%d" width height row col
     task {
-      let! _ = nvim.call { method = "nvim_ui_pum_set";  parameters = mkparams4 width height row col}
+      let! _ = nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
       in ()
     } |> ignore
 
