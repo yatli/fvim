@@ -702,11 +702,11 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
         in ()
     } |> ignore
 
-let SetPopupMenuHeight (h: int) =
-    trace "SetPopupMenuHeight: h=%d" h
+let SetPopupMenuPos width height row col =
+    trace "SetPopupMenuPos: w=%d h=%d r=%d c=%d" width height row col
     task {
-        let! _ = nvim.command (sprintf "call nvim_ui_pum_set_height(%d)" h)
-        in ()
+      let! _ = nvim.call { method = "nvim_ui_pum_set";  parameters = mkparams4 width height row col}
+      in ()
     } |> ignore
 
 let OnFocusLost() =

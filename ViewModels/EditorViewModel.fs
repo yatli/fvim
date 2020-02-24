@@ -229,7 +229,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         trace "show popup menu at [%O, %O]" startPos cursorPos
 
         //  Decide the maximum size of the popup menu based on grid dimensions
-        let menuLines = items.Length
+        let menuLines = min items.Length 15
         let menuCols = 
             items
             |> Array.map CompleteItem.GetLength
@@ -242,8 +242,11 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         m_popupmenu_vm.SetItems(items, startPos, cursorPos, m_glyphsize.Height, bounds, editorSize)
         m_popupmenu_vm.Show <- true
 
+        let w = int(m_popupmenu_vm.Width / m_glyphsize.Width)
         let h = int(m_popupmenu_vm.Height / m_glyphsize.Height)
-        Model.SetPopupMenuHeight h
+        let r = int(m_popupmenu_vm.Y / m_glyphsize.Height)
+        let c = int(m_popupmenu_vm.X / m_glyphsize.Width)
+        Model.SetPopupMenuPos w h r c
 
     let redraw(cmd: RedrawCommand) =
         //trace "%A" cmd
