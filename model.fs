@@ -469,6 +469,7 @@ let Start opts =
     States.Register.Prop<SKFontStyleWeight> States.parseFontWeight "font.weight.normal"
     States.Register.Prop<SKFontStyleWeight> States.parseFontWeight "font.weight.bold"
     States.Register.Prop<States.LineHeightOption> States.parseLineHeightOption "font.lineheight"
+    States.Register.Bool "font.nonerd"
     States.Register.Bool "cursor.smoothblink"
     States.Register.Bool "cursor.smoothmove"
     States.Register.Bool "key.disableShiftSpace"
@@ -631,6 +632,7 @@ let Start opts =
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 (sprintf "call rpcnotify(%d, 'font.hindLevel', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.normal', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 (sprintf "call rpcnotify(%d, 'font.weight.bold', <args>)" myChannel))
+        let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimFontNoBuiltinSymbols" 1 (sprintf "call rpcnotify(%d, 'font.nonerd', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 (sprintf "call rpcnotify(%d, 'key.disableShiftSpace', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 (sprintf "call rpcnotify(%d, 'ui.multigrid', <args>)" myChannel))
         let! _ = Async.AwaitTask(nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 (sprintf "call rpcnotify(%d, 'ui.popupmenu', <args>)" myChannel))

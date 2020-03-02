@@ -80,6 +80,7 @@ let mutable font_hintLevel     = SKPaintHinting.NoHinting
 let mutable font_weight_normal = SKFontStyleWeight.Normal
 let mutable font_weight_bold   = SKFontStyleWeight.Bold
 let mutable font_lineheight    = LineHeightOption.Default
+let mutable font_nonerd        = false
 
 // ui
 let mutable ui_available_opts  = Set.empty<string>

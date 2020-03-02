@@ -195,7 +195,7 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     match w with
     | CharType.Wide  -> _get wfont
     | CharType.Powerline
-    | CharType.Nerd  -> (nerd_shaper, nerd_typeface)
+    | CharType.Nerd when not States.font_nonerd -> (nerd_shaper, nerd_typeface)
     | CharType.Emoji -> (emoji_shaper, emoji_typeface)
     | _              -> _get font
 
