@@ -193,6 +193,8 @@ type Editor() as this =
                         view.HorizontalAlignment <- HorizontalAlignment.Left
                         vm.Watch [ 
                           view.Bind(Editor.GetGridIdProp(), Binding("GridId")) 
+                          // important: bind to BufferHeight/BufferWidth, not
+                          // Height/Width.
                           view.Bind(Editor.HeightProperty, Binding("BufferHeight")) 
                           view.Bind(Editor.WidthProperty, Binding("BufferWidth")) 
                         ]
@@ -294,13 +296,12 @@ type Editor() as this =
         trace "MeasureOverride: %A" size
         doWithDataContext (fun vm ->
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
-            (*let sz  =*)
-                (*if vm.TopLevel then size*)
-                (*// multigrid: size is top-down managed, which means that*)
-                (*// the measurement of the view should be consistent with*)
-                (*// the buffer size calculated from the viewmodel.*)
-                (*else Size(vm.BufferWidth, vm.BufferHeight)*)
-            let sz = size
+            let sz  =
+                if vm.TopLevel then size
+                // multigrid: size is top-down managed, which means that
+                // the measurement of the view should be consistent with
+                // the buffer size calculated from the viewmodel.
+                else Size(vm.BufferWidth, vm.BufferHeight)
             vm.SetMeasuredSize sz
             sz
         )
