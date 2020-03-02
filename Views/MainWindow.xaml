@@ -43,7 +43,7 @@
       Opacity             = "{Binding BackgroundImageOpacity}"
       />
   
-    <fvim:Editor Grid.Row="1" Grid.Column="1" DataContext="{Binding MainGrid}" />
+    <fvim:Editor Grid.Row="1" Grid.Column="1" DataContext="{Binding MainGrid}" GridId="{Binding GridId}" />
     <Panel Name="LeftBorder" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" IsVisible="{Binding CustomTitleBar}" Background="{Binding NormalBackground}" />
     <Panel Name="RightBorder" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" IsVisible="{Binding CustomTitleBar}" Background="{Binding NormalBackground}" />
     <Panel Name="BottomBorder" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding CustomTitleBar}" Background="{Binding NormalBackground}" />

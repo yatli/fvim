@@ -33,18 +33,15 @@ module ModelImpl =
     let ev_uiopt      = Event<unit>()
     let ev_flush      = Event<unit>()
     let grids         = hashmap[]
-    let pending_msgs  = hashmap[]
     let windows       = hashmap[]
 
     let add_grid(grid: IGridUI) =
         let id = grid.Id
         grids.[id] <- grid
-        let mutable nl: ResizeArray<_> = null
-        if pending_msgs.TryGetValue(id, &nl) then
-            trace "add_grid: flushing %d pending redraw events for grid #%d" nl.Count id
-            ignore(pending_msgs.Remove id)
-            ignore(Dispatcher.UIThread.InvokeAsync(fun () ->
-                Seq.iter grid.Redraw nl))
+        // by default add to grid #1
+        (*if id <> 1 then*)
+          (*ignore <| grids.[1].AddChild id r c*)
+          
 
     let add_window(win: IWindow) = 
         let id = win.RootId
@@ -55,30 +52,15 @@ module ModelImpl =
     let unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
-        | _ ->
-            trace "unicast into non-existing grid #%d: %A" id cmd
-            let mutable nl = null
-            if not(pending_msgs.TryGetValue(id, &nl)) then
-                nl <- ResizeArray()
-                pending_msgs.[id] <- nl
-            nl.Add cmd
+        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
             grid.Redraw cmd
 
-    let broadcast_save id cmd =
-        let mutable found = false
-        for KeyValue(id',grid) in grids do
-            if id = id' then found <- true
-            grid.Redraw cmd
-        if not found then
-            unicast id cmd
-
     let bell (visual: bool) =
         // TODO
         trace "bell: %A" visual
-        ()
 
     let flush_throttle =
         if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
@@ -102,21 +84,22 @@ module ModelImpl =
         //  Broadcast
         | PopupMenuShow _       | PopupMenuSelect _             | PopupMenuHide _
         | Busy _                | Mouse _
-        | ModeChange _          | Flush
-            ->  broadcast cmd
-        | GridCursorGoto(id,_,_) 
-            -> broadcast_save id cmd
+        | ModeChange _          | Flush 
+        | GridCursorGoto(_,_,_) 
+            -> broadcast cmd
         //  Unicast
-        | GridClear id          | GridScroll(id,_,_,_,_,_,_)    | WinPos(id, _, _, _, _, _)
-        | MsgSetPos(id, _, _, _)
+        | GridClear id          | GridScroll(id,_,_,_,_,_,_)
             -> unicast id cmd
-        | GridResize(id, c, r) 
-            -> if not(grids.ContainsKey id) then
-                 // by default add to grid #1
-                 grids.[1].AddChild id r c
-                 |> add_grid
-                else
-                 unicast id cmd
+        | MsgSetPos(id, _, _, _) ->
+              if not(grids.ContainsKey id) then
+                add_grid <| grids.[1].AddChild id 1 grids.[1].GridWidth
+              unicast id cmd
+        | WinPos(id, _, _, _, w, h)
+        | GridResize(id, w, h) 
+            -> 
+              if not(grids.ContainsKey id) then
+                add_grid <| grids.[1].AddChild id h w
+              unicast id cmd
         | GridLine lines -> 
             lines 
             |> Array.groupBy (fun (line: GridLine) -> line.grid)

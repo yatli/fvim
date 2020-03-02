@@ -25,11 +25,11 @@ open System.Runtime.InteropServices
 
 #nowarn "0025"
 
-type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
+type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
-    let trace fmt = trace (sprintf "editorvm #%d" GridId) fmt
+    let trace fmt = trace (sprintf "editorvm #%d" _gridid) fmt
 
     let m_cursor_vm              = new CursorViewModel(_cursormode)
     let m_popupmenu_vm           = new PopupMenuViewModel()
@@ -52,7 +52,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     let mutable m_fb_h           = 10.0
     let mutable m_fb_w           = 10.0
 
-    let raiseInputEvent e = m_input_ev.Trigger(GridId, e)
+    let raiseInputEvent e = m_input_ev.Trigger(_gridid, e)
 
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
@@ -118,8 +118,8 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         markDirty dirty
 
     let cursorGoto id row col =
-        m_cursor_vm.ingrid <- (id = GridId)
-        if id = GridId then
+        m_cursor_vm.ingrid <- (id = _gridid)
+        if id = _gridid then
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
         this.cursorConfig()
@@ -198,7 +198,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
             match parent with
             | Some p -> p
             | None -> failwith "setWinPos: no parent"
-        let grid = GridId
+        let grid = _gridid
         trace "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
         (* manually resize and position the child grid as per neovim docs *)
         let origin: Point = parent.GetPoint startrow startcol
@@ -220,7 +220,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         Model.SelectPopupMenuItem i true true
 
     let showPopupMenu grid (items: CompleteItem[]) selected row col =
-        if grid <> GridId then
+        if grid <> _gridid then
             hidePopupMenu()
         else
         let startPos  = this.GetPoint row col
@@ -357,7 +357,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
         clearBuffer()
 
     interface IGridUI with
-        member __.Id = GridId
+        member __.Id = _gridid
         member __.GridHeight = int( this.Height / m_glyphsize.Height )
         member __.GridWidth  = int( this.Width  / m_glyphsize.Width  )
         member __.Resized = m_resize_ev.Publish
@@ -446,7 +446,7 @@ type EditorViewModel(GridId: int, ?parent: EditorViewModel, ?_gridsize: GridSize
     member __.TopLevel with get(): bool  = parent.IsNone
 
     member __.GridId
-        with get() = GridId
+        with get() = _gridid
 
     member __.ChildGrids = m_child_grids
 

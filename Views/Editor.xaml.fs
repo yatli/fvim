@@ -20,11 +20,13 @@ open System.Collections.Specialized
 open FSharp.Control.Reactive
 open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
+open Avalonia.Layout
 
 type Editor() as this =
     inherit Canvas()
 
-    static let ViewModelProp  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
+    static let ViewModelProperty  = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
+    static let GridIdProperty = AvaloniaProperty.Register<Editor, int>("GridId")
 
     let mutable grid_fb: RenderTargetBitmap  = null
     let mutable grid_scale: float            = 1.0
@@ -43,6 +45,7 @@ type Editor() as this =
 
 
     let resizeFrameBuffer() =
+        trace "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
         grid_scale <- this.GetVisualRoot().RenderScaling
         if grid_fb <> null then
             grid_fb.Dispose()
@@ -181,14 +184,22 @@ type Editor() as this =
             vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
                 match changes.Action with
                 | NotifyCollectionChangedAction.Add ->
-                    for vm in changes.NewItems do
+                    for e_vm in changes.NewItems do
                         let view = Editor()
-                        view.DataContext <- vm
+                        view.DataContext <- e_vm
                         view.ZIndex <- 3
+                        view.RenderTransformOrigin <- RelativePoint.TopLeft
+                        view.VerticalAlignment <- VerticalAlignment.Top
+                        view.HorizontalAlignment <- HorizontalAlignment.Left
+                        vm.Watch [ 
+                          view.Bind(Editor.GetGridIdProp(), Binding("GridId")) 
+                          view.Bind(Editor.HeightProperty, Binding("BufferHeight")) 
+                          view.Bind(Editor.WidthProperty, Binding("BufferWidth")) 
+                        ]
                         this.Children.Add(view)
                 | NotifyCollectionChangedAction.Remove ->
-                    for vm in changes.OldItems do
-                        match findChildEditor vm with
+                    for e_vm in changes.OldItems do
+                        match findChildEditor e_vm with
                         | Some view -> ignore(this.Children.Remove view)
                         | _ -> ()
                 | _ -> failwith "not supported"
@@ -283,21 +294,26 @@ type Editor() as this =
         trace "MeasureOverride: %A" size
         doWithDataContext (fun vm ->
             vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
-            let sz  =
-                if vm.TopLevel then size
-                // multigrid: size is top-down managed, which means that
-                // the measurement of the view should be consistent with
-                // the buffer size calculated from the viewmodel.
-                else Size(vm.BufferWidth, vm.BufferHeight)
+            (*let sz  =*)
+                (*if vm.TopLevel then size*)
+                (*// multigrid: size is top-down managed, which means that*)
+                (*// the measurement of the view should be consistent with*)
+                (*// the buffer size calculated from the viewmodel.*)
+                (*else Size(vm.BufferWidth, vm.BufferHeight)*)
+            let sz = size
             vm.SetMeasuredSize sz
             sz
         )
 
     interface IViewFor<EditorViewModel> with
         member this.ViewModel
-            with get (): EditorViewModel = this.GetValue(ViewModelProp)
-            and set (v: EditorViewModel): unit = this.SetValue(ViewModelProp, v)
+            with get (): EditorViewModel = this.GetValue(ViewModelProperty)
+            and set (v: EditorViewModel): unit = this.SetValue(ViewModelProperty, v)
         member this.ViewModel
-            with get (): obj = this.GetValue(ViewModelProp) :> obj
-            and set (v: obj): unit = this.SetValue(ViewModelProp, v)
+            with get (): obj = this.GetValue(ViewModelProperty) :> obj
+            and set (v: obj): unit = this.SetValue(ViewModelProperty, v)
 
+    member this.GridId 
+      with get() = this.GetValue(GridIdProperty)
+      and set(v:int) = this.SetValue(GridIdProperty, v)
+    static member GetGridIdProp() = GridIdProperty
