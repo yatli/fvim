@@ -111,7 +111,7 @@ FVimDrawFPS v:true
 FVimFontAntialias v:true
 FVimFontAutohint v:true
 FVimFontHintLevel 'full'
-FVimFontLcdRender v:true
+FVimFontLcdRender v:true " Doesn't play well with transparent background. See #125
 FVimFontLigature v:true
 FVimFontLineHeight '+1.0' " can be 'default', '14.0', '-1.0' etc.
 FVimFontSubpixel v:true
