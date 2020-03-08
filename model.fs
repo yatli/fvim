@@ -432,9 +432,10 @@ let UpdateUICapabilities() =
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
-let Start opts =
+let Start (opts: getopt.Options) =
     trace "starting neovim instance..."
     trace "opts = %A" opts
+    States.ui_multigrid <- opts.debugMultigrid
     nvim.start opts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
@@ -688,7 +689,7 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
     } |> ignore
 
 let SetPopupMenuPos width height row col =
-    trace "SetPopupMenuPos: w=%d h=%d r=%d c=%d" width height row col
+    trace "SetPopupMenuPos: w=%f h=%f r=%f c=%f" width height row col
     task {
       let! _ = nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
       in ()

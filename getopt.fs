@@ -25,6 +25,7 @@ type Options =
         program: string
         stderrenc: System.Text.Encoding
         serveropts: ServerOptions
+        debugMultigrid: bool
     }
 
 let parseOptions (args: string[]) =
@@ -58,6 +59,7 @@ let parseOptions (args: string[]) =
     let pipe                = eat2 "--daemonPipe"
     let terminal            = eat1 "--terminal"
     let termcmd             = eat2 "--terminal-cmd"
+    let debug_multigrid     = eat1 "--debug-multigrid"
 
     if wsl && ssh.IsSome then
         failwith "--wsl and --ssh cannot be used together."
@@ -126,5 +128,6 @@ let parseOptions (args: string[]) =
         serveropts      = serveropts
         stderrenc       = enc
         intent          = intent
+        debugMultigrid  = debug_multigrid
     }
 

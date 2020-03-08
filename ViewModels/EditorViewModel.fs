@@ -242,10 +242,10 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_popupmenu_vm.SetItems(items, startPos, cursorPos, m_glyphsize.Height, bounds, editorSize)
         m_popupmenu_vm.Show <- true
 
-        let w = int(m_popupmenu_vm.Width / m_glyphsize.Width)
-        let h = int(m_popupmenu_vm.Height / m_glyphsize.Height)
-        let r = int(m_popupmenu_vm.Y / m_glyphsize.Height)
-        let c = int(m_popupmenu_vm.X / m_glyphsize.Width)
+        let w = m_popupmenu_vm.Width / m_glyphsize.Width
+        let h = m_popupmenu_vm.Height / m_glyphsize.Height
+        let r = m_popupmenu_vm.Y / m_glyphsize.Height
+        let c = m_popupmenu_vm.X / m_glyphsize.Width
         Model.SetPopupMenuPos w h r c
 
     let redraw(cmd: RedrawCommand) =
@@ -312,6 +312,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             MouseButton.None
 
     do
+        trace "ctor"
         fontConfig()
         this.setCursorEnabled theme.cursor_enabled
 
@@ -352,9 +353,11 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         theme.guifont, theme.guifontwide, m_fontsize
 
     member private __.initBuffer nrow ncol =
-        m_gridsize <- { rows = nrow; cols = ncol }
-        trace "buffer resize = %A" m_gridsize
-        clearBuffer()
+        let new_gridsize = { rows = nrow; cols = ncol }
+        if m_gridsize <> new_gridsize then
+          m_gridsize <- new_gridsize
+          trace "buffer resize = %A" m_gridsize
+          clearBuffer()
 
     interface IGridUI with
         member __.Id = _gridid
