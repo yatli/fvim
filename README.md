@@ -111,10 +111,11 @@ FVimDrawFPS v:true
 FVimFontAntialias v:true
 FVimFontAutohint v:true
 FVimFontHintLevel 'full'
-FVimFontLcdRender v:true
+FVimFontLcdRender v:true " Doesn't play well with transparent background. See #125
 FVimFontLigature v:true
 FVimFontLineHeight '+1.0' " can be 'default', '14.0', '-1.0' etc.
 FVimFontSubpixel v:true
+FVimFontNoBuiltInSymbols v:true " Disable built-in Nerd font symbols
 
 " Try to snap the fonts to the pixels, reduces blur
 " in some situations (e.g. 100% DPI).
