@@ -122,7 +122,7 @@ let main(args: string[]) =
   | Ok() -> 0
   | Error ex ->
     // TODO should yield so that the crash info can propagate back
-    FVim.log.trace "main" "displaying crash dialog"
+    FVim.log.trace "main" "%s" "displaying crash dialog"
     let code, msgs = States.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)
     let win = new CrashReport(DataContext = crash)

@@ -35,7 +35,6 @@ type Cursor() as this =
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_s = 1.0
-    let mutable render_queued = false
 
     let ensure_fb() =
         let s = this.GetVisualRoot().RenderScaling
@@ -91,9 +90,7 @@ type Cursor() as this =
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
-            if not render_queued then
-                render_queued <- true
-                this.InvalidateVisual()
+            this.InvalidateVisual()
 
     let setCursorAnimation() =
         let transitions = Transitions()
@@ -165,11 +162,11 @@ type Cursor() as this =
                     // deferred
                     let redraw = ensure_fb()
                     if redraw then
-                        let dc = cursor_fb.CreateDrawingContext(null)
-                        dc.PushClip(bounds)
-                        render_block dc
-                        dc.PopClip()
-                        dc.Dispose()
+                        use cursor_dc = cursor_fb.CreateDrawingContext(null)
+                        cursor_dc.PushClip(bounds)
+                        render_block cursor_dc
+                        cursor_dc.PopClip()
+                        cursor_dc.Dispose()
                     ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
             with
             | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
@@ -180,6 +177,4 @@ type Cursor() as this =
         | CursorShape.Vertical, p ->
             let region = Rect(0.0, 0.0, cellw p, this.Height)
             ctx.FillRectangle(SolidColorBrush(this.ViewModel.bg), region)
-
-        render_queued <- false
 

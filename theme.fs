@@ -114,11 +114,11 @@ let setDefaultColors fg bg sp =
             undercurl = false
         }
     }
-    trace "setDefaultColors: %A %A %A" fg bg sp
+    (*trace "setDefaultColors: %A %A %A" fg bg sp*)
 
 
 let setOption (opt: UiOption) = 
-    trace "setOption: %A" opt
+    (*trace "setOption: %A" opt*)
 
     let (|FN|_|) (x: string) =
         // try to parse with 'font\ name:hNN'

@@ -1,7 +1,6 @@
 ﻿namespace FVim
 
 open FVim.ui
-open FVim.log
 open FVim.wcwidth
 
 open ReactiveUI
@@ -22,32 +21,37 @@ open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
 open Avalonia.Layout
 
+module private EditorHelper =
+  let inline trace vm fmt =
+    let nr =
+      if vm <> Unchecked.defaultof<_> then (vm :> IGridUI).Id.ToString() else "(no vm attached)"
+    FVim.log.trace ("editor #" + nr) fmt
+
+
+open EditorHelper
+
 type Editor() as this =
   inherit Canvas()
 
   static let ViewModelProperty = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
   static let GridIdProperty = AvaloniaProperty.Register<Editor, int>("GridId")
+  static let RenderTickProperty = AvaloniaProperty.Register<Editor, int>("RenderTick")
 
   let mutable grid_fb: RenderTargetBitmap = null
+  let mutable grid_dc: IDrawingContextImpl = null
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: EditorViewModel = Unchecked.defaultof<_>
 
   let mutable m_debug = States.ui_multigrid
-  let mutable m_alphaLUT: byte [] = Array.create 256 0uy
-  let mutable m_normalLUT: byte [] = Array.create 256 0uy
-  let mutable m_nullLUT: byte [] = Array.create 256 0uy
-
-  let trace fmt =
-    let nr =
-      if grid_vm <> Unchecked.defaultof<_> then (grid_vm :> IGridUI).Id.ToString() else "(no vm attached)"
-    trace ("editor #" + nr) fmt
-
 
   let resizeFrameBuffer() =
-    trace "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
+    trace grid_vm "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
     grid_scale <- this.GetVisualRoot().RenderScaling
-    if grid_fb <> null then grid_fb.Dispose()
+    if grid_fb <> null then 
+      grid_fb.Dispose()
+      grid_dc.Dispose()
     grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
+    grid_dc <- grid_fb.CreateDrawingContext(null)
 
   //-------------------------------------------------------------------------
   //           = The rounding error of the rendering system =
@@ -74,6 +78,10 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
+  let mutable fgpaint = null
+  let mutable bgpaint = null
+  let mutable sppaint = null
+
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) (issym: bool) =
 
     let x =
@@ -85,9 +93,10 @@ type Editor() as this =
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
     let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
 
-    use fgpaint = new SKPaint()
-    use bgpaint = new SKPaint()
-    use sppaint = new SKPaint()
+    if fgpaint = null then
+      fgpaint <- new SKPaint()
+      bgpaint <- new SKPaint()
+      sppaint <- new SKPaint()
     SetForegroundBrush(fgpaint, fg, typeface, fontsize)
 
     let nr_col =
@@ -113,7 +122,7 @@ type Editor() as this =
 
     try
       RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
-    with ex -> trace "drawBuffer: %s" <| ex.ToString()
+    with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.
   let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -166,7 +175,7 @@ type Editor() as this =
 
   let onViewModelConnected(vm: EditorViewModel) =
     grid_vm <- vm
-    trace "viewmodel connected"
+    trace grid_vm "%s" "viewmodel connected"
     vm.Watch
       [ Observable.merge (vm.ObservableForProperty(fun x -> x.BufferWidth))
           (vm.ObservableForProperty(fun x -> x.BufferHeight))
@@ -178,6 +187,10 @@ type Editor() as this =
         |> Observable.subscribe(fun _ ->
              Model.OnGridReady(vm :> IGridUI)
              ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus))
+
+        this.GetObservable(RenderTickProperty).Subscribe(fun id -> 
+          trace grid_vm "render tick %d" id
+          this.InvalidateVisual())
 
         vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
           match changes.Action with
@@ -227,12 +240,6 @@ type Editor() as this =
 
   do
 
-    // setup color filter LUTs
-    for i = 0 to 255 do
-      m_alphaLUT.[i] <- 0uy
-      m_normalLUT.[i] <- byte i
-    m_alphaLUT.[255] <- 255uy
-
     this.Watch
       [ this.GetObservable(Editor.DataContextProperty)
         |> Observable.ofType
@@ -261,9 +268,8 @@ type Editor() as this =
       let dirty = grid_vm.Dirty
       if not <| dirty.Empty() then
         let regions = dirty.Regions()
-        trace "drawing %d regions" regions.Count
+        trace grid_vm "drawing %d regions" regions.Count
         let timer = System.Diagnostics.Stopwatch.StartNew()
-        use grid_dc = grid_fb.CreateDrawingContext(null)
         grid_dc.PushClip(Rect this.Bounds.Size)
         for r in regions do
           for row = r.row to r.row_end - 1 do
@@ -273,14 +279,14 @@ type Editor() as this =
 
         grid_dc.PopClip()
         timer.Stop()
-        trace "drawing end, time = %dms." timer.ElapsedMilliseconds
+        trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
         grid_vm.markClean()
       let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
       let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
       ctx.DrawImage(grid_fb, 1.0, src_rect, tgt_rect, BitmapInterpolationMode.Default)
     else
-      trace "grid_fb is null"
+      trace grid_vm "%s" "grid_fb is null"
 
   (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
   (*trace "base rendering"*)
@@ -288,7 +294,7 @@ type Editor() as this =
   (*trace "render end"*)
 
   override this.MeasureOverride(size) =
-    trace "MeasureOverride: %A" size
+    trace grid_vm "MeasureOverride: %A" size
     doWithDataContext(fun vm ->
       vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
       let sz =
@@ -315,5 +321,9 @@ type Editor() as this =
   member this.GridId
     with get () = this.GetValue(GridIdProperty)
     and set (v: int) = this.SetValue(GridIdProperty, v)
+
+  member this.RenderTick
+    with get() = this.GetValue(RenderTickProperty)
+    and  set(v) = this.SetValue(RenderTickProperty, v)
 
   static member GetGridIdProp() = GridIdProperty

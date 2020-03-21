@@ -15,6 +15,7 @@ open Avalonia.ReactiveUI
 open System.Runtime.InteropServices
 open Avalonia.Rendering
 open Avalonia.Interactivity
+open Avalonia.VisualTree
 
 #nowarn "0025"
 
@@ -120,12 +121,12 @@ type MainWindow() as this =
         DragDrop.SetAllowDrop(this, true)
         configBackground()
 
-        let flushop = 
-            if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-                fun () -> 
-                    let editor: Avalonia.VisualTree.IVisual = this.GetEditor()
-                    editor.InvalidateVisual()
-            else this.InvalidateVisual
+        let flushop () = 
+            let editor: IControl = this.GetEditor()
+            if editor <> null then
+              editor.InvalidateVisual()
+            else
+              this.InvalidateVisual()
 
         this.Watch [
             this.Closing.Subscribe (fun e -> Model.OnTerminating e)
@@ -185,7 +186,7 @@ type MainWindow() as this =
         m_bottom_border <- this.FindControl<Panel>("BottomBorder")
 
     member this.GetEditor() =
-        this.LogicalChildren.[0] :?> Avalonia.VisualTree.IVisual
+      this.FindControl("RootEditor")
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> MainWindowViewModel

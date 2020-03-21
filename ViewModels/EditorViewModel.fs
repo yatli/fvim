@@ -1,7 +1,6 @@
 ﻿namespace FVim
 
 open common
-open log
 open ui
 open wcwidth
 open def
@@ -25,11 +24,15 @@ open System.Runtime.InteropServices
 
 #nowarn "0025"
 
+module private EditorViewModelHelper =
+  let inline trace id fmt =
+    FVim.log.trace (sprintf "editorvm #%d" id) fmt
+
+open EditorViewModelHelper
+
 type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
-
-    let trace fmt = trace (sprintf "editorvm #%d" _gridid) fmt
 
     let m_cursor_vm              = new CursorViewModel(_cursormode)
     let m_popupmenu_vm           = new PopupMenuViewModel()
@@ -129,7 +132,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         this.cursorConfig()
 
     let setBusy (v: bool) =
-        trace "neovim: busy: %A" v
+        trace _gridid "neovim: busy: %A" v
         m_busy <- v
         this.setCursorEnabled <| not v
         //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
@@ -169,7 +172,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         //    `cols` is always zero in this version of Nvim, and reserved for future
         //    use. 
 
-        trace "scroll: %A %A %A %A %A %A" top bot left right rows cols
+        trace _gridid "scroll: %A %A %A %A %A %A" top bot left right rows cols
 
         let copy src dst =
             if src >= 0 && src < m_gridsize.rows && dst >= 0 && dst < m_gridsize.rows then
@@ -199,10 +202,10 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             | Some p -> p
             | None -> failwith "setWinPos: no parent"
         let grid = _gridid
-        trace "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
+        trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
         (* manually resize and position the child grid as per neovim docs *)
         let origin: Point = parent.GetPoint startrow startcol
-        trace "setWinPos: update parameters: c = %d r = %d X = %f Y = %f" c r origin.X origin.Y
+        trace _gridid "setWinPos: update parameters: c = %d r = %d X = %f Y = %f" c r origin.X origin.Y
         this.initBuffer r c
         this.X <- origin.X
         this.Y <- origin.Y
@@ -226,7 +229,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let startPos  = this.GetPoint row col
         let cursorPos = this.GetPoint (m_cursor_vm.row + 1) m_cursor_vm.col
 
-        trace "show popup menu at [%O, %O]" startPos cursorPos
+        trace _gridid "show popup menu at [%O, %O]" startPos cursorPos
 
         //  Decide the maximum size of the popup menu based on grid dimensions
         let menuLines = min items.Length 15
@@ -264,7 +267,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
-        | x -> trace "unimplemented command: %A" x
+        | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
         // It turns out the space " " advances farest...
@@ -272,7 +275,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let s, w, h = MeasureText(" ", theme.guifont, theme.guifontwide, theme.fontsize, m_gridscale)
         m_glyphsize <- Size(w, h)
         m_fontsize <- s
-        trace "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
+        trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
 
         // sync font to cursor vm
         this.cursorConfig()
@@ -312,7 +315,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             MouseButton.None
 
     do
-        trace "ctor"
+        trace _gridid "%s" "ctor"
         fontConfig()
         this.setCursorEnabled theme.cursor_enabled
 
@@ -356,7 +359,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let new_gridsize = { rows = nrow; cols = ncol }
         if m_gridsize <> new_gridsize then
           m_gridsize <- new_gridsize
-          trace "buffer resize = %A" m_gridsize
+          trace _gridid "buffer resize = %A" m_gridsize
           clearBuffer()
 
     interface IGridUI with
@@ -422,7 +425,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_cursor_vm.Width          <- width
         m_cursor_vm.Height         <- m_glyphsize.Height
         m_cursor_vm.RenderTick     <- m_cursor_vm.RenderTick + 1
-        trace "set cursor info, color = %A %A %A" fg bg sp
+        trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
     member this.setCursorEnabled v =
         m_cursor_vm.enabled <- v
@@ -454,7 +457,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     member __.ChildGrids = m_child_grids
 
     member this.SetMeasuredSize (v: Size) =
-        trace "set measured size: %A" v
+        trace _gridid "set measured size: %A" v
         let gridui = this :> IGridUI
         let gw, gh = gridui.GridWidth, gridui.GridHeight
         this.Width <- v.Width
