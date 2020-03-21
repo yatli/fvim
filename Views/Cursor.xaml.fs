@@ -33,6 +33,7 @@ type Cursor() as this =
     let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
     let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
+    let mutable cursor_dc: Avalonia.Platform.IDrawingContextImpl = null
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_s = 1.0
     let mutable render_queued = false
@@ -43,7 +44,9 @@ type Cursor() as this =
             cursor_fb_vm <- this.ViewModel.Clone()
             cursor_fb_s <- s
             cursor_fb.Dispose()
+            cursor_dc.Dispose()
             cursor_fb <- AllocateFramebuffer (cursor_fb_vm.Width + 50.0) (cursor_fb_vm.Height + 50.0) s
+            cursor_dc <- cursor_fb.CreateDrawingContext(null)
             true
         elif cursor_fb_vm.text <> this.ViewModel.text then
             cursor_fb_vm.text <- this.ViewModel.text
@@ -165,11 +168,9 @@ type Cursor() as this =
                     // deferred
                     let redraw = ensure_fb()
                     if redraw then
-                        let dc = cursor_fb.CreateDrawingContext(null)
-                        dc.PushClip(bounds)
-                        render_block dc
-                        dc.PopClip()
-                        dc.Dispose()
+                        cursor_dc.PushClip(bounds)
+                        render_block cursor_dc
+                        cursor_dc.PopClip()
                     ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
             with
             | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
