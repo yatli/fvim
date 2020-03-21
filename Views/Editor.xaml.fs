@@ -35,6 +35,7 @@ type Editor() as this =
 
   static let ViewModelProperty = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
   static let GridIdProperty = AvaloniaProperty.Register<Editor, int>("GridId")
+  static let RenderTickProperty = AvaloniaProperty.Register<Editor, int>("RenderTick")
 
   let mutable grid_fb: RenderTargetBitmap = null
   let mutable grid_scale: float = 1.0
@@ -181,6 +182,10 @@ type Editor() as this =
              Model.OnGridReady(vm :> IGridUI)
              ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus))
 
+        this.GetObservable(RenderTickProperty).Subscribe(fun id -> 
+          trace grid_vm "render tick %d" id
+          this.InvalidateVisual())
+
         vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
           match changes.Action with
           | NotifyCollectionChangedAction.Add ->
@@ -317,5 +322,9 @@ type Editor() as this =
   member this.GridId
     with get () = this.GetValue(GridIdProperty)
     and set (v: int) = this.SetValue(GridIdProperty, v)
+
+  member this.RenderTick
+    with get() = this.GetValue(RenderTickProperty)
+    and  set(v) = this.SetValue(RenderTickProperty, v)
 
   static member GetGridIdProp() = GridIdProperty
