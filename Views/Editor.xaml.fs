@@ -1,7 +1,6 @@
 ﻿namespace FVim
 
 open FVim.ui
-open FVim.log
 open FVim.wcwidth
 
 open ReactiveUI
@@ -22,6 +21,15 @@ open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
 open Avalonia.Layout
 
+module private EditorHelper =
+  let inline trace vm fmt =
+    let nr =
+      if vm <> Unchecked.defaultof<_> then (vm :> IGridUI).Id.ToString() else "(no vm attached)"
+    FVim.log.trace ("editor #" + nr) fmt
+
+
+open EditorHelper
+
 type Editor() as this =
   inherit Canvas()
 
@@ -37,14 +45,8 @@ type Editor() as this =
   let mutable m_normalLUT: byte [] = Array.create 256 0uy
   let mutable m_nullLUT: byte [] = Array.create 256 0uy
 
-  let trace fmt =
-    let nr =
-      if grid_vm <> Unchecked.defaultof<_> then (grid_vm :> IGridUI).Id.ToString() else "(no vm attached)"
-    trace ("editor #" + nr) fmt
-
-
   let resizeFrameBuffer() =
-    trace "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
+    trace grid_vm "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
     grid_scale <- this.GetVisualRoot().RenderScaling
     if grid_fb <> null then grid_fb.Dispose()
     grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
@@ -113,7 +115,7 @@ type Editor() as this =
 
     try
       RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
-    with ex -> trace "drawBuffer: %s" <| ex.ToString()
+    with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.
   let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
@@ -166,7 +168,7 @@ type Editor() as this =
 
   let onViewModelConnected(vm: EditorViewModel) =
     grid_vm <- vm
-    trace "viewmodel connected"
+    trace grid_vm "%s" "viewmodel connected"
     vm.Watch
       [ Observable.merge (vm.ObservableForProperty(fun x -> x.BufferWidth))
           (vm.ObservableForProperty(fun x -> x.BufferHeight))
@@ -261,7 +263,7 @@ type Editor() as this =
       let dirty = grid_vm.Dirty
       if not <| dirty.Empty() then
         let regions = dirty.Regions()
-        trace "drawing %d regions" regions.Count
+        trace grid_vm "drawing %d regions" regions.Count
         let timer = System.Diagnostics.Stopwatch.StartNew()
         use grid_dc = grid_fb.CreateDrawingContext(null)
         grid_dc.PushClip(Rect this.Bounds.Size)
@@ -273,14 +275,14 @@ type Editor() as this =
 
         grid_dc.PopClip()
         timer.Stop()
-        trace "drawing end, time = %dms." timer.ElapsedMilliseconds
+        trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
         grid_vm.markClean()
       let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
       let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
       ctx.DrawImage(grid_fb, 1.0, src_rect, tgt_rect, BitmapInterpolationMode.Default)
     else
-      trace "grid_fb is null"
+      trace grid_vm "%s" "grid_fb is null"
 
   (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
   (*trace "base rendering"*)
@@ -288,7 +290,7 @@ type Editor() as this =
   (*trace "render end"*)
 
   override this.MeasureOverride(size) =
-    trace "MeasureOverride: %A" size
+    trace grid_vm "MeasureOverride: %A" size
     doWithDataContext(fun vm ->
       vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
       let sz =

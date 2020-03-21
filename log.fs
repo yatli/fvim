@@ -18,35 +18,21 @@ let private _logsSink    = Observable.merge _logsPub _logsEPub
 
 let mutable private _n_logsSink = 0
 
-type FormatIgnoreBuilder<'T>() = 
-    static let m_TThis = typeof<FormatIgnoreBuilder<'T>>
-    static let m_Ignore =
-        let resultT = typeof<'T>
-        let ret = 
-            if resultT = typeof<unit> then box ()
-            else
-            // some kind of FSharpFunc`2
-            let fargs = resultT.GetGenericArguments() 
-            let tail = 
-                m_TThis
-                    .GetGenericTypeDefinition()
-                    .MakeGenericType(fargs.[1])
-                    .GetProperty("Ignore", System.Reflection.BindingFlags.Static ||| System.Reflection.BindingFlags.Public)
-                    .GetValue(null)
-
-            let F = 
-                m_TThis
-                    .GetMethod("F", System.Reflection.BindingFlags.Static ||| System.Reflection.BindingFlags.Public) 
-                    .MakeGenericMethod([|fargs.[0]; fargs.[1]|])
-
-            F.Invoke(null, [|tail|])
-        ret :?> 'T
-
-    static member F<'a, 'b> (x: 'b) = (fun (a: 'a) -> x)
-    static member Ignore = m_Ignore
-
+#if DEBUG
 let trace cat (fmt: Printf.StringFormat< 'a , unit >) =
     Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
+#else
+type TraceIgnoreT = TraceIgnoreT with
+  static member ($) (T, _: unit) = ()
+  static member ($) (T, _: int) = ()
+
+let inline trace (cat: string) (fmt: Printf.StringFormat< ^a -> ^rest, unit>) (x: ^a): ^rest =
+  TraceIgnoreT $ Unchecked.defaultof< ^rest >
+
+type TraceIgnoreT with
+  static member inline ($) (T, _: ^t -> ^rest) = 
+    trace Unchecked.defaultof<string> Unchecked.defaultof< Printf.StringFormat< ^t -> ^rest, unit> > 
+#endif
 
 let error cat fmt =
     Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
