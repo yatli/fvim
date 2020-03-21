@@ -37,20 +37,19 @@ type Editor() as this =
   static let GridIdProperty = AvaloniaProperty.Register<Editor, int>("GridId")
 
   let mutable grid_fb: RenderTargetBitmap = null
-  let mutable grid_dc: IDrawingContextImpl = null
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: EditorViewModel = Unchecked.defaultof<_>
 
   let mutable m_debug = States.ui_multigrid
+  let mutable m_alphaLUT: byte [] = Array.create 256 0uy
+  let mutable m_normalLUT: byte [] = Array.create 256 0uy
+  let mutable m_nullLUT: byte [] = Array.create 256 0uy
 
   let resizeFrameBuffer() =
     trace grid_vm "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
     grid_scale <- this.GetVisualRoot().RenderScaling
-    if grid_fb <> null then 
-      grid_fb.Dispose()
-      grid_dc.Dispose()
+    if grid_fb <> null then grid_fb.Dispose()
     grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
-    grid_dc <- grid_fb.CreateDrawingContext(null)
 
   //-------------------------------------------------------------------------
   //           = The rounding error of the rendering system =
@@ -77,10 +76,6 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
-  let mutable fgpaint = null
-  let mutable bgpaint = null
-  let mutable sppaint = null
-
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) (issym: bool) =
 
     let x =
@@ -92,10 +87,9 @@ type Editor() as this =
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
     let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
 
-    if fgpaint = null then
-      fgpaint <- new SKPaint()
-      bgpaint <- new SKPaint()
-      sppaint <- new SKPaint()
+    use fgpaint = new SKPaint()
+    use bgpaint = new SKPaint()
+    use sppaint = new SKPaint()
     SetForegroundBrush(fgpaint, fg, typeface, fontsize)
 
     let nr_col =
@@ -235,6 +229,12 @@ type Editor() as this =
 
   do
 
+    // setup color filter LUTs
+    for i = 0 to 255 do
+      m_alphaLUT.[i] <- 0uy
+      m_normalLUT.[i] <- byte i
+    m_alphaLUT.[255] <- 255uy
+
     this.Watch
       [ this.GetObservable(Editor.DataContextProperty)
         |> Observable.ofType
@@ -265,6 +265,7 @@ type Editor() as this =
         let regions = dirty.Regions()
         trace grid_vm "drawing %d regions" regions.Count
         let timer = System.Diagnostics.Stopwatch.StartNew()
+        use grid_dc = grid_fb.CreateDrawingContext(null)
         grid_dc.PushClip(Rect this.Bounds.Size)
         for r in regions do
           for row = r.row to r.row_end - 1 do
