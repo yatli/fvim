@@ -38,7 +38,7 @@ type Cursor() as this =
 
     let ensure_fb() =
         let s = this.GetVisualRoot().RenderScaling
-        if (cursor_fb_vm.VisualChecksum(),cursor_fb_s) <> (this.ViewModel.VisualChecksum(),s) then
+        if (cursor_fb_vm.FbIntegrityChecksum(),cursor_fb_s) <> (this.ViewModel.FbIntegrityChecksum(),s) then
             cursor_fb_vm <- this.ViewModel.Clone()
             cursor_fb_s <- s
             cursor_fb.Dispose()

@@ -404,6 +404,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         // do not use the default colors for cursor
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
+        let chksum = m_cursor_vm.VisualChecksum()
         m_cursor_vm.typeface       <- theme.guifont
         m_cursor_vm.wtypeface      <- theme.guifontwide
         m_cursor_vm.fontSize       <- m_fontsize
@@ -424,8 +425,9 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_cursor_vm.Y              <- origin.Y
         m_cursor_vm.Width          <- width
         m_cursor_vm.Height         <- m_glyphsize.Height
-        m_cursor_vm.RenderTick     <- m_cursor_vm.RenderTick + 1
-        trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+        if chksum <> m_cursor_vm.VisualChecksum() then
+          m_cursor_vm.RenderTick     <- m_cursor_vm.RenderTick + 1
+          trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
     member this.setCursorEnabled v =
         m_cursor_vm.enabled <- v
