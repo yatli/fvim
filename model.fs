@@ -406,12 +406,9 @@ module ModelImpl =
             )
             mouse |> Observable.subscribe(fun (grid, (but, act, r, c, rep), mods) -> 
                 let mods = match mods with Some mods -> mods | _ -> ""
-                async {
-                    for _ in 1..rep do
-                        let! _ = Async.AwaitTask(nvim.input_mouse but act mods grid r c)
-                        ()
-                } 
-                |> Async.RunSynchronously
+                for _ in 1..rep do
+                    nvim.input_mouse but act mods grid r c
+                    |> ignore
             )
         ]
 
