@@ -110,7 +110,7 @@ type Nvim() =
             | _ -> failwith ""
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
-            Task.Factory.StartNew(fun () -> 
+            Task.Factory.StartNew(fun () ->
                 trace "%s" "begin read loop"
                 let mutable ex = false
                 while not ex && not cancel.IsCancellationRequested do
@@ -136,19 +136,17 @@ type Nvim() =
                 else
                   trace "%s" "end read loop."
                   ob.OnNext([|box Exit|])
-
                 ob.OnCompleted()
-
 
             , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
 
-        let reply (id: int) (rsp: Response) = async {
+        let reply (id: int) (rsp: Response) = task {
             let result, error = 
                 match rsp.result with
                 | Ok r -> null, r
                 | Result.Error e -> e, null
-            do! Async.AwaitTask(MessagePackSerializer.SerializeAsync(stdin, mkparams4 1 id result error))
-            do! Async.AwaitTask(stdin.FlushAsync())
+            do! MessagePackSerializer.SerializeAsync(stdin, mkparams4 1 id result error)
+            do! stdin.FlushAsync()
         }
 
         let pending = ConcurrentDictionary<int, TaskCompletionSource<Response>>()
@@ -213,7 +211,9 @@ type Nvim() =
             use cancel_reg = m_cancelSrc.Token.Register(fun () -> src.TrySetCanceled() |> ignore)
 
             let payload = mkparams4 0 myid ev.method ev.parameters
+#if DEBUG
             MessagePackSerializer.ToJson(payload) |> trace "call: %d -> %s" myid
+#endif
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
             return! src.Task

@@ -90,9 +90,7 @@
     </PackageReference>
     <PackageReference Include="HarfBuzzSharp" Version="1.4.6.2" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="1.4.6.2" />
-    <PackageReference Include="MessagePack" Version="1.9.3" />
-    <PackageReference Include="MessagePack.FSharpExtensions" Version="1.4.1" />
-    <PackageReference Include="MessagePack.ImmutableCollection" Version="1.9.3" />
+    <PackageReference Include="MessagePack" Version="1.9.11" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.7.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

@@ -17,6 +17,7 @@ open FSharp.Control.Reactive
 open System.ComponentModel
 open SkiaSharp
 open Avalonia.Layout
+open System.Threading.Tasks
 
 #nowarn "0058"
 #nowarn "0025"
@@ -420,11 +421,11 @@ let UpdateUICapabilities() =
     let opts = hashmap[]
     States.PopulateUIOptions opts
     trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
-    async {
+    task {
         for KeyValue(k, v) in opts do
-            let! _ = Async.AwaitTask <| nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
+            let! _ = nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
             in ()
-    } |> Async.RunSynchronously
+    } |> run
 
 /// <summary>
 /// Call this once at initialization.
@@ -482,16 +483,16 @@ let Start (opts: getopt.Options) =
         States.Register.Watch "ui" ev_uiopt.Trigger
     ]
 
-    States.Register.Request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> async {
+    States.Register.Request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {
         States.clipboard_lines <- lines
         States.clipboard_regtype <- regtype
-        let! _ = Async.AwaitTask(Avalonia.Application.Current.Clipboard.SetTextAsync(String.Join("\n", lines)))
+        let! _ = Avalonia.Application.Current.Clipboard.SetTextAsync(String.Join("\n", lines))
         trace "set-clipboard called. regtype=%s" regtype
         return { result = Ok(box [||]) }
     })
 
-    States.Register.Request "get-clipboard" (fun _ -> async {
-        let! sysClipboard = Async.AwaitTask(Avalonia.Application.Current.Clipboard.GetTextAsync())
+    States.Register.Request "get-clipboard" (fun _ -> task {
+        let! sysClipboard = Avalonia.Application.Current.Clipboard.GetTextAsync()
         let sysClipboard = if String.IsNullOrEmpty sysClipboard then "" else sysClipboard
         let sysClipboardLines = sysClipboard.Replace("\r\n", "\n").Split("\n")
         let clipboard_eq = Array.compareWith (fun a b -> String.Compare(a,b)) States.clipboard_lines sysClipboardLines
@@ -508,6 +509,7 @@ let Start (opts: getopt.Options) =
     })
 
     trace "%s" "commencing early initialization..."
+
     async {
         let! api_info = Async.AwaitTask(nvim.call { method = "nvim_get_api_info"; parameters = [||] })
         let api_query_result = 
@@ -639,8 +641,7 @@ let Start (opts: getopt.Options) =
         // trigger ginit upon VimEnter
         let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")
         ()
-    } 
-    |> Async.RunSynchronously
+    } |> Async.RunSynchronously
 
 let Flush =
     ev_flush.Publish
@@ -674,7 +675,7 @@ let OnGridReady(gridui: IGridUI) =
         task {
             let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
             ()
-        } |> ignore
+        } |> run
 
 let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
     trace "SelectPopupMenuItem: index=%d insert=%b finish=%b" index insert finish
@@ -683,27 +684,27 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
         let finish = if finish then "v:true" else "v:false"
         let! _ = nvim.command (sprintf "call nvim_select_popupmenu_item(%d, %s, %s, {})" index insert finish)
         in ()
-    } |> ignore
+    } |> run
 
 let SetPopupMenuPos width height row col =
     trace "SetPopupMenuPos: w=%f h=%f r=%f c=%f" width height row col
     task {
       let! _ = nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
       in ()
-    } |> ignore
+    } |> run
 
 let OnFocusLost() =
     task { 
       let! _ = nvim.command "if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"
       in ()
-    } |> ignore
+    } |> run
 
 // see: https://github.com/equalsraf/neovim-qt/blob/e13251a6774ec8c38e7f124b524cc36e4453eb35/src/gui/shell.cpp#L1405
 let OnFocusGained() =
     task { 
       let! _ = nvim.command "if exists('#FocusGained') | doautocmd <nomodeline> FocusGained | endif"
       in ()
-    } |> ignore
+    } |> run
 
 let OnTerminated (args) =
     trace "%s" "terminating nvim..."
@@ -718,7 +719,7 @@ let OnTerminating(args: CancelEventArgs) =
         else
             let! _ = nvim.quitall()
             ()
-    } |> ignore
+    } |> run
     ()
 
 let EditFiles (files: string seq) =
@@ -726,7 +727,7 @@ let EditFiles (files: string seq) =
         for file in files do
             let! _ = nvim.edit file
             ()
-    } |> ignore
+    } |> run
 
 let InsertText text =
     let sb = new Text.StringBuilder()

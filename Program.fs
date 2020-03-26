@@ -9,8 +9,6 @@ open Avalonia.Controls.ApplicationLifetimes
 
 open MessagePack
 open MessagePack.Resolvers
-open MessagePack.FSharp
-open MessagePack.ImmutableCollection
 
 open System
 open System.IO
