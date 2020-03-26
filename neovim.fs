@@ -19,6 +19,7 @@ open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
+open MessagePack.Formatters
 
 let inline private trace fmt = trace "neovim.process" fmt
 
@@ -110,35 +111,47 @@ type Nvim() =
             | _ -> failwith ""
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
-            Task.Factory.StartNew(fun () ->
-                trace "%s" "begin read loop"
-                let mutable ex = false
-                while not ex && not cancel.IsCancellationRequested do
-                   try
-                       let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
-                       ob.OnNext(data)
-                   with 
-                   | :? InvalidOperationException 
-                   | :? System.IO.IOException
-                   | :? System.Net.Sockets.SocketException
-                   | :? ObjectDisposedException
-                       as _ex -> ex <- true
+            let thread = 
+                Thread(fun () -> 
+                    let task = task {
+                        trace "%s" "begin read loop"
+                        trace "%A" <| stdout.GetType().FullName
+                        use reader = new MessagePackStreamReader(stdout)
+                        let mutable ex = false
+                        while not ex && not cancel.IsCancellationRequested do
+                           try
+                               let! msgpack = reader.ReadAsync(cancel)
+                               if msgpack.HasValue then
+                                   let mutable v = msgpack.Value
+                                   let data = MessagePackSerializer.Deserialize<obj>(&v)
+                                   ob.OnNext(data)
+                               else
+                                   ex <- true
+                           with 
+                           | :? InvalidOperationException 
+                           | :? System.IO.IOException
+                           | :? System.Net.Sockets.SocketException
+                           | :? ObjectDisposedException
+                               as _ex -> ex <- true
 
-                let ec = serverExitCode()
-                if ec.IsSome then
-                  let code = ec.Value
-                  trace "end read loop: process exited, code = %d" code
-                  if code <> 0 then
-                    m_cancelSrc.Cancel()
-                    ob.OnNext([|box (Crash code)|])
-                  else
-                    ob.OnNext([|box Exit|])
-                else
-                  trace "%s" "end read loop."
-                  ob.OnNext([|box Exit|])
-                ob.OnCompleted()
-
-            , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        let ec = serverExitCode()
+                        if ec.IsSome then
+                          let code = ec.Value
+                          trace "end read loop: process exited, code = %d" code
+                          if code <> 0 then
+                            m_cancelSrc.Cancel()
+                            ob.OnNext([|box (Crash code)|])
+                          else
+                            ob.OnNext([|box Exit|])
+                        else
+                          trace "%s" "end read loop."
+                          ob.OnNext([|box Exit|])
+                        ob.OnCompleted()
+                    }
+                    task.Wait()
+                )
+            thread.Start()
+            Task.Factory.StartNew(fun () -> thread.Join())
 
         let reply (id: int) (rsp: Response) = task {
             let result, error = 
@@ -212,7 +225,7 @@ type Nvim() =
 
             let payload = mkparams4 0 myid ev.method ev.parameters
 #if DEBUG
-            MessagePackSerializer.ToJson(payload) |> trace "call: %d -> %s" myid
+            MessagePackSerializer.SerializeToJson(payload) |> trace "call: %d -> %s" myid
 #endif
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
