@@ -19,6 +19,7 @@ open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
 open FSharp.Control.Tasks.V2.ContextSensitive
+open System.Runtime.InteropServices
 
 let inline private trace fmt = trace "neovim.process" fmt
 
@@ -91,7 +92,12 @@ type Nvim() =
 
         let serverExitCode() =
             match io with
-            | StartProcess proc -> try Some proc.ExitCode with _ -> None
+            | StartProcess proc -> 
+              // note: on *Nix, when the nvim child process exits,
+              // we don't get an exit code immediately. have to explicitly wait.
+              if not <| RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
+              then proc.WaitForExit(1000) |> ignore
+              try Some proc.ExitCode with _ -> None
             | StreamChannel _ -> None
             | Disconnected -> Some -1
 
