@@ -207,7 +207,7 @@ let MeasureText (str: string, font: string, wfont: string, fontSize: float, scal
     paint.IsAutohinted <- States.font_autohint
     paint.IsLinearText <- false
     paint.HintingLevel <- States.font_hintLevel
-    paint.LcdRenderText <- States.font_lcdrender
+    paint.LcdRenderText <- false 
     paint.SubpixelText <- States.font_subpixel
     paint.TextAlign <- SKTextAlign.Left
     paint.DeviceKerningEnabled <- false
@@ -262,7 +262,7 @@ let SetForegroundBrush(fgpaint: SKPaint, c: Color, fontFace: SKTypeface, fontSiz
     fgpaint.IsAutohinted         <- States.font_autohint
     fgpaint.IsLinearText         <- false
     fgpaint.HintingLevel         <- States.font_hintLevel
-    fgpaint.LcdRenderText        <- States.font_lcdrender
+    fgpaint.LcdRenderText        <- false  // see #125, #132
     fgpaint.SubpixelText         <- States.font_subpixel
     fgpaint.TextAlign            <- SKTextAlign.Left
     fgpaint.DeviceKerningEnabled <- false

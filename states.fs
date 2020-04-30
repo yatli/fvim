@@ -75,7 +75,6 @@ let mutable font_antialias     = true
 let mutable font_drawBounds    = false
 let mutable font_autohint      = false
 let mutable font_subpixel      = true
-let mutable font_lcdrender     = true
 let mutable font_autosnap      = true
 let mutable font_ligature      = true
 let mutable font_hintLevel     = SKPaintHinting.NoHinting
