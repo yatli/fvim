@@ -47,16 +47,10 @@ let sample_config = """
 
 type ConfigObject = JsonProvider<sample_config, SampleIsList=true>
 
-let homedir = if RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-              then Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%");
-              else Environment.GetEnvironmentVariable("HOME")
-
-let configdir  = if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
-                 then "AppData/Local/fvim"
-                 else ".config/fvim"
-                 |> fun cfgdir ->
-                 Path.Combine(homedir, cfgdir)
-
+let configroot = if RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                 then Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                 else Path.Combine(Environment.GetEnvironmentVariable("HOME"), ".config")
+let configdir  = Path.Combine(configroot, "fvim")
 let configfile = Path.Combine(configdir, "config.json")
 
 try ignore <| Directory.CreateDirectory(configdir)
