@@ -60,8 +60,8 @@ type TitleBar() as this =
 
     member __.Title
         with get() = this.GetValue(TitleProperty)
-        and set(v) = this.SetValue(TitleProperty, v)
+        and set(v) = this.SetValue(TitleProperty, v) |> ignore
 
     member __.IsActive
         with get() = this.GetValue(IsActiveProperty)
-        and set(v) = this.SetValue(IsActiveProperty, v)
+        and set(v) = this.SetValue(IsActiveProperty, v) |> ignore

@@ -115,7 +115,7 @@ type MainWindow() as this =
     do
         #if DEBUG
         this.Renderer.DrawFps <- true
-        Avalonia.DevToolsExtensions.AttachDevTools(this)
+        //Avalonia.DevToolsExtensions.AttachDevTools(this)
         #endif
 
         DragDrop.SetAllowDrop(this, true)
@@ -144,36 +144,38 @@ type MainWindow() as this =
 
             Model.Flush |> Observable.subscribe flushop
 
-            this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
-                if e.Data.Contains(DataFormats.FileNames) then
-                    Model.EditFiles <| e.Data.GetFileNames()
-                elif e.Data.Contains(DataFormats.Text) then
-                    Model.InsertText <| e.Data.GetText()
-            ))
-
-            this.AddHandler(DragDrop.DragOverEvent, (fun _ (e:DragEventArgs) ->
-                e.DragEffects <- DragDropEffects.Move ||| DragDropEffects.Link ||| DragDropEffects.Copy
-            ))
-            this.AddHandler(MainWindow.PointerMovedEvent, (fun _ (ev: PointerEventArgs) ->
-                match getDragEdge <| ev.GetPosition(this) with
-                | Some (WindowEdge.NorthWest) -> setCursor m_cursor_nw
-                | Some (WindowEdge.SouthEast) -> setCursor m_cursor_se
-                | Some (WindowEdge.NorthEast) -> setCursor m_cursor_ne
-                | Some (WindowEdge.SouthWest) -> setCursor m_cursor_sw
-                | Some (WindowEdge.North | WindowEdge.South) -> setCursor m_cursor_ns
-                | Some (WindowEdge.East | WindowEdge.West) -> setCursor m_cursor_we
-                | _ -> setCursor Cursor.Default)
-                , RoutingStrategies.Tunnel)
-            this.AddHandler(MainWindow.PointerPressedEvent, (fun _ (ev: PointerPressedEventArgs) ->
-                match getDragEdge <| ev.GetPosition(this) with
-                | Some edge ->
-                    ev.Handled <- true
-                    this.BeginResizeDrag(edge, ev)
-                | _ -> ())
-                , RoutingStrategies.Tunnel)
-
-
         ]
+
+        this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
+            if e.Data.Contains(DataFormats.FileNames) then
+                Model.EditFiles <| e.Data.GetFileNames()
+            elif e.Data.Contains(DataFormats.Text) then
+                Model.InsertText <| e.Data.GetText()
+        ))
+
+        this.AddHandler(DragDrop.DragOverEvent, (fun _ (e:DragEventArgs) ->
+            e.DragEffects <- DragDropEffects.Move ||| DragDropEffects.Link ||| DragDropEffects.Copy
+        ))
+
+        this.AddHandler(MainWindow.PointerMovedEvent, (fun _ (ev: PointerEventArgs) ->
+            match getDragEdge <| ev.GetPosition(this) with
+            | Some (WindowEdge.NorthWest) -> setCursor m_cursor_nw
+            | Some (WindowEdge.SouthEast) -> setCursor m_cursor_se
+            | Some (WindowEdge.NorthEast) -> setCursor m_cursor_ne
+            | Some (WindowEdge.SouthWest) -> setCursor m_cursor_sw
+            | Some (WindowEdge.North | WindowEdge.South) -> setCursor m_cursor_ns
+            | Some (WindowEdge.East | WindowEdge.West) -> setCursor m_cursor_we
+            | _ -> setCursor Cursor.Default)
+            , RoutingStrategies.Tunnel)
+
+        this.AddHandler(MainWindow.PointerPressedEvent, (fun _ (ev: PointerPressedEventArgs) ->
+            match getDragEdge <| ev.GetPosition(this) with
+            | Some edge ->
+                ev.Handled <- true
+                this.BeginResizeDrag(edge, ev)
+            | _ -> ())
+            , RoutingStrategies.Tunnel)
+
         AvaloniaXamlLoader.Load this
 
     override __.OnPointerReleased ev =
@@ -208,8 +210,8 @@ type MainWindow() as this =
                     deltaY <- p.Point.Y - pos.Y
                     trace "mainwindow" "first PositionChanged event: %d, %d (delta=%d, %d)" p.Point.X p.Point.Y deltaX deltaY
                 else
-                    this.SetValue(XProp, p.Point.X - deltaX)
-                    this.SetValue(YProp, p.Point.Y - deltaY)
+                    this.SetValue(XProp, p.Point.X - deltaX) |> ignore
+                    this.SetValue(YProp, p.Point.Y - deltaY) |> ignore
                 )
             ctx.MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
             |> Observable.subscribe(fun c -> 

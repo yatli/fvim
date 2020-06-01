@@ -129,7 +129,7 @@ type Cursor() as this =
 
     member this.IsActive
       with get() = this.GetValue(IsActiveProperty)
-      and set(v) = this.SetValue(IsActiveProperty, v)
+      and set(v) = this.SetValue(IsActiveProperty, v) |> ignore
 
     override this.Render(ctx) =
         (*trace "cursor" "Render text: %s" this.ViewModel.text*)
@@ -148,7 +148,8 @@ type Cursor() as this =
                 if this.IsActive then
                     RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
                 else
-                    ctx.DrawRectangle(Pen(SolidColorBrush(this.ViewModel.bg)), bounds)
+                    let brush = SolidColorBrush(this.ViewModel.bg)
+                    ctx.DrawRectangle(brush, Pen(brush), bounds |> RoundedRect)
 
             try
                 match ctx.PlatformImpl with
@@ -167,7 +168,7 @@ type Cursor() as this =
                         render_block cursor_dc
                         cursor_dc.PopClip()
                         cursor_dc.Dispose()
-                    ctx.DrawImage(cursor_fb, 1.0, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
+                    ctx.DrawImage(cursor_fb, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
             with
             | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
         | CursorShape.Horizontal, p ->
