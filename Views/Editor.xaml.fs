@@ -226,14 +226,14 @@ type Editor() as this =
   let drawDebug(dc: IDrawingContextImpl) =
     let txt = Media.FormattedText()
     txt.Text <- sprintf "Grid #%d, Z=%d" grid_vm.GridId this.ZIndex
-    txt.Typeface <- Media.Typeface("Iosevka Slab", 16.0)
+    txt.Typeface <- Media.Typeface("Iosevka Slab")
 
     dc.DrawText(Media.Brushes.Tan, Point(10.0, 10.0), txt.PlatformImpl)
     dc.DrawText(Media.Brushes.Tan, Point(this.Bounds.Width - 60.0, 10.0), txt.PlatformImpl)
     dc.DrawText(Media.Brushes.Tan, Point(10.0, this.Bounds.Height - 60.0), txt.PlatformImpl)
     dc.DrawText(Media.Brushes.Tan, Point(this.Bounds.Width - 60.0, this.Bounds.Height - 60.0), txt.PlatformImpl)
 
-    dc.DrawRectangle(Media.Pen(Media.Brushes.Red, 3.0), this.Bounds.Translate(Vector(-this.Bounds.X, -this.Bounds.Y)))
+    dc.DrawRectangle(Media.Brushes.Red, Media.Pen(Media.Brushes.Red, 3.0), RoundedRect(this.Bounds.Translate(Vector(-this.Bounds.X, -this.Bounds.Y))))
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(this.Bounds.Width, this.Bounds.Height))
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
 
@@ -284,7 +284,7 @@ type Editor() as this =
       let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
       let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
-      ctx.DrawImage(grid_fb, 1.0, src_rect, tgt_rect, BitmapInterpolationMode.Default)
+      ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
     else
       trace grid_vm "%s" "grid_fb is null"
 
@@ -312,18 +312,18 @@ type Editor() as this =
 
     member this.ViewModel
       with get (): EditorViewModel = this.GetValue(ViewModelProperty)
-      and set (v: EditorViewModel): unit = this.SetValue(ViewModelProperty, v)
+      and set (v: EditorViewModel): unit = this.SetValue(ViewModelProperty, v) |> ignore
 
     member this.ViewModel
       with get (): obj = this.GetValue(ViewModelProperty) :> obj
-      and set (v: obj): unit = this.SetValue(ViewModelProperty, v)
+      and set (v: obj): unit = this.SetValue(ViewModelProperty, v) |> ignore
 
   member this.GridId
     with get () = this.GetValue(GridIdProperty)
-    and set (v: int) = this.SetValue(GridIdProperty, v)
+    and set (v: int) = this.SetValue(GridIdProperty, v) |> ignore
 
   member this.RenderTick
     with get() = this.GetValue(RenderTickProperty)
-    and  set(v) = this.SetValue(RenderTickProperty, v)
+    and  set(v) = this.SetValue(RenderTickProperty, v) |> ignore
 
   static member GetGridIdProp() = GridIdProperty

@@ -6,7 +6,6 @@ open States
 open def
 open neovim
 
-open Avalonia.Diagnostics.ViewModels
 open Avalonia.Media
 open System
 open System.Collections.Generic
@@ -170,6 +169,9 @@ module ModelImpl =
         if x.HasFlag flag then Some() else None
     let (|NoFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
         if x.HasFlag flag then None else Some()
+    let (|AlphabeticChar|_|) (x: Key) =
+        if x >= Key.A && x <= Key.Z then Some()
+        else None
     let MB (x: MouseButton) = 
         match x with
         | MouseButton.Left -> "left"
@@ -186,6 +188,10 @@ module ModelImpl =
 
     let mutable accumulatedX = 0.0
     let mutable accumulatedY = 0.0
+
+    let CapslockIsOn() =
+        trace "Capslock state is: %A" KeyboardDevice.Instance.CapsLock
+        KeyStates.Toggled = (KeyboardDevice.Instance.CapsLock &&& KeyStates.Toggled)
 
     let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
         match x with
@@ -317,6 +323,7 @@ module ModelImpl =
         |  Key(_, (
            Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
         |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
+        |  Key(_, (AlphabeticChar as x)) when CapslockIsOn()          -> Normal (x.ToString().ToUpperInvariant())
         |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
         |  Key(_, x)                                                  -> Normal (x.ToString())
         |  MousePress(_, r, c, but)                                   -> Mouse(MB but, "press", r, c, 1)

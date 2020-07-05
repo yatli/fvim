@@ -33,12 +33,12 @@ type ViewBase< 'TViewModel when 'TViewModel :> ViewModelBase and 'TViewModel: no
 
     member this.RenderTick
         with get() = this.GetValue(RenderTickProperty)
-        and  set(v) = this.SetValue(RenderTickProperty, v)
+        and  set(v) = this.SetValue(RenderTickProperty, v) |> ignore
 
     interface IViewFor<'TViewModel> with
         member this.ViewModel
             with get (): 'TViewModel = this.GetValue(ViewModelProperty)
-            and set (v: 'TViewModel): unit = this.SetValue(ViewModelProperty, v)
+            and set (v: 'TViewModel): unit = this.SetValue(ViewModelProperty, v) |> ignore
         member this.ViewModel
             with get (): obj = this.GetValue(ViewModelProperty) :> obj
             and set (v: obj): unit = this.SetValue(ViewModelProperty, v)
