@@ -24,6 +24,7 @@
     SelectedIndex            = "{Binding Selection, Mode=TwoWay}"
     HorizontalAlignment      = "Stretch"
     VerticalAlignment        = "Stretch"
+    VirtualizationMode       = "Simple"
     Focusable                = "True">
     <ListBox.ItemTemplate>
       <DataTemplate>
