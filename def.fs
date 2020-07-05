@@ -262,7 +262,7 @@ type RedrawCommand =
 ///  displayed above another grid `anchor_grid` at the specified position
 ///  `anchor_row` and `anchor_col`. For the meaning of `anchor` and more
 ///  details of positioning, see |nvim_open_win()|.
-| WinFloatPos of grid: int * win: int * anchor: Anchor * anchor_grid: int * anchor_row: int * anchor_col: int * focusable: bool
+| WinFloatPos of grid: int * win: int * anchor: Anchor * anchor_grid: int * anchor_row: float * anchor_col: float * focusable: bool
 ///  Display or reconfigure external window `win`. The window should be
 ///  displayed as a separate top-level window in the desktop environment,
 ///  or something similar.
@@ -315,6 +315,7 @@ type RedrawCommand =
 //| UpdateBg of Color
 //| UpdateSp of Color
 | UnknownCommand of data: obj
+| MultiRedrawCommand of xs: RedrawCommand []
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -342,6 +343,15 @@ let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
     | :? (obj seq) as xs ->
         let result = Seq.choose parser xs |> Array.ofSeq
         Some result
+    | _ -> None
+
+///  Chooses from ObjArray with a parser
+let (|PX|_|) (parser: obj -> 'a option) (xs:obj) =
+    match xs with
+    | :? (obj seq) as xs ->
+        let result = Seq.choose parser xs |> Array.ofSeq
+        if Seq.length xs = Seq.length result then Some result
+        else None
     | _ -> None
 
 ///  Matches ObjArray against the form [|key; value|]
@@ -492,12 +502,24 @@ let parse_grid_line (x: obj) =
         -> Some {grid = grid; row=row; col_start=col_start; cells=cells}
     | _ -> None
 
+let parse_win_pos (x: obj) =
+    match x with
+    | ObjArray [|  (Integer32 grid); (Integer32 win); (Integer32 start_row); (Integer32 start_col); (Integer32 width); (Integer32 height) |] 
+        -> Some <| WinPos(grid, win, start_row, start_col, width, height)
+    | _ -> None
+
 let (|Anchor|_|) =
     function
     | String "NE" -> Some NorthEast
     | String "NW" -> Some NorthWest
     | String "SE" -> Some SouthEast
     | String "SW" -> Some SouthWest
+    | _ -> None
+
+let parse_win_float_pos (x: obj) =
+    match x with
+    | ObjArray [| (Integer32 grid); (Integer32 win); (Anchor anchor); (Integer32 anchor_grid); (Float anchor_row); (Float anchor_col); (Bool focusable) |] 
+        -> Some <| WinFloatPos(grid, win, anchor, anchor_grid, anchor_row, anchor_col, focusable)
     | _ -> None
 
 let parse_complete_item =
@@ -521,6 +543,11 @@ let parse_semantic_hlgroup =
         | true, key -> Some(key, id)
         | _ -> None
     | _ -> None
+
+let unwrap_multi xs =
+    match xs with
+    | [| one |] -> one
+    | _ -> MultiRedrawCommand xs
 
 let parse_redrawcmd (x: obj) =
     match x with
@@ -548,15 +575,8 @@ let parse_redrawcmd (x: obj) =
         (Integer32 left); (Integer32 right) 
         (Integer32 rows); (Integer32 cols) |])                                             -> GridScroll(grid, top, bot, left, right, rows, cols)
     | C("grid_line", P(parse_grid_line)lines)                                              -> GridLine lines
-    | C1("win_pos", [| 
-        (Integer32 grid); (Integer32 win) 
-        (Integer32 start_row); (Integer32 start_col)
-        (Integer32 width); (Integer32 height) |])                                          -> WinPos(grid,win,start_row,start_col,width,height)
-    | C1("win_float_pos", [| 
-        (Integer32 grid); (Integer32 win)
-        (Anchor anchor); (Integer32 anchor_grid)
-        (Integer32 anchor_row); (Integer32 anchor_col)
-        (Bool focusable) |])                                                               -> WinFloatPos(grid, win, anchor, anchor_grid, anchor_row, anchor_col, focusable)
+    | C("win_pos", PX(parse_win_pos)ps)                                                    -> unwrap_multi ps
+    | C("win_float_pos", PX(parse_win_float_pos)ps)                                        -> unwrap_multi ps
     | C1("win_external_pos", [| 
         (Integer32 grid); (Integer32 win) |])                                              -> WinExternalPos(grid, win)
     | C1("win_hide", [| (Integer32 grid) |])                                               -> WinHide(grid)

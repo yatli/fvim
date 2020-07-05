@@ -75,6 +75,13 @@ let (|Integer32|_|) (x:obj) =
     | :? uint8  as x     -> Some(int32 x)
     | _ -> None
 
+let (|Float|_|) (x:obj) =
+    match x with
+    | Integer32 x        -> Some(float x)
+    | :? single as x     -> Some(float x)
+    | :? float as x      -> Some(float x)
+    | _ -> None
+
 // converts to bool in a desperate (read: JavaScript) attempt
 let (|ForceBool|_|) (x:obj) =
     match x with

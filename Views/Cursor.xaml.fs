@@ -137,6 +137,10 @@ type Cursor() as this =
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
         let scale = this.GetVisualRoot().RenderScaling
+
+        if this.ViewModel = Unchecked.defaultof<CursorViewModel> then ()
+        else
+
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
             let _, typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)

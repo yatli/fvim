@@ -42,7 +42,13 @@ module ModelImpl =
         // by default add to grid #1
         (*if id <> 1 then*)
           (*ignore <| grids.[1].AddChild id r c*)
-          
+
+    let destroy_grid(id) =
+      match grids.TryGetValue id with
+      | false, _ -> ()
+      | true, grid ->
+        ignore <| grids.Remove id
+        grid.Detach()
 
     let add_window(win: IWindow) = 
         let id = win.RootId
@@ -67,11 +73,10 @@ module ModelImpl =
         if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
         else Observable.throttle(TimeSpan.FromMilliseconds 10.0)
 
-    let redraw cmd = 
+    let rec redraw cmd = 
         match cmd with
         //  Global
         | UnknownCommand x                 -> trace "unknown command %A" x
-        | GridDestroy id                   -> trace "GridDestroy %d" id //TODO
         | SetTitle title                   -> setTitle 1 title
         | SetIcon icon                     -> trace "icon: %s" icon // TODO
         | Bell                             -> bell true
@@ -87,25 +92,30 @@ module ModelImpl =
         | Busy _                | Mouse _
         | ModeChange _          | Flush 
         | GridCursorGoto(_,_,_) 
-            -> broadcast cmd
+                                            -> broadcast cmd
         //  Unicast
-        | GridClear id          | GridScroll(id,_,_,_,_,_,_)
-            -> unicast id cmd
-        | MsgSetPos(id, _, _, _) ->
-              if not(grids.ContainsKey id) then
-                add_grid <| grids.[1].AddChild id 1 grids.[1].GridWidth
-              unicast id cmd
+        | GridClear id          | GridScroll(id,_,_,_,_,_,_) ->
+            unicast id cmd
+        | WinFloatPos(id, _, _, _, _, _, _) -> 
+            trace "win_float_pos %A" cmd
+            unicast id cmd
+        | MsgSetPos(id, _, _, _)            ->
+            if not(grids.ContainsKey id) then
+              add_grid <| grids.[1].AddChild id 1 grids.[1].GridWidth
+            unicast id cmd
         | WinPos(id, _, _, _, w, h)
-        | GridResize(id, w, h) 
-            -> 
+        | GridResize(id, w, h)              -> 
               if not(grids.ContainsKey id) then
                 add_grid <| grids.[1].AddChild id h w
               unicast id cmd
-        | GridLine lines -> 
+        | GridLine lines                    -> 
             lines 
             |> Array.groupBy (fun (line: GridLine) -> line.grid)
             |> Array.iter (fun (id, lines) -> unicast id (GridLine lines))
-        | x -> trace "unimplemented command: %A" x
+        | GridDestroy id                    -> trace "GridDestroy %d" id; destroy_grid id
+        | WinClose id                       -> trace "WinClose %d (unimplemented)" id // TODO
+        | MultiRedrawCommand xs             -> Array.iter redraw xs
+        | x                                 -> trace "unimplemented command: %A" x
 
     let onGridResize(gridui: IGridUI) =
         trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight

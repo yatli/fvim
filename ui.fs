@@ -126,6 +126,8 @@ type IGridUI =
     abstract HasChildren: bool
     abstract Redraw: RedrawCommand -> unit
     abstract AddChild: int -> int -> int -> IGridUI
+    abstract RemoveChild: IGridUI -> unit
+    abstract Detach: unit -> unit
 
 type IWindow =
     abstract Title: string with get, set

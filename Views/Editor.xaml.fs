@@ -44,8 +44,10 @@ type Editor() as this =
 
   let mutable m_debug = States.ui_multigrid
 
+  // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
     trace grid_vm "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
+    let vroot = this.GetVisualRoot()
     grid_scale <- this.GetVisualRoot().RenderScaling
     if grid_fb <> null then 
       grid_fb.Dispose()
@@ -176,6 +178,7 @@ type Editor() as this =
   let onViewModelConnected(vm: EditorViewModel) =
     grid_vm <- vm
     trace grid_vm "%s" "viewmodel connected"
+    resizeFrameBuffer()
     vm.Watch
       [ Observable.merge (vm.ObservableForProperty(fun x -> x.BufferWidth))
           (vm.ObservableForProperty(fun x -> x.BufferHeight))
@@ -240,9 +243,13 @@ type Editor() as this =
 
   do
 
+    
+
     this.Watch
       [ this.GetObservable(Editor.DataContextProperty)
         |> Observable.ofType
+        |> Observable.zip this.AttachedToVisualTree
+        |> Observable.map snd
         |> Observable.subscribe onViewModelConnected
 
         this.Bind(Canvas.LeftProperty, Binding("X"))

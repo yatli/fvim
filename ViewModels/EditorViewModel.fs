@@ -36,7 +36,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
 
     let m_cursor_vm              = new CursorViewModel(_cursormode)
     let m_popupmenu_vm           = new PopupMenuViewModel()
-    let m_child_grids            = ObservableCollection<EditorViewModel>()
+    let m_child_grids            = ObservableCollection<IGridUI>()
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int * InputEvent>()
 
@@ -66,8 +66,20 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_griddirty.Clear()
         m_griddirty.Union{ row = 0; col = 0; height = m_gridsize.rows; width = m_gridsize.cols }
 
-    let clearBuffer () =
+    let clearBuffer preserveContent =
+        let oldgrid = m_gridbuffer
         m_gridbuffer <- Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
+        if preserveContent then
+            let crow = 
+                Array2D.length1 oldgrid
+                |> min m_gridsize.rows
+            let ccol = 
+                Array2D.length2 oldgrid
+                |> min m_gridsize.cols
+            for r = 0 to crow-1 do
+                for c = 0 to ccol-1 do
+                    m_gridbuffer.[r,c] <- oldgrid.[r,c]
+        markAllDirty()
         // notify buffer update and size change
         let size: Point = this.GetPoint m_gridsize.rows m_gridsize.cols
         m_fb_w <- size.X
@@ -91,7 +103,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         // if the buffer under cursor is updated, also notify the cursor view model
         if row = m_cursor_vm.row && line.col_start <= m_cursor_vm.col && m_cursor_vm.col < col
         then this.cursorConfig()
-        //trace "redraw" "putBuffer: writing to %A" dirty
+        // trace _gridid "putBuffer: writing to %A" dirty
         // italic font artifacts I: remainders after scrolling and redrawing the dirty part
         // workaround: extend the dirty region one cell further towards the end
 
@@ -206,7 +218,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         (* manually resize and position the child grid as per neovim docs *)
         let origin: Point = parent.GetPoint startrow startcol
         trace _gridid "setWinPos: update parameters: c = %d r = %d X = %f Y = %f" c r origin.X origin.Y
-        this.initBuffer r c
+        this.initBuffer r c true
         this.X <- origin.X
         this.Y <- origin.Y
 
@@ -254,8 +266,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     let redraw(cmd: RedrawCommand) =
         //trace "%A" cmd
         match cmd with
-        | GridResize(_, c, r)                                                -> this.initBuffer r c
-        | GridClear _                                                        -> clearBuffer()
+        | GridResize(_, c, r)                                                -> this.initBuffer r c true
+        | GridClear _                                                        -> clearBuffer false
         | GridLine lines                                                     -> Array.iter putBuffer lines
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
         | GridScroll(_, top,bot,left,right,rows,cols)                        -> scrollBuffer top bot left right rows cols
@@ -318,6 +330,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         trace _gridid "%s" "ctor"
         fontConfig()
         this.setCursorEnabled theme.cursor_enabled
+        clearBuffer false
 
         this.Watch [
 
@@ -355,12 +368,12 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     member __.GetFontAttrs() =
         theme.guifont, theme.guifontwide, m_fontsize
 
-    member private __.initBuffer nrow ncol =
+    member private __.initBuffer nrow ncol preserveContent =
         let new_gridsize = { rows = nrow; cols = ncol }
         if m_gridsize <> new_gridsize then
           m_gridsize <- new_gridsize
           trace _gridid "buffer resize = %A" m_gridsize
-          clearBuffer()
+          clearBuffer preserveContent
 
     interface IGridUI with
         member __.Id = _gridid
@@ -375,6 +388,12 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             let child = new EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
             m_child_grids.Add child
             child :> IGridUI
+        member __.RemoveChild c =
+            ignore <| m_child_grids.Remove c
+        member __.Detach() =
+          match parent with
+          | None -> ()
+          | Some p -> (p:>IGridUI).RemoveChild this
 
     member __.markClean = m_griddirty.Clear
 
