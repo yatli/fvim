@@ -52,6 +52,10 @@ let private win32CheckUAC() =
         trace "%s" "FVim is elevated"
         true
 
+let private noextkey ext =
+    let noextkey = [".bat"; ".cmd"; ".ps1"; ".reg"; ".sln" ]
+    List.contains ext noextkey
+
 let private win32RegisterFileAssociation() =
 
     trace "%s" "registering file associations..."
@@ -75,24 +79,22 @@ let private win32RegisterFileAssociation() =
 
         shell.SetValue("", "edit")
 
-        let () =
+        do
             use _edit = shell.CreateSubKey("edit")
             _edit.SetValue("", "Open with FVim")
             _edit.SetValue("Icon", fvicon)
             use command = _edit.CreateSubKey("command")
             command.SetValue("", sprintf "\"%s\" --tryDaemon \"%%1\"" exe)
-        in ()
 
-        let () =
+        do
             use _edit = shell.CreateSubKey("new")
             _edit.SetValue("", "Open with new FVim")
             _edit.SetValue("Icon", fvicon)
             use command = _edit.CreateSubKey("command")
             command.SetValue("", sprintf "\"%s\" \"%%1\"" exe)
-        in ()
     
     // https://docs.microsoft.com/en-us/windows/desktop/shell/app-registration
-    let () =
+    do
         use appPathKey = HKLM.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\FVim.exe")
         appPathKey.SetValue("", exe)
         appPathKey.SetValue("UseUrl", 0, RegistryValueKind.DWord)
@@ -112,8 +114,10 @@ let private win32RegisterFileAssociation() =
         use progIdKey = HKCR.CreateSubKey(progId)
 
         setupShell progIdKey ico
-        use extKey = HKCR.CreateSubKey(ext)
-        extKey.SetValue("", progId)
+
+        if not (noextkey ext) then
+            use extKey = HKCR.CreateSubKey(ext)
+            extKey.SetValue("", progId)
 
 let private win32UnregisterFileAssociation() =
   trace "%s" "unregistering file associations..."
