@@ -6,7 +6,6 @@ open States
 open def
 open neovim
 
-open Avalonia.Diagnostics.ViewModels
 open Avalonia.Media
 open System
 open System.Collections.Generic

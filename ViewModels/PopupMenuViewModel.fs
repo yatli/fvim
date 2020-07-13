@@ -25,7 +25,7 @@ type PopupMenuViewModel() =
 
     let mutable m_show = false
     let mutable m_selection = -1
-    let mutable m_fontFamily = Avalonia.Media.FontFamily("")
+    let mutable m_fontFamily = Avalonia.Media.FontFamily("Consolas")
     let mutable m_fontSize = 12.0
 
     let m_items = ObservableFastCollection<CompletionItemViewModel>()

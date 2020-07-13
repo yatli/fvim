@@ -1,7 +1,6 @@
 ﻿module FVim.Program
 
 open Avalonia
-open Avalonia.Logging.Serilog
 open FSharp.Data
 open Avalonia.ReactiveUI
 open System.Threading
@@ -28,7 +27,6 @@ let buildAvaloniaApp() =
     .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=true))
     .With(new X11PlatformOptions(UseDeferredRendering=false, UseEGL=true, UseGpu=true))
     .With(new MacOSPlatformOptions(ShowInDock=true))
-    .LogToDebug()
 
 type MsgPackFormatter(resolver: IFormatterResolver) = 
   let m_formatter = resolver.GetFormatter<obj>()
