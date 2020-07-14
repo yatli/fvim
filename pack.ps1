@@ -8,13 +8,13 @@ Remove-Item -Recurse -Force bin\ -ErrorAction SilentlyContinue
 Remove-Item publish\*
 
 foreach($i in $plat) {
-    dotnet publish -f netcoreapp3.0 -c Release --self-contained -r $i
+    dotnet publish -f netcoreapp3.1 -c Release --self-contained -r $i
     if ($i -eq "win-x64") {
 # replace the coreclr hosting exe with an icon-patched one
-        Copy-Item lib/fvim-win10.exe bin/Release/netcoreapp3.0/$i/publish/FVim.exe
+        Copy-Item lib/fvim-win10.exe bin/Release/netcoreapp3.1/$i/publish/FVim.exe
     } elseif ($i -eq "win7-x64") {
-        Copy-Item lib/fvim-win7.exe bin/Release/netcoreapp3.0/$i/publish/FVim.exe
+        Copy-Item lib/fvim-win7.exe bin/Release/netcoreapp3.1/$i/publish/FVim.exe
     }
-    Compress-Archive -Path bin/Release/netcoreapp3.0/$i/publish/* -DestinationPath publish/fvim-$i.zip -Force
+    Compress-Archive -Path bin/Release/netcoreapp3.1/$i/publish/* -DestinationPath publish/fvim-$i.zip -Force
 }
 
