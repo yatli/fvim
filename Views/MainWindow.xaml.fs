@@ -112,7 +112,7 @@ type MainWindow() as this =
     do
         #if DEBUG
         this.Renderer.DrawFps <- true
-        // this.AttachDevTools(this)
+        this.AttachDevTools()
         #endif
 
         DragDrop.SetAllowDrop(this, true)

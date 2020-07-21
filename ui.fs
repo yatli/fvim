@@ -353,90 +353,6 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPain
             px <- px + ff
         skia.SkCanvas.DrawPath(path , sp)
 
-
-module internal win32 =
-    type AccentState =
-        | ACCENT_DISABLED = 0
-        | ACCENT_ENABLE_GRADIENT = 1
-        | ACCENT_ENABLE_TRANSPARENTGRADIENT = 2
-        | ACCENT_ENABLE_BLURBEHIND = 3
-        | ACCENT_ENABLE_ACRYLICBLURBEHIND = 4   // RS4 1803
-        | ACCENT_ENABLE_HOSTBACKDROP = 5        // RS5 1809
-        | ACCENT_INVALID_STATE = 6
-
-    [<Struct>]
-    [<StructLayout(LayoutKind.Sequential)>]
-    type AccentPolicy =
-        {
-            AccentState: AccentState
-            AccentFlags: uint32
-            GradientColor: uint32
-            AnimationId: uint32
-        }
-
-    type WindowCompositionAttribute =
-        // ...
-        | WCA_ACCENT_POLICY = 19
-        | WCA_USEDARKMODECOLORS = 26
-        // ...
-
-
-    [<Struct>]
-    [<StructLayout(LayoutKind.Sequential)>]
-    type WindowCompositionAttributeData =
-        {
-            Attribute: WindowCompositionAttribute
-            Data: nativeint
-            SizeOfData: int32
-        }
-
-    [<DllImport("user32.dll")>]
-    extern int SetWindowCompositionAttribute(nativeint hwnd, WindowCompositionAttributeData& data);
-
-module internal osx =
-    [<DllImport("fvim-ext")>]
-    extern void vh_init();
-    [<DllImport("fvim-ext")>]
-    extern int32 vh_add_view(nativeint hwnd);
-
-    if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
-        vh_init()
-
-
-module internal linux =
-    type PropertyMode =
-    | Replace = 0
-    | Prepend = 1
-    | Append = 2
-
-    type AtomType =
-    | XA_ATOM = 4
-    | XA_CARDINAL = 6
-    | XA_STRING = 31
-
-    [<DllImport ("libX11.so.6")>]
-    extern int32 XChangeProperty(
-        nativeint display, 
-        nativeint window, 
-        nativeint property, 
-        nativeint _type, 
-        int32 format, 
-        PropertyMode mode, 
-        nativeint data, 
-        int32 nelements)
-
-    [<DllImport ("libX11.so.6")>]
-    extern nativeint XInternAtom(
-        nativeint display,
-        string atomName,
-        bool onlyIfExists)
-
-
-
-open win32
-open osx
-open linux
-
 type WindowBackgroundComposition =
     | SolidBackground of opacity: float * color: Color
     | TransparentBackground of opacity: float * color: Color
@@ -444,109 +360,21 @@ type WindowBackgroundComposition =
     | AdvancedBlur of opacity: float * color: Color
 
 let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition: WindowBackgroundComposition)=
+    match composition with
+    | SolidBackground (_, c) -> 
+        win.Background <- SolidColorBrush(c)
+        win.TransparencyLevelHint <- Controls.WindowTransparencyLevel.None
+    | TransparentBackground (op, c) -> 
+        let c = Color(byte(op * 255.0), c.R, c.G, c.B)
+        win.Background <- SolidColorBrush(c)
+        win.TransparencyLevelHint <- Controls.WindowTransparencyLevel.Transparent
+    | GaussianBlur(op, c) ->
+        let c = Color(byte(op * 255.0), c.R, c.G, c.B)
+        win.Background <- SolidColorBrush(c)
+        win.TransparencyLevelHint <- Controls.WindowTransparencyLevel.Blur
+    | AdvancedBlur(op, c) ->
+        let c = Color(byte(op * 255.0), c.R, c.G, c.B)
+        win.Background <- SolidColorBrush(c)
+        win.TransparencyLevelHint <- Controls.WindowTransparencyLevel.AcrylicBlur
 
-    if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
-        let state, opacity, bgcolor = 
-            match composition with
-            | SolidBackground (_, c) -> 
-                win.Background <- SolidColorBrush(c)
-                AccentState.ACCENT_DISABLED, 0u, 0u
-            | TransparentBackground (op, c) -> 
-                let c = Color(byte(op * 255.0), c.R, c.G, c.B)
-                win.Background <- SolidColorBrush(c)
-                AccentState.ACCENT_ENABLE_TRANSPARENTGRADIENT, 0u, 0u
-            | GaussianBlur(op, c) ->
-                let c = Color(byte(op * 255.0), c.R, c.G, c.B)
-                win.Background <- SolidColorBrush(c)
-                AccentState.ACCENT_ENABLE_BLURBEHIND, uint32(op * 255.0), 0u
-            | AdvancedBlur(op, c) ->
-                win.Background <- Brushes.Transparent
-                // RGB -> BGR
-                let c = Color(0uy, c.B, c.G, c.R)
-                AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND, uint32(op * 255.0), c.ToUint32()
-
-        let accent = 
-            { 
-                AccentState = state
-                GradientColor = (opacity <<< 24) ||| (bgcolor &&& 0xFFFFFFu) 
-                AccentFlags = 0x2u
-                AnimationId = 0u
-            }
-        let accentStructSize = Marshal.SizeOf(accent);
-        let accentPtr = Marshal.AllocHGlobal(accentStructSize);
-        Marshal.StructureToPtr(accent, accentPtr, false);
-
-        let mutable data = { Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY; SizeOfData = accentStructSize; Data = accentPtr }
-        SetWindowCompositionAttribute(win.PlatformImpl.Handle.Handle, &data) |> ignore
-
-        Marshal.FreeHGlobal(accentPtr);
-    elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
-        match composition with
-        | SolidBackground (_, c) ->
-            win.Background <- SolidColorBrush(c)
-        | TransparentBackground(op, c) // TODO verify
-        | GaussianBlur(op, c)
-        | AdvancedBlur(op, c) ->
-            let c = Color(byte(op * 255.0), c.R, c.G, c.B)
-            win.Background <- SolidColorBrush(c)
-            ignore <| vh_add_view(win.PlatformImpl.Handle.Handle)
-    elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-        (**
-        useful pointers:
-            https://github.com/mono/mono/blob/c5b88ec4f323f2bdb7c7d0a595ece28dae66579c/mcs/class/System.Windows.Forms/System.Windows.Forms/X11Structs.cs
-            https://github.com/mono/mono/tree/c5b88ec4f323f2bdb7c7d0a595ece28dae66579c/mcs/class/System.Windows.Forms/System.Windows.Forms
-            https://github.com/AvaloniaUI/Avalonia/tree/master/src/Avalonia.X11
-            libX11 doc: https://www.x.org/releases/X11R7.6/doc/libX11/specs/libX11/libX11.html
-            XChangeProperty in action: https://github.com/KanoComputing/kdesk/blob/master/src/kdesk-blur/kdesk-blur.cpp
-        tip: use `xprop` to test
-            xprop -f _KDE_NET_WM_BLUR_BEHIND_REGION 32c -set _KDE_NET_WM_BLUR_BEHIND_REGION '0'
-        and then, do `xprop` without arguments to inspect a window. setting the right data type is crucial!
-        *)
-
-        let x11win = win.PlatformImpl
-        let x11win_type = x11win.GetType()
-
-        let x11info_field = x11win_type.GetField("_x11", BindingFlags.NonPublic ||| BindingFlags.Instance)
-        let x11info_type = x11info_field.FieldType
-        let x11info = x11info_field.GetValue(x11win)
-
-        let x11display_field = x11info_type.GetProperty("Display")
-        let x11display_handle = x11display_field.GetValue(x11info) :?> nativeint
-        let x11win_handle = x11win.Handle.Handle
-
-        let blur_param = [|0|]
-        use pblur_param = fixed blur_param
-
-
-        // KDE
-        let blur_atom = XInternAtom(x11display_handle, "_KDE_NET_WM_BLUR_BEHIND_REGION", false)
-        ignore <| XChangeProperty(
-            x11display_handle, 
-            x11win_handle, 
-            blur_atom, 
-            nativeint AtomType.XA_CARDINAL, 
-            32, 
-            PropertyMode.Replace, 
-            NativeInterop.NativePtr.toNativeInt pblur_param,
-            1)
-
-        // Deepin
-        let blur_atom = XInternAtom(x11display_handle, "_NET_WM_DEEPIN_BLUR_REGION_ROUNDED", false)
-        ignore <| XChangeProperty(
-            x11display_handle, 
-            x11win_handle, 
-            blur_atom, 
-            nativeint AtomType.XA_CARDINAL, 
-            32, 
-            PropertyMode.Replace, 
-            NativeInterop.NativePtr.toNativeInt pblur_param,
-            1)
-
-        match composition with
-        | SolidBackground (_, c) ->
-            win.Background <- SolidColorBrush(c)
-        | TransparentBackground(op, c) // TODO verify
-        | GaussianBlur(op, c)
-        | AdvancedBlur(op, c) ->
-            let c = Color(byte(op * 255.0), c.R, c.G, c.B)
-            win.Background <- SolidColorBrush(c)
+    trace "ui" "SetWindowBackgroundComposition: desired=%A actual=%A" win.TransparencyLevelHint win.ActualTransparencyLevel
