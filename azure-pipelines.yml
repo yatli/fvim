@@ -16,7 +16,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: true
-      version: 3.0.100-preview6-012264
+      version: 3.1.6
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: NuGetToolInstaller@1
   - task: PowerShell@2
@@ -38,7 +38,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: true
-      version: 3.0.100-preview6-012264
+      version: 3.1.6
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: Bash@3
     inputs:
@@ -65,7 +65,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: true
-      version: 3.0.100-preview6-012264
+      version: 3.1.6
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: Bash@3
     inputs:
