@@ -282,7 +282,7 @@ type Editor() as this =
           for row = r.row to r.row_end - 1 do
             drawBufferLine grid_dc row r.col r.col_end
 
-        if m_debug then drawDebug grid_dc
+        (*if m_debug then drawDebug grid_dc*)
 
         grid_dc.PopClip()
         timer.Stop()

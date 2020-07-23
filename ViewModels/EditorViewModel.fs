@@ -276,6 +276,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         | Mouse en                                                           -> setMouse en
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c
         | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 1 m_gridsize.cols
+        | WinFloatPos (_, _, anchor, anchor_grid, r, c, f)                   -> setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols // XXX assume attaching to grid #1, assume NW
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
@@ -383,7 +384,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         member __.Input = m_input_ev.Publish
         member __.HasChildren = m_child_grids.Count <> 0
         member __.Redraw cmd = redraw cmd
-        member __.AddChild id r c =
+        member __.CreateChild id r c =
+            trace _gridid "CreateChild: #%d" id
             let child_size = this.GetPoint r c
             let child = new EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
             m_child_grids.Add child

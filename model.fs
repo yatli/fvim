@@ -38,9 +38,6 @@ module ModelImpl =
     let add_grid(grid: IGridUI) =
         let id = grid.Id
         grids.[id] <- grid
-        // by default add to grid #1
-        (*if id <> 1 then*)
-          (*ignore <| grids.[1].AddChild id r c*)
 
     let destroy_grid(id) =
       match grids.TryGetValue id with
@@ -100,12 +97,13 @@ module ModelImpl =
             unicast id cmd
         | MsgSetPos(id, _, _, _)            ->
             if not(grids.ContainsKey id) then
-              add_grid <| grids.[1].AddChild id 1 grids.[1].GridWidth
+              add_grid <| grids.[1].CreateChild id 1 grids.[1].GridWidth
             unicast id cmd
         | WinPos(id, _, _, _, w, h)
         | GridResize(id, w, h)              -> 
+              trace "GridResize %d" id
               if not(grids.ContainsKey id) then
-                add_grid <| grids.[1].AddChild id h w
+                add_grid <| grids.[1].CreateChild id h w
               unicast id cmd
         | GridLine lines                    -> 
             lines 

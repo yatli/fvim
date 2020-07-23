@@ -125,7 +125,7 @@ type IGridUI =
     abstract Input: IEvent<int*InputEvent>
     abstract HasChildren: bool
     abstract Redraw: RedrawCommand -> unit
-    abstract AddChild: int -> int -> int -> IGridUI
+    abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
 
@@ -375,6 +375,9 @@ let SetWindowBackgroundComposition (win: Avalonia.Controls.Window) (composition:
     | AdvancedBlur(op, c) ->
         let c = Color(byte(op * 255.0), c.R, c.G, c.B)
         win.Background <- SolidColorBrush(c)
-        win.TransparencyLevelHint <- Controls.WindowTransparencyLevel.AcrylicBlur
+        win.TransparencyLevelHint <- 
+          if RuntimeInformation.IsOSPlatform OSPlatform.Windows 
+          then (int Controls.WindowTransparencyLevel.AcrylicBlur) + 1 |> LanguagePrimitives.EnumOfValue
+          else Controls.WindowTransparencyLevel.AcrylicBlur
 
     trace "ui" "SetWindowBackgroundComposition: desired=%A actual=%A" win.TransparencyLevelHint win.ActualTransparencyLevel
