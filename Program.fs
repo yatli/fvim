@@ -56,6 +56,7 @@ type MsgPackResolver() =
 
 
 [<EntryPoint>]
+[<STAThread>]
 [<CompiledName "Main">]
 let main(args: string[]) =
 
