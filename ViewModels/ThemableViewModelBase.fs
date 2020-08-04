@@ -38,7 +38,7 @@ type ThemableViewModelBase(x, y, w, h) as this =
     member this.InactiveForeground with get() = m_inactivefg
 
     member this.SetColors(nfg: Color, nbg: Color, sfg: Color, sbg: Color, scfg: Color, scbg: Color, bbg: Color, ifg: Color) =
-        let tobrush (x: Color) = SolidColorBrush(x) :> IBrush
+        let tobrush (x: Color) = SolidColorBrush(x, 1.0) :> IBrush
         let (/) (x: Color) (y: float) = 
             Color(
                 byte(float x.A), 
