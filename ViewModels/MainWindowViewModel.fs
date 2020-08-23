@@ -103,8 +103,8 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     member this.WindowState
         with get(): WindowState = m_windowState
         and set(v) = 
-            this.RaisePropertyChanged("BorderSize")
             ignore <| this.RaiseAndSetIfChanged(&m_windowState, v)
+            this.RaisePropertyChanged("BorderSize")
 
     member this.CustomTitleBarHeight 
         with get() =
