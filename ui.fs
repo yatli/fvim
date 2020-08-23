@@ -21,6 +21,7 @@ open System.Reflection
 
 type InputEvent = 
 | Key          of mods: KeyModifiers * key: Key
+| MappedKey    of mods: KeyModifiers * key: string
 | MousePress   of mods: KeyModifiers * row: int * col: int * button: MouseButton
 | MouseRelease of mods: KeyModifiers * row: int * col: int * button: MouseButton
 | MouseDrag    of mods: KeyModifiers * row: int * col: int * button: MouseButton

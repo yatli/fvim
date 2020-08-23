@@ -493,6 +493,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
+        trace _gridid "key event mapped key = %s" e.MappedKey
         raiseInputEvent <| InputEvent.Key(e.KeyModifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 

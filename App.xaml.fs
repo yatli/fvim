@@ -21,7 +21,7 @@ type ViewLocator() =
             then Activator.CreateInstance(_type) :?> IControl;
             else TextBlock( Text = "Not Found: " + _name ) :> IControl
         member this.Match(data: obj): bool = data :? ViewModelBase || data :? IViewModelContainer
-        member this.SupportsRecycling: bool = false
+        // member this.SupportsRecycling: bool = false
 
 type App() =
     inherit Application()
