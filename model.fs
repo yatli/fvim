@@ -177,6 +177,10 @@ module ModelImpl =
         if x.HasFlag flag then Some() else None
     let (|NoFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
         if x.HasFlag flag then None else Some()
+    let (|NvimSupportedMouseButton|_|) (mb: MouseButton) =
+        match mb with
+        | MouseButton.Left | MouseButton.Right | MouseButton.Middle -> Some mb
+        | _ -> None
     let MB (x: MouseButton) = 
         match x with
         | MouseButton.Left -> "left"
@@ -326,9 +330,9 @@ module ModelImpl =
         |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
         |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
         |  Key(_, x)                                                  -> Normal (x.ToString())
-        |  MousePress(_, r, c, but)                                   -> Mouse(MB but, "press", r, c, 1)
-        |  MouseRelease(_, r, c, but)                                 -> Mouse(MB but, "release", r, c, 1)
-        |  MouseDrag(_, r, c, but   )                                 -> Mouse(MB but, "drag", r, c, 1)
+        |  MousePress(_, r, c, NvimSupportedMouseButton but)          -> Mouse(MB but, "press", r, c, 1)
+        |  MouseRelease(_, r, c, NvimSupportedMouseButton but)        -> Mouse(MB but, "release", r, c, 1)
+        |  MouseDrag(_, r, c, NvimSupportedMouseButton but   )        -> Mouse(MB but, "drag", r, c, 1)
         |  MouseWheel(_, r, c, dx, dy)                                -> 
             // duh! don't like this
             accumulatedX <- accumulatedX + dx
