@@ -6,6 +6,8 @@ open Avalonia.Controls.Templates
 open Avalonia.Markup.Xaml
 open System
 
+open log
+
 type IViewModelContainer =
     abstract Target: obj
 
@@ -20,8 +22,9 @@ type ViewLocator() =
             if _type <> null 
             then Activator.CreateInstance(_type) :?> IControl;
             else TextBlock( Text = "Not Found: " + _name ) :> IControl
-        member this.Match(data: obj): bool = data :? ViewModelBase || data :? IViewModelContainer
-        member this.SupportsRecycling: bool = false
+        member this.Match(data: obj): bool = 
+            data :? ViewModelBase || data :? IViewModelContainer
+        //member this.SupportsRecycling: bool = false
 
 type App() =
     inherit Application()
