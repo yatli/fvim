@@ -18,8 +18,8 @@ let sample_config = """
             "mainwin": {
                 "x": 1030,
                 "y": 200,
-                "w": 800.00,
-                "h": 600.00,
+                "w": 800,
+                "h": 600,
                 "state": "Normal",
                 "BackgroundComposition": "acrylic",
                 "CustomTitleBar": false
@@ -30,8 +30,8 @@ let sample_config = """
             "mainwin": {
                 "x": 1030,
                 "y": 200,
-                "w": 800.00,
-                "h": 600.00,
+                "w": 800,
+                "h": 600,
                 "state": "Normal"
             }
         }
@@ -62,10 +62,10 @@ let load() =
         cfg
     with _ -> ConfigObject.Parse("{}")
 
-let save (cfg: ConfigObject.Root) (x: int) (y: int) (w: float) (h: float) (state: WindowState) (composition: string) (customTitleBar: bool) = 
+let save (cfg: ConfigObject.Root) (x: int) (y: int) (w: int) (h: int) (state: WindowState) (composition: string) (customTitleBar: bool) = 
     let dict = cfg.Workspace |> Array.map (fun ws -> (ws.Path, ws)) |> Map.ofArray
     let cwd  = Environment.CurrentDirectory |> Path.GetFullPath
-    let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, int w, int h, state.ToString(), Some composition, Some customTitleBar))
+    let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, w, h, state.ToString(), Some composition, Some customTitleBar))
     let dict = dict.Add(cwd, ws)
     let cfg  = ConfigObject.Root(dict |> Map.toArray |> Array.map snd, cfg.Logging)
     try File.WriteAllText(configfile, cfg.ToString())

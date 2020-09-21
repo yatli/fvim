@@ -111,7 +111,15 @@ let main(args: string[]) =
     lifetime.MainWindow <- MainWindow(DataContext = mainwin)
     try
       ignore <| lifetime.Start(args)
-      config.save cfg (int mainwin.X) (int mainwin.Y) (mainwin.Width) (mainwin.Height) (mainwin.WindowState) (States.backgroundCompositionToString States.background_composition) mainwin.CustomTitleBar
+      let x, y, w, h = 
+        let x, y, w, h = (int mainwin.X), (int mainwin.Y), (int mainwin.Width), (int mainwin.Height)
+        // sometimes the metrics will just go off...
+        // see #136
+        let x, y = (max x 0), (max y 0)
+        if x + w < 0 || y + h < 0
+        then 0, 0, 800, 600
+        else x, y, w, h
+      config.save cfg x y w h (mainwin.WindowState) (States.backgroundCompositionToString States.background_composition) mainwin.CustomTitleBar
       Ok()
     with ex -> Error ex
   | Error ex -> Error ex
