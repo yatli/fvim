@@ -63,7 +63,7 @@ type MainWindow() as this =
         this.Cursor <- c
 
     let toggleTitleBar(custom) =
-        this.SystemDecorations <- if custom then SystemDecorations.None else SystemDecorations.Full
+        this.SystemDecorations <- if custom then SystemDecorations.BorderOnly else SystemDecorations.Full
 
     let toggleFullscreen(v) =
         if not v then
