@@ -210,7 +210,7 @@ module ModelImpl =
         //  Avoid sending key sequence, e.g. "capslock"
         | Key(_, Key.None)              | Key(_, Key.Cancel)     
         | Key(_, Key.Clear)             | Key(_, Key.Pause)
-        | Key(_, Key.CapsLock)          | Key(_, Key.Capital)
+        | Key(_, Key.CapsLock)          | Key(_, Key.Capital) | Key(_, Key.NumLock)
         | Key(_, Key.HangulMode)        // | Key(_, Key.KanaMode)   
         | Key(_, Key.JunjaMode)         | Key(_, Key.FinalMode)
         | Key(_, Key.KanjiMode)         // | Key(_, Key.HanjaMode)
