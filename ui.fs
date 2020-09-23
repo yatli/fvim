@@ -212,7 +212,6 @@ let MeasureText (str: string, font: string, wfont: string, fontSize: float, scal
     paint.LcdRenderText <- false 
     paint.SubpixelText <- States.font_subpixel
     paint.TextAlign <- SKTextAlign.Left
-    paint.DeviceKerningEnabled <- false
     paint.TextEncoding <- SKTextEncoding.Utf16
 
     let mutable score = 999999999999.0
@@ -267,7 +266,6 @@ let SetForegroundBrush(fgpaint: SKPaint, c: Color, fontFace: SKTypeface, fontSiz
     fgpaint.LcdRenderText        <- false  // see #125, #132
     fgpaint.SubpixelText         <- States.font_subpixel
     fgpaint.TextAlign            <- SKTextAlign.Left
-    fgpaint.DeviceKerningEnabled <- false
     fgpaint.TextEncoding         <- SKTextEncoding.Utf16
     ()
 
