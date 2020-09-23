@@ -6,9 +6,10 @@ open Avalonia
 
 #nowarn "0025"
 
-type ThemableViewModelBase(x, y, w, h) as this = 
+type ThemableViewModelBase(x, y, w, h, ?transpbg) as this = 
     inherit ViewModelBase(x, y, w, h)
 
+    let m_transpbg = defaultArg transpbg false
     //  Colors
     let mutable m_normalFg: IBrush = Brushes.Black :> IBrush
     let mutable m_normalBg: IBrush = Brushes.White :> IBrush
@@ -38,7 +39,11 @@ type ThemableViewModelBase(x, y, w, h) as this =
     member this.InactiveForeground with get() = m_inactivefg
 
     member this.SetColors(nfg: Color, nbg: Color, sfg: Color, sbg: Color, scfg: Color, scbg: Color, bbg: Color, ifg: Color) =
-        let tobrush (x: Color) = SolidColorBrush(x, 1.0) :> IBrush
+        let tobrush (x: Color) = 
+          if m_transpbg then x
+          else Color(255uy, x.R, x.G, x.B)
+          |> SolidColorBrush 
+          :> IBrush
         let (/) (x: Color) (y: float) = 
             Color(
                 byte(float x.A), 

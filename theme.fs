@@ -76,7 +76,7 @@ do
 
 let setSemanticHighlightGroups grp =
     semhl <- grp
-    // update popupmenu color
+    // update themable elements color
     let [ nfg, nbg, _, _
           sfg, sbg, _, _
           scfg, scbg, _, _
