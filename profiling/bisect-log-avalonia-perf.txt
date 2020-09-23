@@ -1,0 +1,16 @@
+git bisect start
+# good: [d69d25a550758ad91b1900d3f304ba4fbec46403] update Avalonia to 0.9.9. Enable X11 immediate renderer
+git bisect good d69d25a550758ad91b1900d3f304ba4fbec46403
+# bad: [41ce0c6a587ebd3ffb843e2c507f3fc6ae8a0f92] revert to Avalonia 0.10.4
+git bisect bad 41ce0c6a587ebd3ffb843e2c507f3fc6ae8a0f92
+# good: [663c2b20a612fe230a898bcbc6f49eb99b157c8a] Merge branch 'master' of github.com:yatli/fvim
+git bisect good 663c2b20a612fe230a898bcbc6f49eb99b157c8a
+# bad: [002a4ab3b84a75571e80dae500793ab475ca9778] update to avalonia 0.10-preview3
+git bisect bad 002a4ab3b84a75571e80dae500793ab475ca9778
+# good: [71992267631c57d4c3d5bc911f96513f3348032e] Update README.md
+git bisect good 71992267631c57d4c3d5bc911f96513f3348032e
+# good: [522080c9565170fa391821aab8152053772dbc95] Merge branch 'master' of github.com:yatli/fvim
+git bisect good 522080c9565170fa391821aab8152053772dbc95
+# good: [03095f081fd22a7e31e30ab0b85e00a2d634a7b5] fix #155.
+git bisect good 03095f081fd22a7e31e30ab0b85e00a2d634a7b5
+# first bad commit: [002a4ab3b84a75571e80dae500793ab475ca9778] update to avalonia 0.10-preview3
