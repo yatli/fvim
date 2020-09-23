@@ -277,6 +277,7 @@ let msg_dispatch =
     | Crash code -> 
       trace "rpc" "neovim crashed with code %d" code
       _crashcode <- code
+      failwithf "neovim crashed"
     | other -> 
       trace "rpc" "unrecognized event: %A" other
 

@@ -16,6 +16,7 @@ type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
         let tip = 
             match ex.Message with
             | "The system cannot find the file specified." -> "Tip: check your neovim installation. `nvim` is not in your $PATH.\n"
+            | "neovim crashed" -> "The neovim process exited abnormally.\n"
             | _ -> ""
         let generic_message = 
                "You can go to https://github.com/yatli/fvim/issues, and search\n" + 
