@@ -90,7 +90,7 @@ type Cursor() as this =
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
-            this.InvalidateVisual()
+            // this.InvalidateVisual()
 
     let setCursorAnimation() =
         let transitions = Transitions()
@@ -113,17 +113,16 @@ type Cursor() as this =
             transitions.Add(y_transition)
         trace "cursor" "setCursorAnimation: blink=%b, move=%b" States.cursor_smoothblink States.cursor_smoothmove
         this.Transitions <- transitions
-        this.Transitions |> ignore
+        ()
 
     do
         this.Watch [
             this.OnRenderTick cursorConfig
             this.GetObservable(IsActiveProperty) 
-            |> Observable.subscribe(fun v -> 
+            |> Observable.subscribe(fun _ -> 
               setCursorAnimation()
               this.InvalidateVisual())
             States.Register.Watch "cursor" setCursorAnimation
-
         ] 
         AvaloniaXamlLoader.Load(this)
 
