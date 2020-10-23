@@ -284,7 +284,7 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPain
     let total_padding = h - ((fg.FontMetrics.Bottom - fg.FontMetrics.Top))
     let baseline      = region.Top + ceil((total_padding / 2.0f) - fg.FontMetrics.Top)
     (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
-    let fontPos       = SKPoint(region.Left, baseline)
+    let fontPos       = SKPoint(ceil region.Left, floor baseline)
 
     let skia = ctx :?> ISkiaDrawingContextImpl
 
@@ -299,7 +299,7 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPain
 
     if not <| String.IsNullOrWhiteSpace text then
         if shaper.IsSome then
-            skia.SkCanvas.DrawShapedText(shaper.Value, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
+            skia.SkCanvas.DrawShapedText(shaper.Value, text.TrimEnd(), fontPos.X, fontPos.Y, fg)
         else 
             skia.SkCanvas.DrawText(text.TrimEnd(), fontPos, fg)
 
