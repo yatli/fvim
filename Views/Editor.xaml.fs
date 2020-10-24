@@ -27,8 +27,8 @@ module private EditorHelper =
       if vm <> Unchecked.defaultof<_> then (vm :> IGridUI).Id.ToString() else "(no vm attached)"
     FVim.log.trace ("editor #" + nr) fmt
 
-
 open EditorHelper
+open System.Text
 
 type Editor() as this =
   inherit Canvas()
@@ -84,16 +84,11 @@ type Editor() as this =
   let mutable bgpaint = null
   let mutable sppaint = null
 
-  let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (str: string list) (issym: bool) =
-
-    let x =
-      match str with
-      | x :: _ -> x
-      | _ -> " "
+  let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
     let font, fontwide, fontsize = grid_vm.GetFontAttrs()
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
-    let shaper, typeface = GetTypeface(x, attrs.italic, attrs.bold, font, fontwide)
+    let shaper, typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
     if fgpaint = null then
       fgpaint <- new SKPaint()
@@ -115,7 +110,13 @@ type Editor() as this =
     bgpaint.Color <- bg.ToSKColor()
     sppaint.Color <- sp.ToSKColor()
 
-    let txt = String.Concat str
+    let txt = 
+      let sb = StringBuilder()
+      for i = col to colend - 1 do
+        match grid_vm.[row, i] with
+        | { text = { c1 = c1; c2 = c2; isSurrogatePair = true } } -> sb.Append(c1).Append(c2) |> ignore
+        | { text = { c1 = c1 } } -> sb.Append(c1) |> ignore
+      sb.ToString()
 
     let shaping =
       if txt.Length > 1 && txt.Length < 5 && issym && States.font_ligature
@@ -130,21 +131,20 @@ type Editor() as this =
   let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
     let xN = min xN grid_vm.Cols
     let x0 = max x0 0
-    let y = (min y (grid_vm.Rows - 1)) |> max 0
+    let y = Math.Clamp(y, 0, (grid_vm.Rows - 1))
     let mutable x': int = xN - 1
-    let mutable prev: GridBufferCell ref = ref grid_vm.[y, x']
-    let mutable str: string list = []
-    let mutable wc: CharType = wswidth (!prev).text
-    let mutable sym: bool = isProgrammingSymbol (!prev).text
+    let mutable wc: CharType = wswidth grid_vm.[y, x'].text
+    let mutable sym: bool = isProgrammingSymbol grid_vm.[y, x'].text
+    let mutable prev_hlid = grid_vm.[y, x'].hlid
 
     let mutable bold =
-      let _, _, _, hl_attrs = theme.GetDrawAttrs (!prev).hlid
+      let _, _, _, hl_attrs = theme.GetDrawAttrs prev_hlid
       hl_attrs.bold
     //  in each line we do backward rendering.
     //  the benefit is that the italic fonts won't be covered by later drawings
     for x = xN - 1 downto x0 do
-      let current = ref grid_vm.[y, x]
-      let mytext = (!current).text
+      let current = grid_vm.[y, x]
+      let mytext = current.text
       //  !NOTE text shaping is slow. We only use shaping for
       //  a symbol-only span (for ligature drawing).
       let mysym = isProgrammingSymbol mytext
@@ -152,21 +152,18 @@ type Editor() as this =
       //  !NOTE bold glyphs are generally wider than normal.
       //  Therefore, we have to break them into single glyphs
       //  to prevent overflow into later cells.
-      let prev_hlid = (!prev).hlid
-      let hlidchange = prev_hlid <> (!current).hlid
+      let hlidchange = prev_hlid <> current.hlid
       if hlidchange || mywc <> wc || bold || sym <> mysym then
-        drawBuffer ctx y (x + 1) (x' + 1) prev_hlid str sym
+        drawBuffer ctx y (x + 1) (x' + 1) prev_hlid sym
         wc <- mywc
         sym <- mysym
         x' <- x
-        str <- []
         if hlidchange then
-          prev <- current
+          prev_hlid <- current.hlid
           bold <-
-            let _, _, _, hl_attrs = theme.GetDrawAttrs (!current).hlid
+            let _, _, _, hl_attrs = theme.GetDrawAttrs prev_hlid
             hl_attrs.bold
-      str <- mytext :: str
-    drawBuffer ctx y x0 (x' + 1) (!prev).hlid str sym
+    drawBuffer ctx y x0 (x' + 1) prev_hlid sym
 
   let doWithDataContext fn =
     match this.DataContext with

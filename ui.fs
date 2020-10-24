@@ -31,10 +31,10 @@ type InputEvent =
 [<Struct>]
 type GridBufferCell =
     {
-        mutable text:  string
+        mutable text:  Rune
         mutable hlid:  int32
     } 
-    with static member empty = { text  = " "; hlid = 0 }
+    with static member empty = { text  = Rune.empty; hlid = 0 }
 
 [<Struct>]
 type GridSize =
@@ -201,9 +201,9 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     | CharType.Emoji -> (emoji_shaper, emoji_typeface)
     | _              -> _get font
 
-let MeasureText (str: string, font: string, wfont: string, fontSize: float, scaling: float) =
+let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scaling: float) =
     use paint = new SKPaint()
-    paint.Typeface <- snd <| GetTypeface(str, false, false, font, wfont)
+    paint.Typeface <- snd <| GetTypeface(rune, false, false, font, wfont)
     paint.TextSize <- single fontSize
     paint.IsAntialias <- States.font_antialias
     paint.IsAutohinted <- States.font_autohint
@@ -218,6 +218,7 @@ let MeasureText (str: string, font: string, wfont: string, fontSize: float, scal
     let mutable s = fontSize
     let mutable w = 0.0
     let mutable h = 0.0
+    let str = rune.ToString()
 
     let search (sizeStep: int) =
         let s' = fontSize + float(sizeStep) * 0.01

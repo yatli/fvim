@@ -149,7 +149,7 @@ type Cursor() as this =
             let bounds = Rect(this.Bounds.Size)
             let render_block (ctx: 'a) =
                 if this.IsActive then
-                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text, ValueNone)
+                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text.ToString(), ValueNone)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))

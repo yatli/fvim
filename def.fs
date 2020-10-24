@@ -102,9 +102,20 @@ type RgbAttr =
         }
 
 [<Struct>]
+type Rune =
+    {
+        c1: char
+        c2: char
+        isSurrogatePair: bool
+    }
+    with
+    override x.ToString() = if x.isSurrogatePair then sprintf "%c%c" x.c1 x.c2 else x.c1.ToString()
+    static member empty = { c1 = ' '; c2 = char 0; isSurrogatePair = false }
+
+[<Struct>]
 type GridCell = 
     {
-        text: string
+        text: Rune
         hl_id: int option
         repeat: int option
     }
@@ -486,13 +497,20 @@ let parse_hi_attr (x: obj) =
         -> Some {id = id; rgb_attr = rgb; cterm_attr = cterm; info = info }
     | _ -> None
 
+let (|Rune|_|) (x:obj) =
+    match x with
+    | :? string as x when x.Length = 0 -> Some Rune.empty
+    | :? string as x when x.Length = 1 -> Some { c1 = x.[0]; c2 = char 0; isSurrogatePair = false }
+    | :? string as x when x.Length = 2 -> Some { c1 = x.[0]; c2 = x.[1]; isSurrogatePair = true }
+    | _ -> failwithf "Rune parse failure: %O" x
+
 let parse_grid_cell (x: obj) =
     match x with
-    | ObjArray [| (String txt) |] 
+    | ObjArray [| (Rune txt) |] 
         -> Some { text = txt; hl_id = None; repeat = None}
-    | ObjArray [| (String txt); (Integer32 hl_id) |] 
+    | ObjArray [| (Rune txt); (Integer32 hl_id) |] 
         -> Some { text = txt; hl_id = Some hl_id; repeat = None}
-    | ObjArray [| (String txt); (Integer32 hl_id); (Integer32 repeat) |] 
+    | ObjArray [| (Rune txt); (Integer32 hl_id); (Integer32 repeat) |] 
         -> Some { text = txt; hl_id = Some hl_id; repeat = Some repeat}
     | _ -> None
 

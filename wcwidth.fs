@@ -6,6 +6,7 @@ module FVim.wcwidth
 
 open log
 open System.Numerics
+open def
 
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
 // at commit 0d7de112202cc8b2ebe9232ff4a5c954f19d561a (2016-07-02):
@@ -563,35 +564,23 @@ let wcwidth(ucs: int) =
         (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
         CharType.Narrow
 
-let wswidth(str: string) = 
-    if System.String.IsNullOrEmpty str then CharType.Invisible
-    // prepend a low surrogate
-    else (string(char 0xDC00) + str)
-         |> Seq.map int
-         |> Seq.pairwise 
-         |> Seq.choose (fun (a,b) -> 
-                        if System.Char.IsSurrogatePair(char a, char b) 
-                        then Some(0x10000 + (a - 0xD800) * 0x400 + (b - 0xDC00))
-                        elif not <| System.Char.IsSurrogate(char b)
-                        then Some(b)
-                        else None) 
-         |> Seq.map (wcwidth >> int)
-         |> Seq.max 
-         |> LanguagePrimitives.EnumOfValue
+let wswidth = 
+    function
+    | { c1 = c1; c2 = c2; isSurrogatePair = true } -> wcwidth (0x10000 + (int c1 - 0xD800) * 0x400 + (int c2 - 0xDC00))
+    | { c1 = c1 } when System.Char.IsWhiteSpace c1 -> CharType.Invisible
+    | { c1 = c1 } -> wcwidth <| int c1
 
 /// <summary>
 /// true if the string could be a part of a programming
 /// symbol ligature.
 /// </summary>
-let isProgrammingSymbol(str: string) =
-    if System.String.IsNullOrWhiteSpace str then false
-    else 
-        let ch = str.[0]
-        match ch with
-        // disable the frequent symbols that's too expensive to draw
-        | '\'' | '"' | '{' | '}' 
-            -> false
-        | _ -> System.Char.IsSymbol(ch) || System.Char.IsPunctuation(ch)
+let isProgrammingSymbol = 
+    function
+    | { isSurrogatePair = true } -> false
+    | { c1 = c1 } when System.Char.IsWhiteSpace c1 -> false 
+    // disable the frequent symbols that's too expensive to draw
+    | { c1 = '\'' | '"' | '{' | '}' } -> false
+    | { c1 = chr } -> System.Char.IsSymbol chr || System.Char.IsPunctuation chr
 
 let CharTypeWidth(x: CharType): int =
     match x with

@@ -285,7 +285,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     let fontConfig() =
         // It turns out the space " " advances farest...
         // So we measure it as the width.
-        let s, w, h = MeasureText(" ", theme.guifont, theme.guifontwide, theme.fontsize, m_gridscale)
+        let s, w, h = MeasureText(Rune.empty, theme.guifont, theme.guifontwide, theme.fontsize, m_gridscale)
         m_glyphsize <- Size(w, h)
         m_fontsize <- s
         trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
