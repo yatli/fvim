@@ -175,15 +175,14 @@ type VimCompleteKind =
 type CompleteItem =
     {
         word: string
-        abbr: string option
-        menu: string option
-        info: string option
+        abbr: string
+        menu: string
+        info: string
     }
 with 
-    static member empty = { word = ""; abbr = None; menu = None; info = None }
+    static member empty = { word = ""; abbr = ""; menu = ""; info = "" }
     static member GetLength (x: CompleteItem) =
-        let _len (x: string option) = (_d "" x).Length
-        x.word.Length + _len x.abbr + _len x.menu + _len x.info
+        x.word.Length + x.abbr.Length + x.menu.Length + x.info.Length
 
 // The ids are arbitrary. Parsed from a string identifier.
 // However, this list is obtained from a full semantic hl group set.
@@ -545,9 +544,9 @@ let parse_complete_item =
     | ObjArray [| (String word); (String abbr); (String menu); (String info) |] -> 
         Some {
             word = word
-            abbr = Some abbr
-            menu = Some menu
-            info = Some info
+            abbr = abbr
+            menu = menu
+            info = info
         }
     | x -> 
         trace "parse_complete_item: unrecognized: %A" x

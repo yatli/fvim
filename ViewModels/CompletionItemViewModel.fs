@@ -66,7 +66,7 @@ module CompletionItemHelper =
     ]
 
     let ParseCompletionItemKind abbr = 
-        match _d "" abbr with
+        match abbr with
         | "t" -> Text
         | ":" -> Method
         | "f" -> Function
@@ -115,8 +115,8 @@ type CompletionItemViewModel(item: CompleteItem, oncommit: unit -> unit) =
         (*trace "CompletionItemViewModel" "item = %A" item*)
     member __.OnCommit = oncommit
     member __.Text = item.word
-    member __.Menu = _d "" item.menu
-    member __.Info = _d "" item.info
+    member __.Menu = item.menu
+    member __.Info = item.info
     member __.Kind = kind
     member __.Icon = CompletionItemKindIcons.[kind]
 
