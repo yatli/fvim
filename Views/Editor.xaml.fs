@@ -142,7 +142,7 @@ type Editor() as this =
       hl_attrs.bold
     //  in each line we do backward rendering.
     //  the benefit is that the italic fonts won't be covered by later drawings
-    for x = xN - 1 downto x0 do
+    for x = xN - 2 downto x0 do
       let current = grid_vm.[y, x]
       let mytext = current.text
       //  !NOTE text shaping is slow. We only use shaping for
