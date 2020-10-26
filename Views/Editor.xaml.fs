@@ -29,6 +29,7 @@ module private EditorHelper =
 
 open EditorHelper
 open System.Text
+open Avalonia.Media
 
 type Editor() as this =
   inherit Canvas()
@@ -80,21 +81,17 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
-  let mutable fgpaint = null
-  let mutable bgpaint = null
-  let mutable sppaint = null
+  let fgpaint = SolidColorBrush()
+  let bgpaint = SolidColorBrush()
+  let sppaint = SolidColorBrush()
+
+  let mutable _buffer_glyphs = [||]
 
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
     let font, fontwide, fontsize = grid_vm.GetFontAttrs()
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
-    let shaper, typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
-
-    if fgpaint = null then
-      fgpaint <- new SKPaint()
-      bgpaint <- new SKPaint()
-      sppaint <- new SKPaint()
-    SetForegroundBrush(fgpaint, fg, typeface, fontsize)
+    let typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
     let nr_col =
       match wswidth grid_vm.[row, colend - 1].text with
@@ -107,24 +104,15 @@ type Editor() as this =
     let bottomRight = topLeft + grid_vm.GetPoint 1 nr_col
     let bg_region = Rect(topLeft, bottomRight)
 
-    bgpaint.Color <- bg.ToSKColor()
-    sppaint.Color <- sp.ToSKColor()
+    if _buffer_glyphs.Length < colend - col then
+      _buffer_glyphs <- Array.zeroCreate (colend - col)
+    for i = col to colend - 1 do
+      _buffer_glyphs.[i - col] <- grid_vm.[row, i].text.Codepoint
 
-    let txt = 
-      let sb = StringBuilder()
-      for i = col to colend - 1 do
-        match grid_vm.[row, i] with
-        | { text = { c1 = c1; c2 = c2; isSurrogatePair = true } } -> sb.Append(c1).Append(c2) |> ignore
-        | { text = { c1 = c1 } } -> sb.Append(c1) |> ignore
-      sb.ToString()
-
-    let shaping =
-      if txt.Length > 1 && txt.Length < 5 && issym && States.font_ligature
-      then ValueSome shaper
-      else ValueNone
+    let txt = ReadOnlySpan(_buffer_glyphs, 0, colend - col)
 
     try
-      RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+      RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
     with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.

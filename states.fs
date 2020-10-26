@@ -78,8 +78,8 @@ let mutable font_subpixel      = true
 let mutable font_autosnap      = true
 let mutable font_ligature      = true
 let mutable font_hintLevel     = SKPaintHinting.NoHinting
-let mutable font_weight_normal = SKFontStyleWeight.Normal
-let mutable font_weight_bold   = SKFontStyleWeight.Bold
+let mutable font_weight_normal = FontWeight.Normal
+let mutable font_weight_bold   = FontWeight.Bold
 let mutable font_lineheight    = LineHeightOption.Default
 let mutable font_nonerd        = false
 

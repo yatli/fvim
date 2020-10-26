@@ -49,9 +49,11 @@ type Cursor() as this =
             true
         else false
 
-    let fgpaint = new SKPaint()
-    let bgpaint = new SKPaint()
-    let sppaint = new SKPaint()
+    let fgpaint = SolidColorBrush()
+    let bgpaint = SolidColorBrush()
+    let sppaint = SolidColorBrush()
+
+    let _buffer_glyph = [| 0u |]
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -142,14 +144,13 @@ type Cursor() as this =
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            let _, typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
-            SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
-            bgpaint.Color <- this.ViewModel.bg.ToSKColor()
-            sppaint.Color <- this.ViewModel.sp.ToSKColor()
+            let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             let bounds = Rect(this.Bounds.Size)
             let render_block (ctx: 'a) =
                 if this.IsActive then
-                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text.ToString(), ValueNone)
+                    _buffer_glyph.[0] <- this.ViewModel.text.Codepoint
+                    let _buffer_glyph_span = ReadOnlySpan(_buffer_glyph)
+                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, _buffer_glyph_span, typeface, this.ViewModel.fontSize)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))

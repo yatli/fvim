@@ -110,6 +110,10 @@ type Rune =
     }
     with
     override x.ToString() = if x.isSurrogatePair then sprintf "%c%c" x.c1 x.c2 else x.c1.ToString()
+    member x.Codepoint with get() = 
+        if x.isSurrogatePair 
+        then 0x10000u + (uint x.c1 - 0xD800u) * 0x400u + (uint x.c2 - 0xDC00u) 
+        else uint x.c1
     static member empty = { c1 = ' '; c2 = char 0; isSurrogatePair = false }
 
 [<Struct>]
