@@ -3,4 +3,4 @@
 SEMVER=`dotnet-gitversion /output json /showvariable SemVer`
 COMMIT=`dotnet-gitversion /output json /showvariable ShortSha`
 
-echo "$SEMVER+$COMMIT"
+echo "v$SEMVER+$COMMIT"
