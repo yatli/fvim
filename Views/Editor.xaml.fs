@@ -81,10 +81,6 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
-  let fgpaint = SolidColorBrush()
-  let bgpaint = SolidColorBrush()
-  let sppaint = SolidColorBrush()
-
   let mutable _buffer_glyphs = [||]
 
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
@@ -112,7 +108,7 @@ type Editor() as this =
     let txt = ReadOnlySpan(_buffer_glyphs, 0, colend - col)
 
     try
-      RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
+      RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
     with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.

@@ -9,12 +9,14 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Release/netcoreapp3.0/fvim.dll",
+            "program": "${workspaceFolder}/bin/Debug/netcoreapp3.1/FVim.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/bin/Release/netcoreapp3.0/",
+            "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
-            "console": "internalConsole",
-            "justMyCode": false
-        },
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "enableStepFiltering": false
+        }
+
     ]
 }

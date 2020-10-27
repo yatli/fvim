@@ -29,9 +29,10 @@ type Cursor() as this =
     static let IsActiveProperty = AvaloniaProperty.Register<Cursor, bool>("IsActive")
 
     let mutable cursor_timer: IDisposable = null
-    let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
-    let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
-    let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
+    let mutable fg = Colors.White
+    let mutable bg = Colors.Black
+    let mutable sp = Colors.Red
+
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_s = 1.0
@@ -48,10 +49,6 @@ type Cursor() as this =
             cursor_fb_vm.text <- this.ViewModel.text
             true
         else false
-
-    let fgpaint = SolidColorBrush()
-    let bgpaint = SolidColorBrush()
-    let sppaint = SolidColorBrush()
 
     let _buffer_glyph = [| 0u |]
 
@@ -83,12 +80,9 @@ type Cursor() as this =
         then ()
         else
             (* update the settings *)
-            if this.ViewModel.fg <> fgbrush.Color then
-                fgbrush <- SolidColorBrush(this.ViewModel.fg)
-            if this.ViewModel.bg <> bgbrush.Color then
-                bgbrush <- SolidColorBrush(this.ViewModel.bg)
-            if this.ViewModel.sp <> spbrush.Color then
-                spbrush <- SolidColorBrush(this.ViewModel.sp)
+            fg <- this.ViewModel.fg
+            bg <- this.ViewModel.bg
+            sp <- this.ViewModel.sp
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
@@ -150,7 +144,7 @@ type Cursor() as this =
                 if this.IsActive then
                     _buffer_glyph.[0] <- this.ViewModel.text.Codepoint
                     let _buffer_glyph_span = ReadOnlySpan(_buffer_glyph)
-                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, _buffer_glyph_span, typeface, this.ViewModel.fontSize)
+                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, _buffer_glyph_span, typeface, this.ViewModel.fontSize)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))
@@ -159,9 +153,9 @@ type Cursor() as this =
                 match ctx.PlatformImpl with
                 | :? ISkiaDrawingContextImpl ->
                     // immediate
-                    SetOpacity fgpaint this.Opacity
-                    SetOpacity bgpaint this.Opacity
-                    SetOpacity sppaint this.Opacity
+                    fg <- UpdateOpacity fg this.Opacity
+                    bg <- UpdateOpacity bg this.Opacity
+                    sp <- UpdateOpacity sp this.Opacity
                     render_block ctx.PlatformImpl
                 | _ ->
                     // deferred

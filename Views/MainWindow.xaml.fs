@@ -17,6 +17,8 @@ open Avalonia.Rendering
 open Avalonia.Interactivity
 open Avalonia.VisualTree
 
+open Avalonia.Diagnostics
+
 #nowarn "0025"
 
 open System.Runtime.InteropServices
