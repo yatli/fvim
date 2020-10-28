@@ -15,7 +15,6 @@ open Avalonia.Media.Imaging
 open Avalonia.Skia
 open Avalonia.Threading
 open Avalonia.VisualTree
-open SkiaSharp
 open System
 open System.Collections.Generic
 open System.Reactive.Disposables
@@ -29,9 +28,10 @@ type Cursor() as this =
     static let IsActiveProperty = AvaloniaProperty.Register<Cursor, bool>("IsActive")
 
     let mutable cursor_timer: IDisposable = null
-    let mutable bgbrush: SolidColorBrush  = SolidColorBrush(Colors.Black)
-    let mutable fgbrush: SolidColorBrush  = SolidColorBrush(Colors.White)
-    let mutable spbrush: SolidColorBrush  = SolidColorBrush(Colors.Red)
+    let mutable fg = Colors.White
+    let mutable bg = Colors.Black
+    let mutable sp = Colors.Red
+
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_s = 1.0
@@ -49,9 +49,8 @@ type Cursor() as this =
             true
         else false
 
-    let fgpaint = new SKPaint()
-    let bgpaint = new SKPaint()
-    let sppaint = new SKPaint()
+    let _buffer_glyph = [| 0u |]
+    let _buffer_glyph_mem = ReadOnlyMemory(_buffer_glyph)
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -81,12 +80,9 @@ type Cursor() as this =
         then ()
         else
             (* update the settings *)
-            if this.ViewModel.fg <> fgbrush.Color then
-                fgbrush <- SolidColorBrush(this.ViewModel.fg)
-            if this.ViewModel.bg <> bgbrush.Color then
-                bgbrush <- SolidColorBrush(this.ViewModel.bg)
-            if this.ViewModel.sp <> spbrush.Color then
-                spbrush <- SolidColorBrush(this.ViewModel.sp)
+            fg <- this.ViewModel.fg
+            bg <- this.ViewModel.bg
+            sp <- this.ViewModel.sp
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
@@ -142,14 +138,12 @@ type Cursor() as this =
 
         match this.ViewModel.shape, this.ViewModel.cellPercentage with
         | CursorShape.Block, _ ->
-            let _, typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
-            SetForegroundBrush(fgpaint, this.ViewModel.fg, typeface, this.ViewModel.fontSize)
-            bgpaint.Color <- this.ViewModel.bg.ToSKColor()
-            sppaint.Color <- this.ViewModel.sp.ToSKColor()
+            let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             let bounds = Rect(this.Bounds.Size)
             let render_block (ctx: 'a) =
                 if this.IsActive then
-                    RenderText(ctx, bounds, scale, fgpaint, bgpaint, sppaint, this.ViewModel.underline, this.ViewModel.undercurl, this.ViewModel.text.ToString(), ValueNone)
+                    _buffer_glyph.[0] <- this.ViewModel.text.Codepoint
+                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, Unshaped _buffer_glyph_mem, typeface, this.ViewModel.fontSize)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))
@@ -158,9 +152,9 @@ type Cursor() as this =
                 match ctx.PlatformImpl with
                 | :? ISkiaDrawingContextImpl ->
                     // immediate
-                    SetOpacity fgpaint this.Opacity
-                    SetOpacity bgpaint this.Opacity
-                    SetOpacity sppaint this.Opacity
+                    fg <- UpdateOpacity fg this.Opacity
+                    bg <- UpdateOpacity bg this.Opacity
+                    sp <- UpdateOpacity sp this.Opacity
                     render_block ctx.PlatformImpl
                 | _ ->
                     // deferred

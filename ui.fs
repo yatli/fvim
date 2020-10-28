@@ -11,11 +11,11 @@ open Avalonia.Input
 open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Platform
-open Avalonia.Skia
-open SkiaSharp
-open SkiaSharp.HarfBuzz
 open System
 open System.Reflection
+open Avalonia.Controls.Shapes
+open Avalonia.Media.TextFormatting
+open System.Globalization
 
 #nowarn "0009"
 
@@ -153,20 +153,12 @@ let DefaultFontEmoji =
     elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Apple Color Emoji"
     else "Noto Color Emoji"
 
-let private nerd_typeface = SKTypeface.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("fvim.nerd.ttf"))
-let private nerd_shaper = new SKShaper(nerd_typeface)
-let private emoji_typeface = SKTypeface.FromFamilyName(DefaultFontEmoji)
-let private emoji_shaper = new SKShaper(emoji_typeface)
-let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, SKShaper*SKTypeface>()
+let private nerd_typeface = Typeface("resm:fvim.Fonts.nerd.ttf?assembly=FVim#Iosevka")
+let private emoji_typeface = Typeface(DefaultFontEmoji)
+let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, Typeface>()
 
 let private InvalidateFontCache () =
-    List.ofSeq fontcache.Keys
-    |> List.iter (fun k ->
-        let (shaper,font) = fontcache.[k]
-        shaper.Dispose()
-        font.Dispose()
-        ignore(fontcache.Remove k)
-    )
+  fontcache.Clear()
 
 ignore(States.Register.Watch "font" InvalidateFontCache)
 
@@ -181,55 +173,50 @@ let GetTypeface(txt, italic, bold, font, wfont) =
 
     let _get fname =
         match fontcache.TryGetValue((fname, italic, bold)) with
-        | true, (shaper, typeface) -> (shaper, typeface)
+        | true, typeface -> typeface
         | _ ->
             trace "ui" "GetTypeface: allocating new typeface %s:%b:%b" fname italic bold
             let weight   = if bold then States.font_weight_bold else States.font_weight_normal
-            let width    = SKFontStyleWidth.Normal
-            let slang    = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
-            let typeface = SKTypeface.FromFamilyName(fname, weight, width, slang)
-            let shaper   = new SKShaper(typeface)
-            fontcache.[(fname, italic, bold)] <- (shaper, typeface)
-            (shaper, typeface)
+            let slang    = if italic then FontStyle.Italic else FontStyle.Normal
+            let typeface = 
+                try Typeface(fname, slang, weight)
+                with | _ -> Typeface.Default
+            fontcache.[(fname, italic, bold)] <- typeface
+            typeface
 
     let wfont = if String.IsNullOrEmpty wfont then font else wfont
 
     match w with
     | CharType.Wide  -> _get wfont
     | CharType.Powerline
-    | CharType.Nerd when not States.font_nonerd -> (nerd_shaper, nerd_typeface)
-    | CharType.Emoji -> (emoji_shaper, emoji_typeface)
+    | CharType.Nerd when not States.font_nonerd -> nerd_typeface
+    | CharType.Emoji -> emoji_typeface
     | _              -> _get font
 
 let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scaling: float) =
-    use paint = new SKPaint()
-    paint.Typeface <- snd <| GetTypeface(rune, false, false, font, wfont)
-    paint.TextSize <- single fontSize
-    paint.IsAntialias <- States.font_antialias
-    paint.IsAutohinted <- States.font_autohint
-    paint.IsLinearText <- false
-    paint.HintingLevel <- States.font_hintLevel
-    paint.LcdRenderText <- false 
-    paint.SubpixelText <- States.font_subpixel
-    paint.TextAlign <- SKTextAlign.Left
-    paint.TextEncoding <- SKTextEncoding.Utf16
+    let typeface = GetTypeface(rune, false, false, font, wfont).GlyphTypeface
 
     let mutable score = 999999999999.0
     let mutable s = fontSize
     let mutable w = 0.0
     let mutable h = 0.0
-    let str = rune.ToString()
 
     let search (sizeStep: int) =
+        // s' is pixels per em
         let s' = fontSize + float(sizeStep) * 0.01
-        paint.TextSize <- single s'
+        // u' is pixels per font design unit
+        let u' = s' / float typeface.DesignEmHeight
+        let glyph = [| typeface.GetGlyph(rune.Codepoint) |]
+        use run = new GlyphRun(typeface, s', Utilities.ReadOnlySlice(ReadOnlyMemory(glyph)))
+        let bounds = run.Bounds
 
-        let w' = float(paint.MeasureText str)
+
+        let w' = bounds.Width
         let h'' = 
             match States.font_lineheight with
-            | States.Absolute h' -> h'
-            | States.Default -> float paint.FontSpacing
-            | States.Add h' -> (float paint.FontSpacing) + h'
+            | States.Absolute lh -> lh
+            | States.Default -> float typeface.LineHeight * u'
+            | States.Add lh -> float typeface.LineHeight * u' + lh
         let h' = round(h'' * scaling) / scaling
         let h' = max h' 1.0
 
@@ -253,104 +240,94 @@ let AllocateFramebuffer w h scale =
     let pxsize        = PixelSize(int <| (w * scale), int <| (h * scale))
     new RenderTargetBitmap(pxsize, Vector(96.0 * scale, 96.0 * scale))
 
-let SetOpacity (paint: SKPaint) (opacity: float) =
-    paint.Color <- paint.Color.WithAlpha(byte <| opacity * 255.0)
+let UpdateOpacity (color: Color) opacity = 
+    Color(byte(255.0 * opacity), color.R, color.G, color.B)
 
-let SetForegroundBrush(fgpaint: SKPaint, c: Color, fontFace: SKTypeface, fontSize: float) =
-    fgpaint.Color                <- c.ToSKColor()
-    fgpaint.Typeface             <- fontFace
-    fgpaint.TextSize             <- single fontSize
-    fgpaint.IsAntialias          <- States.font_antialias
-    fgpaint.IsAutohinted         <- States.font_autohint
-    fgpaint.IsLinearText         <- false
-    fgpaint.HintingLevel         <- States.font_hintLevel
-    fgpaint.LcdRenderText        <- false  // see #125, #132
-    fgpaint.SubpixelText         <- States.font_subpixel
-    fgpaint.TextAlign            <- SKTextAlign.Left
-    fgpaint.TextEncoding         <- SKTextEncoding.Utf16
-    ()
+let mutable _render_glyph_buf = [||]
 
-let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: SKPaint, bg: SKPaint, sp: SKPaint, underline: bool, undercurl: bool, text: string, shaper: SKShaper ValueOption) =
+let _render_brush = SolidColorBrush()
+let _sp_brush = SolidColorBrush()
+let _sp_pen = Pen(_sp_brush)
+let _sp_points = ResizeArray()
 
-    //  don't clip all along. see #60
+[<Struct>]
+type TextRenderSpan =
+| Shaped of chars: ReadOnlyMemory<char>
+| Unshaped of runes: ReadOnlyMemory<uint>
 
-    //  DrawText accepts the coordinate of the baseline.
-    let region' = region
-    let region = region.ToSKRect()
+let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float) =
 
-    //  DrawText accepts the coordinate of the baseline.
+    let glyphTypeface = font.GlyphTypeface
+    let px_per_unit = fontSize /  float glyphTypeface.DesignEmHeight
+
     //  h = [padding space 1] + above baseline | below baseline + [padding space 2]
     let h = region.Bottom - region.Top
+
+    //  fh = [above baseline + below baseline]
+    let fh = float (glyphTypeface.Descent - glyphTypeface.Ascent) * px_per_unit
     //  total_padding = padding space 1 + padding space 2
-    let total_padding = h - ((fg.FontMetrics.Bottom - fg.FontMetrics.Top))
-    let baseline      = region.Top + ceil((total_padding / 2.0f) - fg.FontMetrics.Top)
+    let total_padding = h - fh
+    let ascent = float glyphTypeface.Ascent * px_per_unit
+    //  Text drawing is done at the coordinate of the baseline.
+    let baseline = region.Top + ceil((total_padding / 2.0) - ascent)
     (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
-    let fontPos       = SKPoint(region.Left, baseline)
+    let fontPos = Point(region.Left, baseline)
 
-    let skia = ctx :?> ISkiaDrawingContextImpl
+    //  push clip and fill bg
+    ctx.PushClip region
+    ctx.Clear bg
+    //  don't clip all along. see #60
+    ctx.PopClip ()
 
-    //lol wat??
-    //fg.Shader <- SKShader.CreateCompose(SKShader.CreateColor(fg.Color), SKShader.CreatePerlinNoiseFractalNoise(0.1F, 0.1F, 1, 6.41613F))
+    use glyphrun = 
+      match text with
+      | Unshaped runes ->
+        if _render_glyph_buf.Length < runes.Length then
+          _render_glyph_buf <- Array.zeroCreate runes.Length
+        for i in 0..runes.Length-1 do
+          _render_glyph_buf.[i] <- glyphTypeface.GetGlyph(runes.Span.[i])
+        let slice = ReadOnlyMemory(_render_glyph_buf, 0, runes.Length)
+        new GlyphRun(glyphTypeface, fontSize, Utilities.ReadOnlySlice(slice))
+      | Shaped chars ->
+        let slice = Utilities.ReadOnlySlice(chars)
+        TextShaper.Current.ShapeText(slice, font, fontSize, CultureInfo.CurrentCulture)
 
-    // push clip and fill bg
-    let _clearColor = Avalonia.Media.Color(bg.Color.Alpha, bg.Color.Red, bg.Color.Green, bg.Color.Blue)
-    skia.PushClip region'
-    skia.Clear _clearColor
-    skia.PopClip ()
+    _render_brush.Color <- fg
 
-    if not <| String.IsNullOrWhiteSpace text then
-        if shaper.IsSome then
-            skia.SkCanvas.DrawShapedText(shaper.Value, text.TrimEnd(), single fontPos.X, single fontPos.Y, fg)
-        else 
-            skia.SkCanvas.DrawText(text.TrimEnd(), fontPos, fg)
+    ctx.DrawGlyphRun(_render_brush, glyphrun, fontPos)
 
-
-    // Text bounding box drawing:
-    // --------------------------------------------------
+    //  Text bounding box drawing:
     if States.font_drawBounds then
-        let mutable bounds = SKRect()
-        let text = if String.IsNullOrEmpty text then " " else text
-        ignore <| fg.MeasureText(text, &bounds)
-        bounds.Left <- bounds.Left + single (fontPos.X)
-        bounds.Top <- bounds.Top + single (fontPos.Y)
-        bounds.Right <- bounds.Right + single (fontPos.X)
-        bounds.Bottom <- bounds.Bottom + single (fontPos.Y)
-        fg.Style <- SKPaintStyle.Stroke
-        skia.SkCanvas.DrawRect(bounds, fg)
-    // --------------------------------------------------
+        ctx.DrawRectangle(Brushes.Transparent, Pen(_render_brush), RoundedRect(Rect(glyphrun.Bounds.TopLeft + region.TopLeft, glyphrun.Bounds.BottomRight + region.TopLeft)))
 
-    let sp_thickness = fg.FontMetrics.UnderlineThickness.GetValueOrDefault(1.0F)
-
+    let sp_thickness = float glyphTypeface.UnderlineThickness * px_per_unit
+    let underline_pos = float glyphTypeface.UnderlinePosition * px_per_unit
+    _sp_pen.Thickness <- sp_thickness
+    _sp_brush.Color <- sp
+ 
     if underline then
-        let underline_pos = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
-        let p1 = fontPos + SKPoint(0.0f, underline_pos)
-        let p2 = p1 + SKPoint(region.Width, 0.0f)
-        sp.Style <- SKPaintStyle.Stroke
-        //sppaint.StrokeWidth <- sp_thickness
-        skia.SkCanvas.DrawLine(p1, p2, sp)
+        let p1 = fontPos + Point(0.0, underline_pos)
+        let p2 = p1 + Point(region.Width, 0.0)
+        ctx.DrawLine(_sp_pen, p1, p2)
 
     if undercurl then
-        let underline_pos  = fg.FontMetrics.UnderlinePosition.GetValueOrDefault()
-        let mutable px, py = single fontPos.X, single fontPos.Y 
-        py <- py + underline_pos
-        let qf             = 1.5F
-        let hf             = qf * 2.0F
-        let q3f            = qf * 3.0F
-        let ff             = qf * 4.0F
-        let r              = single region.Right
-        let py1            = py - 2.0f
-        let py2            = py + 2.0f
-        sp.Style <- SKPaintStyle.Stroke
-        sp.StrokeWidth <- sp_thickness
-        use path = new SKPath()
-        path.MoveTo(px, py)
-        while px < r do
-            path.LineTo(px,       py)
-            path.LineTo(px + qf,  py1)
-            path.LineTo(px + hf,  py)
-            path.LineTo(px + q3f, py2)
-            px <- px + ff
-        skia.SkCanvas.DrawPath(path , sp)
+        let mutable p = fontPos + Point(0.0, underline_pos)
+        let qf             = 1.5
+        let hf             = qf * 2.0
+        let q3f            = qf * 3.0
+        let v1             = Point(qf, -2.0)
+        let v2             = Point(hf, 0.0)
+        let v3             = Point(q3f, 2.0)
+        let ff             = Point(qf * 4.0, 0.0)
+        let r              = region.Right
+        _sp_points.Clear()
+        while p.X < r do
+            _sp_points.Add(p)
+            _sp_points.Add(p + v1)
+            _sp_points.Add(p + v2)
+            _sp_points.Add(p + v3)
+            p <- p + ff
+        ctx.DrawGeometry(Brushes.Transparent, _sp_pen, PolylineGeometry(_sp_points, false).PlatformImpl)
 
 type WindowBackgroundComposition =
     | SolidBackground of opacity: float * color: Color

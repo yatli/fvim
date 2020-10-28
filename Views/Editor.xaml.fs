@@ -4,8 +4,6 @@ open FVim.ui
 open FVim.wcwidth
 
 open ReactiveUI
-open SkiaSharp
-open SkiaSharp.HarfBuzz
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Markup.Xaml
@@ -29,6 +27,7 @@ module private EditorHelper =
 
 open EditorHelper
 open System.Text
+open Avalonia.Media
 
 type Editor() as this =
   inherit Canvas()
@@ -80,21 +79,14 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
-  let mutable fgpaint = null
-  let mutable bgpaint = null
-  let mutable sppaint = null
+  let mutable _render_glyph_buf = [||]
+  let mutable _render_char_buf = [||]
 
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
     let font, fontwide, fontsize = grid_vm.GetFontAttrs()
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
-    let shaper, typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
-
-    if fgpaint = null then
-      fgpaint <- new SKPaint()
-      bgpaint <- new SKPaint()
-      sppaint <- new SKPaint()
-    SetForegroundBrush(fgpaint, fg, typeface, fontsize)
+    let typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
     let nr_col =
       match wswidth grid_vm.[row, colend - 1].text with
@@ -107,24 +99,32 @@ type Editor() as this =
     let bottomRight = topLeft + grid_vm.GetPoint 1 nr_col
     let bg_region = Rect(topLeft, bottomRight)
 
-    bgpaint.Color <- bg.ToSKColor()
-    sppaint.Color <- sp.ToSKColor()
+    let txt =
+      if nr_col > 1 && nr_col < 5 && issym && States.font_ligature then
+        if _render_char_buf.Length < (colend - col) * 2 then
+          _render_char_buf <- Array.zeroCreate ((colend - col) * 2)
+        let mutable _len = 0
+        for i = col to colend - 1 do
+          match grid_vm.[row, i].text with
+          | { c1 = c1; c2 = c2; isSurrogatePair = true } ->
+            _render_char_buf.[_len] <- c1
+            _render_char_buf.[_len + 1] <- c2
+            _len <- _len + 2
+          | { c1 = c1 } ->
+            _render_char_buf.[_len] <- c1
+            _len <- _len + 1
 
-    let txt = 
-      let sb = StringBuilder()
-      for i = col to colend - 1 do
-        match grid_vm.[row, i] with
-        | { text = { c1 = c1; c2 = c2; isSurrogatePair = true } } -> sb.Append(c1).Append(c2) |> ignore
-        | { text = { c1 = c1 } } -> sb.Append(c1) |> ignore
-      sb.ToString()
+        Shaped <| ReadOnlyMemory(_render_char_buf, 0, _len)
+      else
+        if _render_glyph_buf.Length < colend - col then
+          _render_glyph_buf <- Array.zeroCreate (colend - col)
+        for i = col to colend - 1 do
+          _render_glyph_buf.[i - col] <- grid_vm.[row, i].text.Codepoint
 
-    let shaping =
-      if txt.Length > 1 && txt.Length < 5 && issym && States.font_ligature
-      then ValueSome shaper
-      else ValueNone
+        Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, colend - col)
 
     try
-      RenderText(ctx, bg_region, grid_scale, fgpaint, bgpaint, sppaint, attrs.underline, attrs.undercurl, txt, shaping)
+        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
     with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.
