@@ -79,15 +79,12 @@
 
     <PackageReference Include="FSharp.Control.Reactive" Version="4.4.2" />
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
-    <PackageReference Include="HarfBuzzSharp" Version="2.6.1.7" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="2.6.1.7" />
     <PackageReference Include="MessagePack" Version="1.9.11" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.7.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="SkiaSharp.HarfBuzz" Version="2.80.0" />
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
     <PackageReference Update="FSharp.Core" Version="4.7.2" />
     <PackageReference Include="UACHelper" Version="1.3.0.5" />

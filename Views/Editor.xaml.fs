@@ -4,8 +4,6 @@ open FVim.ui
 open FVim.wcwidth
 
 open ReactiveUI
-open SkiaSharp
-open SkiaSharp.HarfBuzz
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Markup.Xaml
@@ -81,7 +79,8 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
-  let mutable _buffer_glyphs = [||]
+  let mutable _render_glyph_buf = [||]
+  let mutable _render_char_buf = [||]
 
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
@@ -100,15 +99,32 @@ type Editor() as this =
     let bottomRight = topLeft + grid_vm.GetPoint 1 nr_col
     let bg_region = Rect(topLeft, bottomRight)
 
-    if _buffer_glyphs.Length < colend - col then
-      _buffer_glyphs <- Array.zeroCreate (colend - col)
-    for i = col to colend - 1 do
-      _buffer_glyphs.[i - col] <- grid_vm.[row, i].text.Codepoint
+    let txt =
+      if nr_col > 1 && nr_col < 5 && issym && States.font_ligature then
+        if _render_char_buf.Length < (colend - col) * 2 then
+          _render_char_buf <- Array.zeroCreate ((colend - col) * 2)
+        let mutable _len = 0
+        for i = col to colend - 1 do
+          match grid_vm.[row, i].text with
+          | { c1 = c1; c2 = c2; isSurrogatePair = true } ->
+            _render_char_buf.[_len] <- c1
+            _render_char_buf.[_len + 1] <- c2
+            _len <- _len + 2
+          | { c1 = c1 } ->
+            _render_char_buf.[_len] <- c1
+            _len <- _len + 1
 
-    let txt = ReadOnlySpan(_buffer_glyphs, 0, colend - col)
+        Shaped <| ReadOnlyMemory(_render_char_buf, 0, _len)
+      else
+        if _render_glyph_buf.Length < colend - col then
+          _render_glyph_buf <- Array.zeroCreate (colend - col)
+        for i = col to colend - 1 do
+          _render_glyph_buf.[i - col] <- grid_vm.[row, i].text.Codepoint
+
+        Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, colend - col)
 
     try
-      RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
+        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
     with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.

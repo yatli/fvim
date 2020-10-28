@@ -15,7 +15,6 @@ open Avalonia.Media.Imaging
 open Avalonia.Skia
 open Avalonia.Threading
 open Avalonia.VisualTree
-open SkiaSharp
 open System
 open System.Collections.Generic
 open System.Reactive.Disposables
@@ -51,6 +50,7 @@ type Cursor() as this =
         else false
 
     let _buffer_glyph = [| 0u |]
+    let _buffer_glyph_mem = ReadOnlyMemory(_buffer_glyph)
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -143,8 +143,7 @@ type Cursor() as this =
             let render_block (ctx: 'a) =
                 if this.IsActive then
                     _buffer_glyph.[0] <- this.ViewModel.text.Codepoint
-                    let _buffer_glyph_span = ReadOnlySpan(_buffer_glyph)
-                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, _buffer_glyph_span, typeface, this.ViewModel.fontSize)
+                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, Unshaped _buffer_glyph_mem, typeface, this.ViewModel.fontSize)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))

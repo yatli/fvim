@@ -15,6 +15,7 @@ open System
 open System.Reflection
 open Avalonia.Controls.Shapes
 open Avalonia.Media.TextFormatting
+open System.Globalization
 
 #nowarn "0009"
 
@@ -243,14 +244,18 @@ let UpdateOpacity (color: Color) opacity =
     Color(byte(255.0 * opacity), color.R, color.G, color.B)
 
 let mutable _render_glyph_buf = [||]
-let mutable _render_char_buf = [||]
 
 let _render_brush = SolidColorBrush()
 let _sp_brush = SolidColorBrush()
 let _sp_pen = Pen(_sp_brush)
 let _sp_points = ResizeArray()
 
-let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: ReadOnlySpan<uint>, font: Typeface, fontSize: float) =
+[<Struct>]
+type TextRenderSpan =
+| Shaped of chars: ReadOnlyMemory<char>
+| Unshaped of runes: ReadOnlyMemory<uint>
+
+let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float) =
 
     let glyphTypeface = font.GlyphTypeface
     let px_per_unit = fontSize /  float glyphTypeface.DesignEmHeight
@@ -274,18 +279,22 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
     //  don't clip all along. see #60
     ctx.PopClip ()
 
-    if _render_glyph_buf.Length < text.Length then
-      _render_glyph_buf <- Array.zeroCreate text.Length
-    for i in 0..text.Length-1 do
-      _render_glyph_buf.[i] <- glyphTypeface.GetGlyph(text.[i])
-    let slice = ReadOnlyMemory(_render_glyph_buf, 0, text.Length)
-    use glyphrun = new GlyphRun(glyphTypeface, fontSize, Utilities.ReadOnlySlice(slice))
+    use glyphrun = 
+      match text with
+      | Unshaped runes ->
+        if _render_glyph_buf.Length < runes.Length then
+          _render_glyph_buf <- Array.zeroCreate runes.Length
+        for i in 0..runes.Length-1 do
+          _render_glyph_buf.[i] <- glyphTypeface.GetGlyph(runes.Span.[i])
+        let slice = ReadOnlyMemory(_render_glyph_buf, 0, runes.Length)
+        new GlyphRun(glyphTypeface, fontSize, Utilities.ReadOnlySlice(slice))
+      | Shaped chars ->
+        let slice = Utilities.ReadOnlySlice(chars)
+        TextShaper.Current.ShapeText(slice, font, fontSize, CultureInfo.CurrentCulture)
 
     _render_brush.Color <- fg
 
     ctx.DrawGlyphRun(_render_brush, glyphrun, fontPos)
-
-    let shaper = TextShaper.Current
 
     //  Text bounding box drawing:
     if States.font_drawBounds then
