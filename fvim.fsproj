@@ -13,10 +13,6 @@
     <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(RuntimeIdentifier)' == 'win-x64' ">
-    <PublishReadyToRun>true</PublishReadyToRun>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="DesignTime\TitleBarSampleData.fs" />
     <Compile Include="DesignTime\EditorSampleData.fs" />
