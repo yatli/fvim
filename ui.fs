@@ -208,7 +208,7 @@ let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scali
         let u' = s' / float typeface.DesignEmHeight
         let glyph = [| typeface.GetGlyph(rune.Codepoint) |]
         use run = new GlyphRun(typeface, s', Utilities.ReadOnlySlice(ReadOnlyMemory(glyph)))
-        let bounds = run.Bounds
+        let bounds = run.Size
 
 
         let w' = bounds.Width
@@ -293,12 +293,13 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
         TextShaper.Current.ShapeText(slice, font, fontSize, CultureInfo.CurrentCulture)
 
     _render_brush.Color <- fg
-
-    ctx.DrawGlyphRun(_render_brush, glyphrun, fontPos)
+    glyphrun.BaselineOrigin <- fontPos
+    ctx.DrawGlyphRun(_render_brush, glyphrun)
 
     //  Text bounding box drawing:
     if States.font_drawBounds then
-        ctx.DrawRectangle(Brushes.Transparent, Pen(_render_brush), RoundedRect(Rect(glyphrun.Bounds.TopLeft + region.TopLeft, glyphrun.Bounds.BottomRight + region.TopLeft)))
+        let sizevec = Point(glyphrun.Size.Width, glyphrun.Size.Height)
+        ctx.DrawRectangle(Brushes.Transparent, Pen(_render_brush), RoundedRect(Rect(region.TopLeft, sizevec + region.TopLeft)))
 
     let sp_thickness = float glyphTypeface.UnderlineThickness * px_per_unit
     let underline_pos = float glyphTypeface.UnderlinePosition * px_per_unit
