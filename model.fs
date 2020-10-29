@@ -649,8 +649,9 @@ let Start (opts: getopt.Options) =
 
 
         // trigger ginit upon VimEnter
-        let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")
-        ()
+        if not opts.norc then
+          let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")
+          ()
     } |> Async.RunSynchronously
 
 let Flush =
