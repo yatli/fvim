@@ -26,6 +26,7 @@ type Options =
         stderrenc: System.Text.Encoding
         serveropts: ServerOptions
         debugMultigrid: bool
+        norc: bool
     }
 
 let parseOptions (args: string[]) =
@@ -119,6 +120,11 @@ let parseOptions (args: string[]) =
             | [| ParseIp ipaddr; ParseUInt16 port |] -> Tcp(IPEndPoint(ipaddr, int port))
             | _ -> NamedPipe connect.Value
 
+    let norc = 
+        args 
+        |> List.pairwise
+        |> List.exists( (=) ("-u", "NORC") )
+
     { 
         logToStdout     = trace_to_stdout
         logToFile       = trace_to_file
@@ -129,5 +135,6 @@ let parseOptions (args: string[]) =
         stderrenc       = enc
         intent          = intent
         debugMultigrid  = debug_multigrid
+        norc            = norc
     }
 
