@@ -51,7 +51,6 @@ function pack-osx-x64()
     mkdir -p publish/Contents/Resources/
     popd
     cp lib/fvim-osx-launcher $PKG_ROOT/Contents/MacOS/fvim-osx-launcher
-    cp lib/libfvim-ext.dylib $PKG_ROOT/Contents/MacOS/libfvim-ext.dylib
     cp images/icon.icns $PKG_ROOT/Contents/Resources/fvim.icns
     cp lib/Info.plist $PKG_ROOT/Contents/Info.plist
     cp icons-icns/* $PKG_ROOT/Contents/Resources/
