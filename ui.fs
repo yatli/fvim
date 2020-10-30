@@ -153,7 +153,10 @@ let DefaultFontEmoji =
     elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Apple Color Emoji"
     else "Noto Color Emoji"
 
-let private nerd_typeface = Typeface("resm:fvim.Fonts.nerd.ttf?assembly=FVim#Iosevka")
+let private nerd_typeface = 
+    let name = if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then "Iosevka Nerd Font"
+               else "Iosevka"
+    Typeface(sprintf "resm:fvim.Fonts.nerd.ttf?assembly=FVim#%s" name)
 let private emoji_typeface = Typeface(DefaultFontEmoji)
 let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, Typeface>()
 
