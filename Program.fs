@@ -23,9 +23,9 @@ let buildAvaloniaApp() =
     .Configure<App>()
     .UsePlatformDetect()
     .UseReactiveUI()
-    .With(new Win32PlatformOptions(UseDeferredRendering=false, AllowEglInitialization=true))
-    .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false, UseGpu=true))
-    .With(new X11PlatformOptions(UseDeferredRendering=false, UseEGL=true, UseGpu=true))
+    .With(new Win32PlatformOptions(UseDeferredRendering=false))
+    .With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false))
+    .With(new X11PlatformOptions(UseDeferredRendering=false))
     .With(new MacOSPlatformOptions(ShowInDock=true))
 
 type MsgPackFormatter(resolver: IFormatterResolver) = 
