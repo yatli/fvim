@@ -9,7 +9,6 @@ open Avalonia.Controls
 open Avalonia.Markup.Xaml
 open Avalonia.Threading
 open Avalonia.Platform
-open Avalonia.Skia
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
 open System
@@ -26,8 +25,6 @@ module private EditorHelper =
     FVim.log.trace ("editor #" + nr) fmt
 
 open EditorHelper
-open System.Text
-open Avalonia.Media
 
 type Editor() as this =
   inherit Canvas()
@@ -38,6 +35,8 @@ type Editor() as this =
 
   let mutable grid_fb: RenderTargetBitmap = null
   let mutable grid_dc: IDrawingContextImpl = null
+  (*let mutable grid_fb_scroll: RenderTargetBitmap = null*)
+  (*let mutable grid_dc_scroll: IDrawingContextImpl = null*)
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: EditorViewModel = Unchecked.defaultof<_>
 
@@ -46,13 +45,16 @@ type Editor() as this =
   // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
     trace grid_vm "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
-    let vroot = this.GetVisualRoot()
     grid_scale <- this.GetVisualRoot().RenderScaling
     if grid_fb <> null then 
       grid_fb.Dispose()
       grid_dc.Dispose()
+      (*grid_fb_scroll.Dispose()*)
+      (*grid_dc_scroll.Dispose()*)
     grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
     grid_dc <- grid_fb.CreateDrawingContext(null)
+    (*grid_fb_scroll <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale*)
+    (*grid_dc_scroll <- grid_fb_scroll.CreateDrawingContext(null)*)
 
   //-------------------------------------------------------------------------
   //           = The rounding error of the rendering system =
@@ -237,11 +239,70 @@ type Editor() as this =
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(this.Bounds.Width, this.Bounds.Height))
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
 
+  let drawDirty () = 
+    trace grid_vm "%s" "drawing whole grid"
+    for row = 0 to grid_vm.Rows - 1 do
+        drawBufferLine grid_dc row 0 grid_vm.Cols
+    true
+
+  // prevent repetitive drawings
+  let _drawnRegions = ResizeArray()
+
+  let drawOps (ss: ResizeArray<_>) = 
+
+    _drawnRegions.Clear()
+    let draw row col colend = 
+      let covered = _drawnRegions |> Seq.exists(fun (r, c, ce) -> r = row && c <= col && ce >= colend)
+      if not covered then
+        drawBufferLine grid_dc row col colend
+        _drawnRegions.Add(row, col, colend)
+      else
+        trace grid_vm "region %d %d %d waived" row col colend
+
+    ss |> Seq.iter (
+      function 
+      | Scroll (top, bot, left, right, row, _col) ->
+        let (t, l, b, r) = 
+          if row > 0 then (top, left, bot - row, right)
+          else (top - row, left, bot, right)
+        for row = t to b - 1 do
+          draw row l r
+
+        (*Note: the captured bitmap still misaligns with the rendered text*)
+        (*Until this is fixed, we have to draw the scrolled region line by line...*)
+
+        (*let s_topLeft = grid_vm.GetPoint top left*)
+        (*let s_bottomRight = grid_vm.GetPoint (bot) (right)*)
+        (*let vec = grid_vm.GetPoint row 0*)
+        (*let src, dst = *)
+          (*if row > 0 then*)
+            (*Rect(s_topLeft + vec, s_bottomRight),*)
+            (*Rect(s_topLeft, s_bottomRight - vec)*)
+          (*else*)
+            (*Rect(s_topLeft, s_bottomRight + vec),*)
+            (*Rect(s_topLeft - vec, s_bottomRight)*)
+
+        (*grid_dc_scroll.PushClip(dst)*)
+        (*grid_dc_scroll.Clear(Avalonia.Media.Colors.Transparent)*)
+        (*grid_dc_scroll.PopClip()*)
+
+        (*use r1 = grid_fb.PlatformImpl.CloneAs<_>()*)
+        (*grid_dc_scroll.DrawBitmap(r1, 1.0, src, dst)*)
+
+        (*grid_dc.PushClip(dst)*)
+        (*grid_dc.Clear(Avalonia.Media.Colors.Transparent)*)
+        (*grid_dc.PopClip()*)
+
+        (*use r2 = grid_fb_scroll.PlatformImpl.CloneAs<_>()*)
+        (*grid_dc.DrawBitmap(r2, 1.0, dst, dst)*)
+
+      | Put r -> 
+        for row = r.row to r.row_end - 1 do
+          draw row r.col r.col_end
+    )
+    ss.Count <> 0
 
   do
-
-    
-
     this.Watch
       [ this.GetObservable(Editor.DataContextProperty)
         |> Observable.ofType
@@ -267,35 +328,24 @@ type Editor() as this =
     AvaloniaXamlLoader.Load(this)
 
   override this.Render ctx =
-    (*trace "render begin"*)
-    if grid_fb <> null then
-      let dirty = grid_vm.Dirty
-      if not <| dirty.Empty() then
-        let regions = dirty.Regions()
-        trace grid_vm "drawing %d regions" regions.Count
-        let timer = System.Diagnostics.Stopwatch.StartNew()
-        grid_dc.PushClip(Rect this.Bounds.Size)
-        for r in regions do
-          for row = r.row to r.row_end - 1 do
-            drawBufferLine grid_dc row r.col r.col_end
-
-        (*if m_debug then drawDebug grid_dc*)
-
-        grid_dc.PopClip()
-        timer.Stop()
-        trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
-        grid_vm.markClean()
-      let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
-      let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
-
-      ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
-    else
+    if isNull grid_fb then
       trace grid_vm "%s" "grid_fb is null"
+    else
+    grid_dc.PushClip(Rect this.Bounds.Size)
+    let timer = System.Diagnostics.Stopwatch.StartNew()
+    let drawn = if grid_vm.Dirty then drawDirty()
+                else drawOps(grid_vm.DrawOps)
+    (*if m_debug then drawDebug grid_dc*)
+    grid_dc.PopClip()
 
-  (*trace "image size: %A; fb size: %A" (image().Bounds) (grid_fb.Size)*)
-  (*trace "base rendering"*)
-  (*base.Render ctx*)
-  (*trace "render end"*)
+    grid_vm.markClean()
+
+    let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
+    let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
+
+    ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
+    timer.Stop()
+    if drawn then trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
 
   override this.MeasureOverride(size) =
     trace grid_vm "MeasureOverride: %A" size

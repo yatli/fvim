@@ -57,6 +57,11 @@ module ModelImpl =
         | true, grid -> grid.Redraw cmd
         | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
 
+    let unicast_create id cmd w h = 
+          if not(grids.ContainsKey id) then
+            add_grid <| grids.[1].CreateChild id h w
+          unicast id cmd
+
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
             grid.Redraw cmd
@@ -72,39 +77,29 @@ module ModelImpl =
     let rec redraw cmd = 
         match cmd with
         //  Global
-        | UnknownCommand x                 -> trace "unknown command %A" x
-        | SetTitle title                   -> setTitle 1 title
-        | SetIcon icon                     -> trace "icon: %s" icon // TODO
-        | Bell                             -> bell true
-        | VisualBell                       -> bell false
-        | Flush                            -> ev_flush.Trigger()
-        | HighlightAttrDefine hls          -> theme.hiattrDefine hls
-        | SemanticHighlightGroupSet groups -> theme.setSemanticHighlightGroups groups
-        | DefaultColorsSet(fg,bg,sp,_,_)   -> theme.setDefaultColors fg bg sp
-        | SetOption opts                   -> Array.iter theme.setOption opts
-        | ModeInfoSet(cs_en, info)         -> theme.setModeInfo cs_en info
+        | UnknownCommand x                  -> trace "unknown command %A" x
+        | SetTitle title                    -> setTitle 1 title
+        | SetIcon icon                      -> trace "icon: %s" icon // TODO
+        | Bell                              -> bell true
+        | VisualBell                        -> bell false
+        | Flush                             -> ev_flush.Trigger()
+        | HighlightAttrDefine hls           -> theme.hiattrDefine hls
+        | SemanticHighlightGroupSet groups  -> theme.setSemanticHighlightGroups groups
+        | DefaultColorsSet(fg,bg,sp,_,_)    -> theme.setDefaultColors fg bg sp
+        | SetOption opts                    -> Array.iter theme.setOption opts
+        | ModeInfoSet(cs_en, info)          -> theme.setModeInfo cs_en info
         //  Broadcast
-        | PopupMenuShow _       | PopupMenuSelect _             | PopupMenuHide _
-        | Busy _                | Mouse _
-        | ModeChange _          | Flush 
+        | PopupMenuShow _         | PopupMenuSelect _             | PopupMenuHide _
+        | Busy _                  | Mouse _
+        | ModeChange _            | Flush 
         | GridCursorGoto(_,_,_) 
                                             -> broadcast cmd
         //  Unicast
-        | GridClear id          | GridScroll(id,_,_,_,_,_,_) ->
-            unicast id cmd
-        | WinFloatPos(id, _, _, _, _, _, _) -> 
-            trace "win_float_pos %A" cmd
-            unicast id cmd
-        | MsgSetPos(id, _, _, _)            ->
-            if not(grids.ContainsKey id) then
-              add_grid <| grids.[1].CreateChild id 1 grids.[1].GridWidth
-            unicast id cmd
+        | GridClear id            | GridScroll(id,_,_,_,_,_,_)    | WinClose id 
+        | WinFloatPos(id, _, _, _, _, _, _) -> unicast id cmd
+        | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)
-        | GridResize(id, w, h)              -> 
-              trace "GridResize %d" id
-              if not(grids.ContainsKey id) then
-                add_grid <| grids.[1].CreateChild id h w
-              unicast id cmd
+        | GridResize(id, w, h)              -> unicast_create id cmd w h
         | GridLine lines                    -> 
             if lines.Length <= 0 then () else
             let span = lines.Span

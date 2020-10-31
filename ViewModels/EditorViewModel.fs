@@ -9,18 +9,10 @@ open ReactiveUI
 open Avalonia
 open Avalonia.Input
 open Avalonia.Media
-open Avalonia.Media.Imaging
-open Avalonia.Platform
-open Avalonia.Threading
-open Avalonia.Skia
 open FSharp.Control.Reactive
 
 open System
 open System.Collections.ObjectModel
-open Avalonia.Controls
-open System.Reactive.Disposables
-open SkiaSharp
-open System.Runtime.InteropServices
 
 #nowarn "0025"
 
@@ -29,6 +21,11 @@ module private EditorViewModelHelper =
     FVim.log.trace (sprintf "editorvm #%d" id) fmt
 
 open EditorViewModelHelper
+
+[<Struct>]
+type GridDrawOperation = 
+  | Scroll of int * int * int * int * int * int
+  | Put of GridRect
 
 type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
@@ -39,6 +36,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     let m_child_grids            = ObservableCollection<IGridUI>()
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int * InputEvent>()
+    let m_drawops                = ResizeArray() // keeps the scroll and putBuffer operations
 
     let mutable m_busy           = false
     let mutable m_mouse_en       = true
@@ -48,23 +46,21 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     let mutable m_gridsize       = _d { rows = 10; cols= 10 } _gridsize
     let mutable m_gridscale      = _d 1.0 _gridscale
     let mutable m_gridbuffer     = Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
-    let mutable m_griddirty      = GridRegion()
+    let mutable m_griddirty      = false // if true, the whole grid needs to be redrawn.
     let mutable m_fontsize       = theme.fontsize
     let mutable m_glyphsize      = Size(10.0, 10.0)
 
     let mutable m_fb_h           = 10.0
     let mutable m_fb_w           = 10.0
 
+
     let raiseInputEvent e = m_input_ev.Trigger(_gridid, e)
 
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
 
-    let markDirty = m_griddirty.Union
-
     let markAllDirty () =
-        m_griddirty.Clear()
-        m_griddirty.Union{ row = 0; col = 0; height = m_gridsize.rows; width = m_gridsize.cols }
+        m_griddirty <- true
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
@@ -128,9 +124,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             ligature <- isProgrammingSymbol m_gridbuffer.[row, col].text
             italic <- theme.hi_defs.[hlid].rgb_attr.italic 
         let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
-        
-
-        markDirty dirty
+        m_drawops.Add(Put dirty)
 
     let putBufferM (M: ReadOnlyMemory<_>) =
       for line in M.Span do
@@ -193,7 +187,6 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let copy src dst =
             if src >= 0 && src < m_gridsize.rows && dst >= 0 && dst < m_gridsize.rows then
                 Array.Copy(m_gridbuffer, src * m_gridsize.cols + left, m_gridbuffer, dst * m_gridsize.cols + left, right - left)
-                markDirty {row = dst; height = 1; col = left; width = right - left }
 
         if rows > 0 then
             for i = top + rows to bot do
@@ -208,6 +201,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
            && m_cursor_vm.col <= right
         then
             this.cursorConfig()
+
+        m_drawops.Add(Scroll(top, bot, left, right, rows, cols))
 
     let setMouse (en:bool) =
         m_mouse_en <- en
@@ -368,6 +363,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
 
     member __.Dirty with get() = m_griddirty
 
+    member __.DrawOps with get() = m_drawops
+
     member __.MarkAllDirty() = markAllDirty()
 
     member __.GetFontAttrs() =
@@ -391,7 +388,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         member __.CreateChild id r c =
             trace _gridid "CreateChild: #%d" id
             let child_size = this.GetPoint r c
-            let child = new EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
+            let child = EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
             m_child_grids.Add child
             child :> IGridUI
         member __.RemoveChild c =
@@ -401,7 +398,9 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
           | None -> ()
           | Some p -> (p:>IGridUI).RemoveChild this
 
-    member __.markClean = m_griddirty.Clear
+    member __.markClean () = 
+      m_griddirty <- false
+      m_drawops.Clear()
 
     //  converts grid position to UI Point
     member __.GetPoint row col =
