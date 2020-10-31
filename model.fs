@@ -106,11 +106,18 @@ module ModelImpl =
                 add_grid <| grids.[1].CreateChild id h w
               unicast id cmd
         | GridLine lines                    -> 
-            lines 
-            |> Array.groupBy (fun (line: GridLine) -> line.grid)
-            |> Array.iter (fun (id, lines) -> unicast id (GridLine lines))
+            if lines.Length <= 0 then () else
+            let span = lines.Span
+            let mutable prev = 0
+            let mutable prev_grid = span.[0].grid
+            for i in 1 .. lines.Length do
+              let grid = if i < lines.Length then span.[i].grid else -1
+              if grid <> prev_grid then
+                unicast prev_grid (GridLine <| lines.Slice(prev, i-prev))
+                prev_grid <- grid
+                prev <- i
+
         | GridDestroy id                    -> trace "GridDestroy %d" id; destroy_grid id
-        | WinClose id                       -> trace "WinClose %d (unimplemented)" id // TODO
         | MultiRedrawCommand xs             -> Array.iter redraw xs
         | x                                 -> trace "unimplemented command: %A" x
 

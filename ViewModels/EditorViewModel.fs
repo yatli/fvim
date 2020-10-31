@@ -132,6 +132,10 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
 
         markDirty dirty
 
+    let putBufferM (M: ReadOnlyMemory<_>) =
+      for line in M.Span do
+        putBuffer line
+
     let cursorGoto id row col =
         m_cursor_vm.ingrid <- (id = _gridid)
         if id = _gridid then
@@ -268,7 +272,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         match cmd with
         | GridResize(_, c, r)                                                -> this.initBuffer r c true
         | GridClear _                                                        -> clearBuffer false
-        | GridLine lines                                                     -> Array.iter putBuffer lines
+        | GridLine lines                                                     -> putBufferM lines
         | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
         | GridScroll(_, top,bot,left,right,rows,cols)                        -> scrollBuffer top bot left right rows cols
         | ModeChange(name, index)                                            -> changeMode name index

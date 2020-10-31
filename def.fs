@@ -5,6 +5,7 @@ open FVim.common
 
 open Avalonia.Media
 open System.Collections.Generic
+open System
 
 let inline private trace fmt = trace "def" fmt
 
@@ -261,7 +262,7 @@ type RedrawCommand =
 ///  note, cterm_* are transmitted as term 256-color codes
 | DefaultColorsSet of fg: Color * bg: Color * sp: Color * cterm_fg: Color * cterm_bg: Color
 | HighlightAttrDefine of HighlightAttr[]
-| GridLine of GridLine[]
+| GridLine of ReadOnlyMemory<GridLine>
 | GridClear of grid: int
 | GridDestroy of grid: int
 | GridCursorGoto of grid: int * row: int * col: int
@@ -595,7 +596,7 @@ let parse_redrawcmd (x: obj) =
         (Integer32 top); (Integer32 bot) 
         (Integer32 left); (Integer32 right) 
         (Integer32 rows); (Integer32 cols) |])                                             -> GridScroll(grid, top, bot, left, right, rows, cols)
-    | C("grid_line", P(parse_grid_line)lines)                                              -> GridLine lines
+    | C("grid_line", P(parse_grid_line)lines)                                              -> GridLine (ReadOnlyMemory lines)
     | C("win_pos", PX(parse_win_pos)ps)                                                    -> unwrap_multi ps
     | C("win_float_pos", PX(parse_win_float_pos)ps)                                        -> unwrap_multi ps
     | C1("win_external_pos", [| 
