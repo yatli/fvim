@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-source /etc/profile
-source ~/.bash_profile
-logger "FVim: Starting. env is: $(env)"
-new_bash=$(which bash)
-export SHELL=$new_bash
-logger "FVim: new bash location is: $new_bash"
+ENVVARS=""
+for VAR in `$SHELL --login -c /usr/bin/env`
+do
+  if [[ $VAR == *"="* ]]
+  then
+    ENVVARS="$ENVVARS $VAR"
+  fi
+done
 fvim_exe="$(dirname "$0")/FVim"
+logger "FVim: Starting. env is: $ENVVARS"
 logger "FVim: executable path is: $fvim_exe"
 logger "FVim: arguments are: $@"
-$fvim_exe $@
+/usr/bin/env -i $ENVVARS $fvim_exe $@

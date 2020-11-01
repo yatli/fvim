@@ -49,7 +49,7 @@ type ConfigObject = JsonProvider<sample_config, SampleIsList=true>
 
 let configroot = if RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                  then Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                 else Path.Combine(Environment.GetEnvironmentVariable("HOME"), ".config")
+                 else Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
 let configdir  = Path.Combine(configroot, "fvim")
 let configfile = Path.Combine(configdir, "config.json")
 
