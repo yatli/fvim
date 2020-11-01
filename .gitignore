@@ -12,5 +12,5 @@ desktop.ini
 *.zip
 native/**/build
 .ccls-cache
-
+.DS_Store
 .fake
