@@ -225,7 +225,7 @@ type TextRenderSpan =
 | Shaped of chars: ReadOnlyMemory<char>
 | Unshaped of runes: ReadOnlyMemory<uint>
 
-let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float) =
+let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float, clip: bool) =
 
     let glyphTypeface = font.GlyphTypeface
     let px_per_unit = fontSize /  float glyphTypeface.DesignEmHeight
@@ -242,12 +242,20 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
     let baseline = region.Top + ceil((total_padding / 2.0) - ascent)
     (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
     let fontPos = Point(region.Left, baseline)
+    let sp_thickness = float glyphTypeface.UnderlineThickness * px_per_unit
+    let underline_pos = float glyphTypeface.UnderlinePosition * px_per_unit
 
+    _render_brush.Color <- fg
+    _sp_pen.Thickness <- sp_thickness
+    _sp_brush.Color <- sp
+ 
     //  push clip and fill bg
     ctx.PushClip region
     ctx.Clear bg
     //  don't clip all along. see #60
-    ctx.PopClip ()
+    //  but no clipping = symbols overflow bounds. see #164
+    //  so we treat symbols & characters differently... with the `clip` arg
+    if not clip then ctx.PopClip()
 
     use glyphrun = 
       match text with
@@ -262,20 +270,16 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
         let slice = Utilities.ReadOnlySlice(chars)
         TextShaper.Current.ShapeText(slice, font, fontSize, CultureInfo.CurrentCulture)
 
-    _render_brush.Color <- fg
     glyphrun.BaselineOrigin <- fontPos
     ctx.DrawGlyphRun(_render_brush, glyphrun)
+
+    if clip then ctx.PopClip ()
 
     //  Text bounding box drawing:
     if States.font_drawBounds then
         let sizevec = Point(glyphrun.Size.Width, glyphrun.Size.Height)
         ctx.DrawRectangle(Brushes.Transparent, Pen(_render_brush), RoundedRect(Rect(region.TopLeft, sizevec + region.TopLeft)))
 
-    let sp_thickness = float glyphTypeface.UnderlineThickness * px_per_unit
-    let underline_pos = float glyphTypeface.UnderlinePosition * px_per_unit
-    _sp_pen.Thickness <- sp_thickness
-    _sp_brush.Color <- sp
- 
     if underline then
         let p1 = fontPos + Point(0.0, underline_pos)
         let p2 = p1 + Point(region.Width, 0.0)

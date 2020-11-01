@@ -143,7 +143,7 @@ type Cursor() as this =
             let render_block (ctx: 'a) =
                 if this.IsActive then
                     _buffer_glyph.[0] <- this.ViewModel.text.Codepoint
-                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, Unshaped _buffer_glyph_mem, typeface, this.ViewModel.fontSize)
+                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, Unshaped _buffer_glyph_mem, typeface, this.ViewModel.fontSize, true)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))

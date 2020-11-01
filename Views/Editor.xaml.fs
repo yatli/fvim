@@ -126,7 +126,7 @@ type Editor() as this =
         Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, colend - col)
 
     try
-        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize)
+        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize, issym)
     with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.
