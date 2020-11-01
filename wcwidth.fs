@@ -564,10 +564,7 @@ let wcwidth(ucs: uint) =
         (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
         CharType.Narrow
 
-let wswidth = 
-    function
-    | { c1 = c1 } when System.Char.IsWhiteSpace c1 -> CharType.Invisible
-    | x -> wcwidth x.Codepoint
+let wswidth (x: Rune) = wcwidth x.Codepoint
 
 /// <summary>
 /// true if the string could be a part of a programming

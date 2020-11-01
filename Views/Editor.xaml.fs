@@ -138,6 +138,7 @@ type Editor() as this =
     let mutable wc: CharType = wswidth grid_vm.[y, x'].text
     let mutable sym: bool = isProgrammingSymbol grid_vm.[y, x'].text
     let mutable prev_hlid = grid_vm.[y, x'].hlid
+    let mutable nr_symbols = if sym then 1 else 0
 
     let mutable bold =
       let _, _, _, hl_attrs = theme.GetDrawAttrs prev_hlid
@@ -148,18 +149,31 @@ type Editor() as this =
       let current = grid_vm.[y, x]
       let mytext = current.text
       //  !NOTE text shaping is slow. We only use shaping for
-      //  a symbol-only span (for ligature drawing).
-      let mysym = isProgrammingSymbol mytext
+      //  a symbol-only span (for ligature drawing) with width > 1,
+      //  That is, a single symbol will be merged into adjacent spans.
+      let mysym = 
+        let v = isProgrammingSymbol mytext
+        if not v then
+          nr_symbols <- 0
+          false
+        else
+          nr_symbols <- nr_symbols + 1
+          nr_symbols > 1
       let mywc = wswidth mytext
       //  !NOTE bold glyphs are generally wider than normal.
       //  Therefore, we have to break them into single glyphs
       //  to prevent overflow into later cells.
       let hlidchange = prev_hlid <> current.hlid
       if hlidchange || mywc <> wc || bold || sym <> mysym then
-        drawBuffer ctx y (x + 1) (x' + 1) prev_hlid sym
+        //  If the span split is caused by symbols, we put [x+1]
+        //  into the current span because nr_symbols has latched one rune.
+        let prev_span = if mysym && not sym && mywc = wc && not bold && not hlidchange 
+                        then x + 2 
+                        else x + 1
+        drawBuffer ctx y prev_span (x' + 1) prev_hlid sym
+        x' <- prev_span - 1
         wc <- mywc
         sym <- mysym
-        x' <- x
         if hlidchange then
           prev_hlid <- current.hlid
           bold <-
