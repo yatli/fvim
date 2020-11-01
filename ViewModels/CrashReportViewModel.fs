@@ -14,8 +14,9 @@ type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
         ex.StackTrace.Split("\n")
     member __.TipMessage = 
         let tip = 
-            match ex.Message with
-            | "The system cannot find the file specified." -> "Tip: check your neovim installation. `nvim` is not in your $PATH.\n"
+            match ex.Message.Trim() with
+            | "The system cannot find the file specified." 
+            | "No such file or directory" -> "Tip: check your neovim installation. `nvim` is not in your $PATH.\n"
             | "neovim crashed" -> "The neovim process exited abnormally.\n"
             | _ -> ""
         let generic_message = 
