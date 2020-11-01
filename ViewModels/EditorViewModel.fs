@@ -89,8 +89,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let mutable hlid = 0
         let mutable rep = 1
         for cell in line.cells do
-            hlid <- Option.defaultValue hlid cell.hl_id
-            rep  <- Option.defaultValue 1 cell.repeat
+            hlid <- ValueOption.defaultValue hlid cell.hl_id
+            rep  <- ValueOption.defaultValue 1 cell.repeat
             for _i = 1 to rep do
                 m_gridbuffer.[row, col].hlid <- hlid
                 m_gridbuffer.[row, col].text <- cell.text

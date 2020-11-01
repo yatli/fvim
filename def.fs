@@ -4,7 +4,6 @@ open FVim.log
 open FVim.common
 
 open Avalonia.Media
-open System.Collections.Generic
 open System
 
 let inline private trace fmt = trace "def" fmt
@@ -121,8 +120,8 @@ type Rune =
 type GridCell = 
     {
         text: Rune
-        hl_id: int option
-        repeat: int option
+        hl_id: int voption
+        repeat: int voption
     }
 
 [<Struct>]
@@ -511,11 +510,11 @@ let (|Rune|_|) (x:obj) =
 let parse_grid_cell (x: obj) =
     match x with
     | ObjArray [| (Rune txt) |] 
-        -> Some { text = txt; hl_id = None; repeat = None}
+        -> Some { text = txt; hl_id = ValueNone; repeat = ValueNone}
     | ObjArray [| (Rune txt); (Integer32 hl_id) |] 
-        -> Some { text = txt; hl_id = Some hl_id; repeat = None}
+        -> Some { text = txt; hl_id = ValueSome hl_id; repeat = ValueNone}
     | ObjArray [| (Rune txt); (Integer32 hl_id); (Integer32 repeat) |] 
-        -> Some { text = txt; hl_id = Some hl_id; repeat = Some repeat}
+        -> Some { text = txt; hl_id = ValueSome hl_id; repeat = ValueSome repeat}
     | _ -> None
 
 let parse_grid_line (x: obj) =
