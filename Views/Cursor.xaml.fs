@@ -146,7 +146,7 @@ type Cursor() as this =
                     RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, Unshaped _buffer_glyph_mem, typeface, this.ViewModel.fontSize, true)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
-                    ctx.DrawRectangle(brush, Pen(brush), RoundedRect(bounds))
+                    ctx.DrawRectangle(Brushes.Transparent, Pen(brush), RoundedRect(bounds))
 
             try
                 match ctx.PlatformImpl with
