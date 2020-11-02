@@ -18,10 +18,12 @@
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
     Width               = "{Binding Width, Mode=OneWay}"
+    IsVisible           = "{Binding IsRootCursor}"
+    IsActive            = "{Binding $parent[Window].IsActive, Mode=OneWay}"
     HorizontalAlignment = "Left"
     VerticalAlignment   = "Top"
     Focusable           = "False"
-    IsActive            = "{Binding $parent[Window].IsActive, Mode=OneWay}"
+    ZIndex              = "10"
     >
   </fvim:Cursor>
 

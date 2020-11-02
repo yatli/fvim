@@ -33,7 +33,7 @@ type Cursor() as this =
     let mutable sp = Colors.Red
 
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
-    let mutable cursor_fb_vm = CursorViewModel(Some -1)
+    let mutable cursor_fb_vm = CursorViewModel(Some -1, true)
     let mutable cursor_fb_s = 1.0
 
     let ensure_fb() =
@@ -61,7 +61,7 @@ type Cursor() as this =
 
     let showCursor (v: bool) =
         let opacity = 
-            if (v && this.ViewModel.enabled && this.ViewModel.ingrid)
+            if (v && this.ViewModel.enabled)
                || not this.IsActive // don't blink if inactive
             then 1.0
             else 0.0

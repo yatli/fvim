@@ -31,7 +31,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
-    let m_cursor_vm              = new CursorViewModel(_cursormode)
+    let m_cursor_vm              = new CursorViewModel(_cursormode, parent.IsNone)
     let m_popupmenu_vm           = new PopupMenuViewModel()
     let m_child_grids            = ObservableCollection<IGridUI>()
     let m_resize_ev              = Event<IGridUI>()
@@ -86,30 +86,35 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         // do not use the default colors for cursor
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
-        let chksum = m_cursor_vm.VisualChecksum()
-        m_cursor_vm.typeface       <- theme.guifont
-        m_cursor_vm.wtypeface      <- theme.guifontwide
-        m_cursor_vm.fontSize       <- m_fontsize
-        m_cursor_vm.text           <- text
-        m_cursor_vm.fg             <- fg
-        m_cursor_vm.bg             <- bg
-        m_cursor_vm.sp             <- sp
-        m_cursor_vm.underline      <- attrs.underline
-        m_cursor_vm.undercurl      <- attrs.undercurl
-        m_cursor_vm.bold           <- attrs.bold
-        m_cursor_vm.italic         <- attrs.italic
-        m_cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-        m_cursor_vm.blinkon        <- on
-        m_cursor_vm.blinkoff       <- off
-        m_cursor_vm.blinkwait      <- wait
-        m_cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
-        m_cursor_vm.X              <- origin.X
-        m_cursor_vm.Y              <- origin.Y
-        m_cursor_vm.Width          <- width
-        m_cursor_vm.Height         <- m_glyphsize.Height
-        if chksum <> m_cursor_vm.VisualChecksum() then
-          m_cursor_vm.RenderTick     <- m_cursor_vm.RenderTick + 1
-          trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+
+        if _gridid = 1 && States.ui_multigrid then () else
+
+        this.DoWithRootCursorVM((fun cursor_vm x y ->
+          let chksum = m_cursor_vm.VisualChecksum()
+          cursor_vm.typeface       <- theme.guifont
+          cursor_vm.wtypeface      <- theme.guifontwide
+          cursor_vm.fontSize       <- m_fontsize
+          cursor_vm.text           <- text
+          cursor_vm.fg             <- fg
+          cursor_vm.bg             <- bg
+          cursor_vm.sp             <- sp
+          cursor_vm.underline      <- attrs.underline
+          cursor_vm.undercurl      <- attrs.undercurl
+          cursor_vm.bold           <- attrs.bold
+          cursor_vm.italic         <- attrs.italic
+          cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
+          cursor_vm.blinkon        <- on
+          cursor_vm.blinkoff       <- off
+          cursor_vm.blinkwait      <- wait
+          cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
+          cursor_vm.X              <- x
+          cursor_vm.Y              <- y
+          cursor_vm.Width          <- width
+          cursor_vm.Height         <- m_glyphsize.Height
+          if chksum <> m_cursor_vm.VisualChecksum() then
+            cursor_vm.RenderTick     <- cursor_vm.RenderTick + 1
+            trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+        ), origin.X, origin.Y)
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
@@ -187,11 +192,10 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         putBuffer line
 
     let cursorGoto id row col =
-        m_cursor_vm.ingrid <- (id = _gridid)
         if id = _gridid then
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
-        cursorConfig()
+            cursorConfig()
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
@@ -420,14 +424,16 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
 
             theme.cursoren_ev.Publish
             |> Observable.subscribe (fun en ->
-                if m_cursor_vm.ingrid then 
+                if m_cursor_vm.IsRootCursor then 
                     setCursorEnabled en)
 
             States.Register.Watch "font" fontConfig
 
             this.ObservableForProperty(fun x -> x.IsFocused)
             |> Observable.subscribe (fun x ->
-              trace _gridid "focus state changed: %A" x.Value)
+              trace _gridid "focus state changed: %A" x.Value
+              if x.Value then cursorConfig()
+            )
         ] 
 
     interface IGridUI with
@@ -461,7 +467,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     member __.GetPoint row col =
         Point(double(col) * m_glyphsize.Width, double(row) * m_glyphsize.Height)
 
-    member this.SetMeasuredSize (v: Size) =
+    member __.SetMeasuredSize (v: Size) =
         trace _gridid "set measured size: %A" v
         let gridui = this :> IGridUI
         let gw, gh = gridui.GridWidth, gridui.GridHeight
@@ -471,6 +477,11 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         if gw <> gw' || gh <> gh' then 
             if this.IsTopLevel then
                 m_resize_ev.Trigger(this)
+
+    member __.DoWithRootCursorVM (fn: CursorViewModel -> float -> float -> unit, x: float, y: float) =
+        match parent with
+        | Some p -> p.DoWithRootCursorVM(fn, x + this.X, y + this.Y)
+        | None -> fn m_cursor_vm x y
 
     (*******************   Exposed properties   ***********************)
 
