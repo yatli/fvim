@@ -719,7 +719,7 @@ let OnFocusGained() =
       in ()
     } |> run
 
-let OnTerminated (args) =
+let OnTerminated () =
     trace "%s" "terminating nvim..."
     nvim.stop 1
 

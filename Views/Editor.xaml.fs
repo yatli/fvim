@@ -204,11 +204,21 @@ type Editor() as this =
         |> Observable.firstIf(fun _ -> this.IsInitialized && vm.Height > 0.0 && vm.Width > 0.0)
         |> Observable.subscribe(fun _ ->
              Model.OnGridReady(vm :> IGridUI)
-             ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus))
+             if vm.Focusable then
+               ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus))
 
         this.GetObservable(RenderTickProperty).Subscribe(fun id -> 
           trace grid_vm "render tick %d" id
           this.InvalidateVisual())
+
+        vm.ObservableForProperty(fun x -> x.IsFocused)
+        |> Observable.subscribe(fun focused -> 
+          if focused.Value && not this.IsFocused then 
+            trace grid_vm "%s" "viewmodel ask to focus"
+            this.Focus())
+
+        this.GotFocus.Subscribe(fun _ -> vm.IsFocused <- true)
+        this.LostFocus.Subscribe(fun _ -> vm.IsFocused <- false)
 
         vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
           match changes.Action with
@@ -354,7 +364,7 @@ type Editor() as this =
     (*if m_debug then drawDebug grid_dc*)
     grid_dc.PopClip()
 
-    grid_vm.markClean()
+    grid_vm.MarkClean()
 
     let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
     let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)

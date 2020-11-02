@@ -49,6 +49,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     let mutable m_griddirty      = false // if true, the whole grid needs to be redrawn.
     let mutable m_fontsize       = theme.fontsize
     let mutable m_glyphsize      = Size(10.0, 10.0)
+    let mutable m_gridfocused    = false
+    let mutable m_gridfocusable  = true
 
     let mutable m_fb_h           = 10.0
     let mutable m_fb_w           = 10.0
@@ -265,7 +267,17 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     let setMouse (en:bool) =
         m_mouse_en <- en
 
-    let setWinPos startrow startcol r c =
+    let closeGrid() =
+        trace _gridid "%s" "closeGrid"
+        if this.IsFocused then
+          this.IsFocused <- false
+          match parent with
+          | Some p -> 
+            trace _gridid "try focus parent, id = %d" p.GridId
+            if p.Focusable then p.IsFocused <- true
+          | _ -> ()
+
+    let setWinPos startrow startcol r c f =
         let parent = 
             match parent with
             | Some p -> p
@@ -278,6 +290,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         initBuffer r c true
         this.X <- origin.X
         this.Y <- origin.Y
+        this.Focusable <- f
 
     let hidePopupMenu() =
         m_popupmenu_vm.Show <- false
@@ -331,9 +344,10 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         | ModeChange(name, index)                                            -> changeMode name index
         | Busy is_busy                                                       -> setBusy is_busy
         | Mouse en                                                           -> setMouse en
-        | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c
-        | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 1 m_gridsize.cols
-        | WinFloatPos (_, _, anchor, anchor_grid, r, c, f)                   -> setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols // XXX assume attaching to grid #1, assume NW
+        | WinClose(_)                                                        -> closeGrid()
+        | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
+        | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 1 m_gridsize.cols true
+        | WinFloatPos (_, _, anchor, anchor_grid, r, c, f)                   -> setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
@@ -411,6 +425,9 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
 
             States.Register.Watch "font" fontConfig
 
+            this.ObservableForProperty(fun x -> x.IsFocused)
+            |> Observable.subscribe (fun x ->
+              trace _gridid "focus state changed: %A" x.Value)
         ] 
 
     interface IGridUI with
@@ -476,6 +493,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     member __.IsTopLevel with get(): bool  = parent.IsNone
     member __.GridId with get() = _gridid
     member __.ChildGrids = m_child_grids
+    member __.IsFocused with get() = m_gridfocused and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocused, v)
+    member __.Focusable with get() = m_gridfocusable and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocusable, v)
 
     (*******************   Events   ***********************)
 
