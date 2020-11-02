@@ -86,6 +86,8 @@ type Editor() as this =
 
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
+    if col = colend then () else
+
     let font, fontwide, fontsize = grid_vm.GetFontAttrs()
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
     let typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
