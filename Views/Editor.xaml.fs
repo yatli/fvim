@@ -88,7 +88,7 @@ type Editor() as this =
 
     if col = colend then () else
 
-    let font, fontwide, fontsize = grid_vm.GetFontAttrs()
+    let font, fontwide, fontsize = grid_vm.FontAttrs
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
     let typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
@@ -368,7 +368,7 @@ type Editor() as this =
     doWithDataContext(fun vm ->
       vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
       let sz =
-        if vm.TopLevel then
+        if vm.IsTopLevel then
           size
         // multigrid: size is top-down managed, which means that
         // the measurement of the view should be consistent with
