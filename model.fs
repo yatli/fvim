@@ -95,8 +95,9 @@ module ModelImpl =
         | GridCursorGoto(_,_,_) 
                                             -> broadcast cmd
         //  Unicast
-        | GridClear id            | GridScroll(id,_,_,_,_,_,_)    | WinClose id 
-        | WinFloatPos(id, _, _, _, _, _, _) -> unicast id cmd
+        | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
+        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _) 
+        | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)
         | GridResize(id, w, h)              -> unicast_create id cmd w h

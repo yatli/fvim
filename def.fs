@@ -293,6 +293,11 @@ type RedrawCommand =
 | WinScrollOverReset
 ///  Close the window
 | WinClose of grid: int
+///  Indicates the range of buffer text displayed in the window, as well
+///  as the cursor position in the buffer. All positions are zero-based.
+///  `botline` is set to one more than the line count of the buffer, if
+///  there are filler lines past the end.
+| WinViewport of grid:int * win: int * topline: int * botline: int * curline: int * curcol: int
 ///  Display messages on `grid`.  The grid will be displayed at `row` on the
 ///  default grid (grid=1), covering the full column width. `scrolled`
 ///  indicates whether the message area has been scrolled to cover other
@@ -351,7 +356,7 @@ let (|C1|_|) (x:obj) =
     | ObjArray [| (String cmd); ObjArray ps |] -> Some(cmd, ps)
     | _ -> None
 
-///  Chooses from ObjArray with a parser
+///  Chooses from ObjArray with a parser, best effort
 let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
     match xs with
     | :? (obj seq) as xs ->
@@ -359,7 +364,7 @@ let (|P|_|) (parser: obj -> 'a option) (xs:obj) =
         Some result
     | _ -> None
 
-///  Chooses from ObjArray with a parser
+///  Chooses from ObjArray with a parser, all or nothing
 let (|PX|_|) (parser: obj -> 'a option) (xs:obj) =
     match xs with
     | :? (obj seq) as xs ->
@@ -604,6 +609,10 @@ let parse_redrawcmd (x: obj) =
     | C("win_scroll_over_start", _)                                                        -> WinScrollOverStart
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C1("win_close", [| (Integer32 grid) |])                                              -> WinClose(grid)
+    | C1("win_viewport", [| 
+        (Integer32 grid); (Integer32 win); 
+        (Integer32 topline); (Integer32 botline); 
+        (Integer32 curline); (Integer32 curcol) |])                                        -> WinViewport(grid, win, topline, botline, curline, curcol)
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
         (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)
