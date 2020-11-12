@@ -92,7 +92,7 @@ FVimCursorSmoothMove v:true
 FVimCursorSmoothBlink v:true
 
 " Background composition
-FVimBackgroundComposition 'acrylic'   " 'none', 'blur' or 'acrylic'
+FVimBackgroundComposition 'acrylic'   " 'none', 'transparent', 'blur' or 'acrylic'
 FVimBackgroundOpacity 0.85            " value between 0 and 1, default bg opacity.
 FVimBackgroundAltOpacity 0.85         " value between 0 and 1, non-default bg opacity.
 FVimBackgroundImage 'C:/foobar.png'   " background image
