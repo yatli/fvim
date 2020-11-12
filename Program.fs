@@ -54,6 +54,15 @@ type MsgPackResolver() =
       else
         s_resolver.GetFormatter<'a>()
 
+let initializeAvaloniaLifetime() =
+  // Avalonia initialization
+  let builder = buildAvaloniaApp()
+  let lifetime = new ClassicDesktopStyleApplicationLifetime()
+  lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
+  let _ = builder.SetupWithLifetime(lifetime)
+  // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
+  lifetime
+
 
 [<EntryPoint>]
 [<STAThread>]
@@ -77,23 +86,18 @@ let main(args: string[]) =
   )
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 
-  let opts = parseOptions args
-  FVim.log.init opts
-  match opts.intent with
-  | Setup -> setup()
-  | Uninstall -> uninstall()
-  | Daemon(port, pipe) -> daemon port pipe opts
-  | Start -> 
-
-  // Avalonia initialization
-  let builder = buildAvaloniaApp()
-  let lifetime = new ClassicDesktopStyleApplicationLifetime()
-  lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
-  let _ = builder.SetupWithLifetime(lifetime)
-  // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
+  let lifetime = lazy initializeAvaloniaLifetime()
 
   try 
-    Model.Start opts
+    let opts = parseOptions args
+    FVim.log.init opts
+    match opts.intent with
+    | Setup -> setup()
+    | Uninstall -> uninstall()
+    | Daemon(port, pipe) -> daemon port pipe opts
+    | Start -> 
+      lifetime.Force() |> ignore
+      Model.Start opts
     Ok()
   with ex -> Error ex
   |> function
@@ -108,9 +112,9 @@ let main(args: string[]) =
     |> ignore
 
     let mainwin = new MainWindowViewModel(workspace)
-    lifetime.MainWindow <- MainWindow(DataContext = mainwin)
+    lifetime.Value.MainWindow <- MainWindow(DataContext = mainwin)
     try
-      ignore <| lifetime.Start(args)
+      ignore <| lifetime.Value.Start(args)
       let x, y, w, h = 
         let x, y, w, h = (int mainwin.X), (int mainwin.Y), (int mainwin.Width), (int mainwin.Height)
         // sometimes the metrics will just go off...
@@ -126,11 +130,11 @@ let main(args: string[]) =
   |> function
   | Ok() -> 0
   | Error ex ->
-    // TODO should yield so that the crash info can propagate back
+    lifetime.Force() |> ignore
     FVim.log.trace "main" "%s" "displaying crash dialog"
     let code, msgs = States.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)
     let win = new CrashReport(DataContext = crash)
-    lifetime.MainWindow <- win
-    ignore <| lifetime.Start(args)
+    lifetime.Value.MainWindow <- win
+    ignore <| lifetime.Value.Start(args)
     -1

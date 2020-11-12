@@ -136,17 +136,13 @@ let setup() =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         if win32CheckUAC() then
             win32RegisterFileAssociation()
-
     // setup finished.
-    0
 
 let uninstall() =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         if win32CheckUAC() then
             win32UnregisterFileAssociation()
-
-    // setup finished.
-    0
+    // uninstall finished.
 
 let daemon (port: uint16 option) (pipe: string option) {args=args; program=program; stderrenc = enc} = 
     trace "%s" "Running as daemon."
@@ -177,4 +173,3 @@ let daemon (port: uint16 option) (pipe: string option) {args=args; program=progr
         trace "Neovim process started. Pid = %d" proc.Id
         proc.WaitForExit()
         trace "Neovim process terminated. ExitCode = %d" proc.ExitCode
-    0

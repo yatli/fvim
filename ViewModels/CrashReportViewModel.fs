@@ -8,10 +8,10 @@ type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
     inherit ViewModelBase()
     member __.MainMessage =
         sprintf "Exit code: %d\n" code + 
-        ex.Message + "\n" + 
+        sprintf "Exception message: %s\n" ex.Message + 
         join msgs
     member __.StackTrace =
-        ex.StackTrace.Split("\n")
+        ex.StackTrace
     member __.TipMessage = 
         let tip = 
             match ex.Message.Trim() with
