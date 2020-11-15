@@ -16,7 +16,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 3.1.x
+      version: 5.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: NuGetToolInstaller@1
   - task: PowerShell@2
