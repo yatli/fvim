@@ -16,9 +16,7 @@ open UACHelper
 
 let inline private trace x = trace "shell" x
 
-let FVimServerAddress =
-    if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "FVimServer"
-    else "/tmp/FVimServer"
+let FVimPipeAddress = sprintf "fvr-%s"
 
 let FVimDir = 
     Assembly.GetExecutingAssembly().Location 
@@ -84,13 +82,6 @@ let private win32RegisterFileAssociation() =
             _edit.SetValue("", "Open with FVim")
             _edit.SetValue("Icon", fvicon)
             use command = _edit.CreateSubKey("command")
-            command.SetValue("", sprintf "\"%s\" --tryDaemon \"%%1\"" exe)
-
-        do
-            use _edit = shell.CreateSubKey("new")
-            _edit.SetValue("", "Open with new FVim")
-            _edit.SetValue("Icon", fvicon)
-            use command = _edit.CreateSubKey("command")
             command.SetValue("", sprintf "\"%s\" \"%%1\"" exe)
     
     // https://docs.microsoft.com/en-us/windows/desktop/shell/app-registration
@@ -136,34 +127,39 @@ let setup() =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         if win32CheckUAC() then
             win32RegisterFileAssociation()
+    0
     // setup finished.
 
 let uninstall() =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         if win32CheckUAC() then
             win32UnregisterFileAssociation()
+    0
     // uninstall finished.
 
-let daemon (port: uint16 option) (pipe: string option) {args=args; program=program; stderrenc = enc} = 
+let daemon (pipe: string option) (nvim: string) = 
     trace "%s" "Running as daemon."
-    let pipe = pipe |> Option.defaultValue FVimServerAddress
+    let pipe = pipe |> Option.defaultValue (FVimPipeAddress "server")
     trace "FVimServerName = %s" pipe
     let pipeArgs = 
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then ["--listen"; @"\\.\pipe\" + pipe]
         else ["--listen"; pipe]
-    let tcpArgs =
-        if port.IsSome then 
-            trace "listening on port %d" port.Value
-            ["--listen"; sprintf "0.0.0.0:%d" port.Value]
-        else []
     while true do
-        let psi = ProcessStartInfo(program, join("--headless" :: "--cmd \"let g:fvim_loaded = 1\"" :: pipeArgs @ tcpArgs))
+        (*
+        try 
+            let pipe = new System.IO.Pipes.NamedPipeClientStream(".", FVim.Shell.FVimServerAddress, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
+            pipe.Connect(timeout=50)
+            RemoteSession pipe
+        with :? TimeoutException ->
+            //  transition from TryDamon to StartNew, add "--embed"
+            this.createIO {opts with serveropts = StartNew; args = ["--embed"] @ args}
+        *)
+        let psi = ProcessStartInfo(nvim, join("--headless" :: pipeArgs))
         psi.CreateNoWindow          <- true
         psi.ErrorDialog             <- false
         psi.RedirectStandardError   <- true
         psi.RedirectStandardInput   <- true
         psi.RedirectStandardOutput  <- true
-        psi.StandardErrorEncoding   <- enc
         psi.UseShellExecute         <- false
         psi.WindowStyle             <- ProcessWindowStyle.Hidden
         psi.WorkingDirectory        <- Environment.CurrentDirectory
@@ -173,3 +169,4 @@ let daemon (port: uint16 option) (pipe: string option) {args=args; program=progr
         trace "Neovim process started. Pid = %d" proc.Id
         proc.WaitForExit()
         trace "Neovim process terminated. ExitCode = %d" proc.ExitCode
+    0

@@ -31,8 +31,8 @@ let private default_call (e: Request) =
 
 type NvimIO =
     | Disconnected
-    | StartProcess of Process
-    | StreamChannel of System.IO.Stream
+    | Standalone of Process
+    | RemoteSession of System.IO.Stream
 
 type Nvim() = 
     let mutable m_notify      = default_notify
@@ -49,9 +49,9 @@ type Nvim() =
         | Some events -> events
         | None -> failwith "events"
 
-    member private this.createIO ({ args = args; serveropts = serveropts; program = prog; stderrenc = enc } as opts) = 
+    member private this.createIO serveropts = 
         match serveropts with
-        | StartNew ->
+        | Embedded(prog, args, enc) ->
             let args = args |> escapeArgs |> join
             let psi  = ProcessStartInfo(prog, args)
             psi.CreateNoWindow          <- true
@@ -65,23 +65,17 @@ type Nvim() =
             psi.WorkingDirectory        <- Environment.CurrentDirectory
 
             trace "Starting process. Program: %s; Arguments: %s" prog args
-            StartProcess <| Process.Start(psi)
-        | Tcp ipe ->
+            Standalone <| Process.Start(psi)
+        | NeovimRemote(Tcp ipe, _) ->
             let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             sock.Connect(ipe)
-            StreamChannel <| (new NetworkStream(sock, true) :> System.IO.Stream)
-        | NamedPipe addr ->
+            RemoteSession <| (new NetworkStream(sock, true) :> System.IO.Stream)
+        | NeovimRemote(NamedPipe addr, _) ->
             let pipe = new System.IO.Pipes.NamedPipeClientStream(".", addr, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
             pipe.Connect()
-            StreamChannel pipe
-        | TryDaemon ->
-            try 
-                let pipe = new System.IO.Pipes.NamedPipeClientStream(".", FVim.Shell.FVimServerAddress, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
-                pipe.Connect(timeout=50)
-                StreamChannel pipe
-            with :? TimeoutException ->
-                //  transition from TryDamon to StartNew, add "--embed"
-                this.createIO {opts with serveropts = StartNew; args = ["--embed"] @ args}
+            RemoteSession pipe
+        | _ ->
+            failwith ""
 
     member this.start opts =
         match m_io, m_events with
@@ -92,18 +86,18 @@ type Nvim() =
 
         let serverExitCode() =
             match io with
-            | StartProcess proc -> 
+            | Standalone proc -> 
               // note: on *Nix, when the nvim child process exits,
               // we don't get an exit code immediately. have to explicitly wait.
               if not <| RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
               then proc.WaitForExit(1000) |> ignore
               try Some proc.ExitCode with _ -> None
-            | StreamChannel _ -> None
+            | RemoteSession _ -> None
             | Disconnected -> Some -1
 
         let stdin, stdout, stderr = 
             match io with
-            | StartProcess proc ->
+            | Standalone proc ->
                 let stdout = proc.StandardOutput.BaseStream
                 let stdin  = proc.StandardInput.BaseStream
                 let stderr = 
@@ -111,7 +105,7 @@ type Nvim() =
                     |> Observable.map (fun data -> Error data.Data )
                 proc.BeginErrorReadLine()
                 stdin, stdout, stderr
-            | StreamChannel stream ->
+            | RemoteSession stream ->
                 stream, stream, Observable.empty
             | _ -> failwith ""
 
@@ -233,8 +227,8 @@ type Nvim() =
     member __.isRemote 
         with get() =
             match m_io with
-            | StreamChannel _ -> true
-            | _ -> false
+            | Standalone _ -> false
+            | _ -> true
 
     member __.stop (timeout: int) =
 
@@ -248,12 +242,12 @@ type Nvim() =
 
         // Close the IO channel
         match m_io with
-        | StartProcess proc ->
+        | Standalone proc ->
             proc.CancelErrorRead()
             if not <| proc.WaitForExit(timeout) then
                 proc.Kill()
             proc.Close()
-        | StreamChannel stream -> 
+        | RemoteSession stream -> 
             stream.Close()
             stream.Dispose()
         | Disconnected -> ()

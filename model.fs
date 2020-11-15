@@ -5,6 +5,7 @@ open common
 open States
 open def
 open neovim
+open getopt
 
 open Avalonia.Media
 open System
@@ -444,11 +445,11 @@ let UpdateUICapabilities() =
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
-let Start (opts: getopt.Options) =
+let Start (serveropts, norc, debugMultigrid) =
     trace "%s" "starting neovim instance..."
-    trace "opts = %A" opts
-    States.ui_multigrid <- opts.debugMultigrid
-    nvim.start opts
+    trace "opts = %A" serveropts
+    States.ui_multigrid <- debugMultigrid
+    nvim.start serveropts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
         (States.msg_dispatch)
@@ -547,10 +548,17 @@ let Start (opts: getopt.Options) =
             failwithf "api_query_result: %s" msg
 
         // for remote, send open file args as edit commands
-        if nvim.isRemote then
-            for file in opts.args do
-                let! _ = Async.AwaitTask(nvim.edit file)
-                in ()
+        let remoteEditFiles =
+            match serveropts with
+            // for embedded & fvr new session, edit file args are passed thru to neovim
+            | Embedded _             
+            | FVimRemote(_, NewSession _) -> []
+            | NeovimRemote(_, files) 
+            | FVimRemote(_, (AttachTo(_, files) 
+                           | AttachFirst files))  -> files
+        for file in remoteEditFiles do
+            let! _ = Async.AwaitTask(nvim.edit file)
+            in ()
 
         let clientId = nvim.Id.ToString()
         let clientName = "FVim"
@@ -652,7 +660,7 @@ let Start (opts: getopt.Options) =
 
 
         // trigger ginit upon VimEnter
-        if not opts.norc then
+        if not norc then
           let! _ = Async.AwaitTask(nvim.command "autocmd VimEnter * runtime! ginit.vim")
           ()
     } |> Async.RunSynchronously

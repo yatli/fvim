@@ -54,15 +54,38 @@ type MsgPackResolver() =
       else
         s_resolver.GetFormatter<'a>()
 
-let initializeAvaloniaLifetime() =
-  // Avalonia initialization
-  let builder = buildAvaloniaApp()
-  let lifetime = new ClassicDesktopStyleApplicationLifetime()
-  lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
-  let _ = builder.SetupWithLifetime(lifetime)
-  // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
-  lifetime
+let startMainWindow app serveropts =
+    Model.Start serveropts
 
+    let cfg = config.load()
+    let cwd = Environment.CurrentDirectory |> Path.GetFullPath
+    let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
+    workspace 
+    >>= fun workspace -> workspace.Mainwin.BackgroundComposition
+    >>= fun comp -> States.parseBackgroundComposition(box comp)
+    >>= fun comp -> States.background_composition <- comp; None
+    |> ignore
+
+    let mainwin = new MainWindowViewModel(workspace)
+    app <| MainWindow(DataContext = mainwin)
+    let x, y, w, h = 
+      let x, y, w, h = (int mainwin.X), (int mainwin.Y), (int mainwin.Width), (int mainwin.Height)
+      // sometimes the metrics will just go off...
+      // see #136
+      let x, y = (max x 0), (max y 0)
+      if x + w < 0 || y + h < 0
+      then 0, 0, 800, 600
+      else x, y, w, h
+    config.save cfg x y w h (mainwin.WindowState) (States.backgroundCompositionToString States.background_composition) mainwin.CustomTitleBar
+    0
+
+let startCrashReportWindow app ex = 
+    FVim.log.trace "main" "%s" "displaying crash dialog"
+    let code, msgs = States.get_crash_info()
+    let crash = new CrashReportViewModel(ex, code, msgs)
+    let win = new CrashReport(DataContext = crash)
+    app win
+    -1
 
 [<EntryPoint>]
 [<STAThread>]
@@ -86,7 +109,16 @@ let main(args: string[]) =
   )
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 
-  let lifetime = lazy initializeAvaloniaLifetime()
+  // Avalonia initialization
+  let app = 
+    let builder = buildAvaloniaApp()
+    let lifetime = new ClassicDesktopStyleApplicationLifetime()
+    lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
+    let _ = builder.SetupWithLifetime(lifetime)
+    (fun (win: Avalonia.Controls.Window) ->
+      lifetime.MainWindow <- win
+      lifetime.Start(args) |> ignore)
+  // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
   try 
     let opts = parseOptions args
@@ -94,47 +126,7 @@ let main(args: string[]) =
     match opts.intent with
     | Setup -> setup()
     | Uninstall -> uninstall()
-    | Daemon(port, pipe) -> daemon port pipe opts
-    | Start -> 
-      lifetime.Force() |> ignore
-      Model.Start opts
-    Ok()
-  with ex -> Error ex
-  |> function
-  | Ok() ->
-    let cfg = config.load()
-    let cwd = Environment.CurrentDirectory |> Path.GetFullPath
-    let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
-    workspace 
-    >>= fun workspace -> workspace.Mainwin.BackgroundComposition
-    >>= fun comp -> States.parseBackgroundComposition(box comp)
-    >>= fun comp -> States.background_composition <- comp; None
-    |> ignore
-
-    let mainwin = new MainWindowViewModel(workspace)
-    lifetime.Value.MainWindow <- MainWindow(DataContext = mainwin)
-    try
-      ignore <| lifetime.Value.Start(args)
-      let x, y, w, h = 
-        let x, y, w, h = (int mainwin.X), (int mainwin.Y), (int mainwin.Width), (int mainwin.Height)
-        // sometimes the metrics will just go off...
-        // see #136
-        let x, y = (max x 0), (max y 0)
-        if x + w < 0 || y + h < 0
-        then 0, 0, 800, 600
-        else x, y, w, h
-      config.save cfg x y w h (mainwin.WindowState) (States.backgroundCompositionToString States.background_composition) mainwin.CustomTitleBar
-      Ok()
-    with ex -> Error ex
-  | Error ex -> Error ex
-  |> function
-  | Ok() -> 0
-  | Error ex ->
-    lifetime.Force() |> ignore
-    FVim.log.trace "main" "%s" "displaying crash dialog"
-    let code, msgs = States.get_crash_info()
-    let crash = new CrashReportViewModel(ex, code, msgs)
-    let win = new CrashReport(DataContext = crash)
-    lifetime.Value.MainWindow <- win
-    ignore <| lifetime.Value.Start(args)
-    -1
+    | Daemon(pipe, nvim) -> daemon pipe nvim
+    | Start(a,b,c) -> startMainWindow app (a,b,c) 
+  with 
+    | ex -> startCrashReportWindow app ex
