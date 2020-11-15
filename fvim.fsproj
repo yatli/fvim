@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationIcon>fvim.ico</ApplicationIcon>
@@ -82,7 +82,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
-    <PackageReference Update="FSharp.Core" Version="4.7.2" />
     <PackageReference Include="UACHelper" Version="1.3.0.5" />
   </ItemGroup>
 

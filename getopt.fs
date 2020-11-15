@@ -74,6 +74,7 @@ let parseOptions (args: string[]) =
             set "laststatus=0"
             set "noruler"
             set "noshowcmd"
+            set "mouse=a"
         ])
         match termcmd with
         | Some cmd -> "+\"terminal " + cmd + "\""
