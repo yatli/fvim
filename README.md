@@ -42,10 +42,11 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
   - GPU acceleration
 - Remoting
   - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
-  - Use the front end with a remote neovim: `fvim --ssh user@host`
   - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
-  - Host a daemon to preload NeoVim
+  - Use the front end with a remote neovim: `fvim --ssh user@host`
   - Connect to a remote NeoVim backend: `fvim --connect localhost:9527`
+  - tmux-like session server: `fvim --fvr attach --ssh user@host`
+  - As a terminal emulator: `fvim --terminal`
 
 Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
@@ -156,7 +157,7 @@ FVim-args:
     --wsl                       Start NeoVim in WSL
     --nvim path-to-program      Use an alternative nvim program
 
-    --connect target            Connect to a remote NeoVim backend. The target
+    --nvr target                Connect to a remote NeoVim backend. The target
                                 can be an IP endpoint (127.0.0.1:9527), or a
                                 Unix socket address (/tmp/path/to/socket), or a
                                 Windows named pipe (PipeName).
@@ -168,28 +169,36 @@ FVim-args:
                                 file association and icons. Requires UAC
                                 elevation on Windows.
 
-    =========================== Daemon options ===================================
+    =========================== FVim Remoting ====================================
+                                
+    --daemon                    Start a FVR multiplexer server.
+                                Can be used with --nvim for alternative program.
 
-    --daemon                    Start a daemon that ensures that a NeoVim
-                                backend is always listening in the background.
-                                The backend will be respawn on exit.
-
-    --daemonPort port           Set the Tcp listening port of the daemon.
-                                When this option is not given, Tcp server is
-                                disabled.
-
-    --daemonPipe                Override the named pipe address of the daemon.
+    --pipe name                 Override the named pipe address of the daemon.
                                 When this option is not given, defaults to
-                                '/tmp/FVimServer'
+                                '/tmp/fvr-main'
 
-    --tryDaemon                 First try to connect to a local daemon. If not
-                                found, start an embedded NeoVim instance.
+    --fvr id [FILES...]         Connects to a FVR server.
+    --fvr a[ttach] [FILES...]    - id: an integer session id to connect
+    --fvr n[ew] [args...]        - attach: attach to the first available session 
+                                 - new: create a new session with args passed to
+                                   NeoVim.
+                                Can be used with --ssh or --wsl for connecting a
+                                remote server. If neither is specified, connects
+                                to the local server.
+                                Can be used with --pipe to override the server 
+                                address.
 
     =========================== Debug options ====================================
 
     --trace-to-stdout           Trace to stdout.
     --trace-to-file             Trace to a file.
     --trace-patterns            Filter trace output by a list of keyword strings
+
+    =========================== Terminal emulator ================================
+
+    --terminal                  Start as a terminal emulator.
+    --termcmd                   Command to run instead of the default shell.
 
 
 The FVim arguments will be consumed and filtered before the rest are passed to NeoVim.
@@ -199,7 +208,7 @@ The FVim arguments will be consumed and filtered before the rest are passed to N
 
 - Input method support built from scratch (wip)
 - Multi-grid <=> Multi-window mapping (multiple windows in the OS sense, not Vim "frames")
-- Extend with XAML -- UI widgets as NeoVim plugins
+- Extend with UI-Protocol -- UI widgets as NeoVim plugins
 
 
 ### Non-Goals
