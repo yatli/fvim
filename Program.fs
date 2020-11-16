@@ -56,6 +56,7 @@ type MsgPackResolver() =
         s_resolver.GetFormatter<'a>()
 
 let startMainWindow app serveropts =
+    let app = app()
     Model.Start serveropts
 
     let cfg = config.load()
@@ -81,6 +82,7 @@ let startMainWindow app serveropts =
     0
 
 let startCrashReportWindow app ex = 
+    let app = app()
     FVim.log.trace "main" "displaying crash dialog"
     FVim.log.trace "main" "exception: %O" ex
     let code, msgs = States.get_crash_info()
@@ -115,18 +117,19 @@ let main(args: string[]) =
   )
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 
-  // Avalonia initialization
   let builder = lazy buildAvaloniaApp()
   let lifetime = lazy new ClassicDesktopStyleApplicationLifetime()
-  let app = 
+  let app () = 
+    // Avalonia initialization
+    let lifetime = lifetime.Value
+    if not builder.IsValueCreated then
+      let _ = builder.Value.SetupWithLifetime(lifetime)
+      ()
+    // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
     (fun (win: Avalonia.Controls.Window) ->
-        let lifetime = lifetime.Value
-        let builder = builder.Value
-        let _ = builder.SetupWithLifetime(lifetime)
         lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
         lifetime.MainWindow <- win
         lifetime.Start(args) |> ignore)
-  // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
   try 
     let opts = parseOptions args

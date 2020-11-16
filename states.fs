@@ -34,7 +34,7 @@ type Event =
 | Exit
 
 let private _stateChangeEvent = Event<string>()
-let private _appLifetime = Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
+let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
 let mutable private _crashcode = 0
 let private _errormsgs = ResizeArray<string>()
 
@@ -245,7 +245,7 @@ let backgroundCompositionToString =
     | Acrylic -> "acrylic"
     | Transparent -> "transparent" 
 
-let Shutdown code = _appLifetime.Shutdown code
+let Shutdown code = _appLifetime.Value.Shutdown code
 
 let get_crash_info() =
   _crashcode, _errormsgs
@@ -273,7 +273,7 @@ let msg_dispatch =
       _errormsgs.Add err
     | Exit -> 
       trace "rpc" "shutting down application lifetime"
-      _appLifetime.Shutdown()
+      _appLifetime.Value.Shutdown()
     | Crash code -> 
       trace "rpc" "neovim crashed with code %d" code
       _crashcode <- code
