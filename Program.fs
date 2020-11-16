@@ -1,19 +1,20 @@
 ﻿module FVim.Program
 
-open Avalonia
-open FSharp.Data
-open Avalonia.ReactiveUI
+open System
+open System.IO
 open System.Threading
+
+open Avalonia
+open Avalonia.ReactiveUI
 open Avalonia.Controls.ApplicationLifetimes
 
 open MessagePack
 open MessagePack.Resolvers
 
-open System
-open System.IO
 open getopt
-open Shell
 open common
+open Shell
+open Daemon
 open MessagePack.Formatters
 
 // Avalonia configuration, don't remove; also used by visual designer.
@@ -81,10 +82,15 @@ let startMainWindow app serveropts =
 
 let startCrashReportWindow app ex = 
     FVim.log.trace "main" "%s" "displaying crash dialog"
+    FVim.log.trace "main" "exception: %O" ex
     let code, msgs = States.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)
     let win = new CrashReport(DataContext = crash)
-    app win
+    // there may be messages already posted into the sync context,
+    // so we may immediately crash when we start the app and drive
+    // the message loop forward... in that case, launch it again.
+    try app win
+    with _ -> app win
     -1
 
 [<EntryPoint>]
@@ -110,14 +116,14 @@ let main(args: string[]) =
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 
   // Avalonia initialization
+  let builder = buildAvaloniaApp()
+  let lifetime = new ClassicDesktopStyleApplicationLifetime()
   let app = 
-    let builder = buildAvaloniaApp()
-    let lifetime = new ClassicDesktopStyleApplicationLifetime()
     lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
     let _ = builder.SetupWithLifetime(lifetime)
     (fun (win: Avalonia.Controls.Window) ->
-      lifetime.MainWindow <- win
-      lifetime.Start(args) |> ignore)
+        lifetime.MainWindow <- win
+        lifetime.Start(args) |> ignore)
   // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
 
   try 

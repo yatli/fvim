@@ -25,6 +25,7 @@
     <Compile Include="log.fs" />
     <Compile Include="def.fs" />
     <Compile Include="wcwidth.fs" />
+    <Compile Include="daemon.fs" />
     <Compile Include="shell.fs" />
     <Compile Include="states.fs" />
     <Compile Include="ui.fs" />

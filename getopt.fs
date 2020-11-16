@@ -133,10 +133,8 @@ let parseOptions (args: string[]) =
                 else 
                     nvim, ["--embed"] @ argsL
               let enc = 
-                if wsl then 
-                    System.Text.Encoding.Unicode 
-                else 
-                    System.Text.Encoding.UTF8
+                if wsl then System.Text.Encoding.Unicode 
+                else System.Text.Encoding.UTF8
               in
                 Embedded(prog, args, enc)
         in

@@ -22,6 +22,7 @@ let mutable private _n_logsSink = 0
 let trace cat (fmt: Printf.StringFormat< 'a , unit >) =
     Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
 #else
+// #if FALSE
 type TraceIgnoreT = TraceIgnoreT with
   static member ($) (T, _: unit) = ()
   static member ($) (T, _: int) = ()
