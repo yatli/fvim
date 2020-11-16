@@ -115,8 +115,8 @@ let parseOptions (args: string[]) =
             | Some fvrVerb, _ -> 
               let transport = 
                 // TODO
-                if wsl then Remote("wsl", ["bash"; "-l"; "-c"; "nc"])
-                elif ssh.IsSome then Remote("ssh", [ssh.Value; "nc"])
+                if wsl then Remote("wsl", ["bash"; "-l"; "-c"; "nc"; "-U"])
+                elif ssh.IsSome then Remote("ssh", [ssh.Value; "nc"; "-U"])
                 else Local
               let verb = 
                 match fvrVerb.ToLowerInvariant() with

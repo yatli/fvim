@@ -37,7 +37,7 @@ let inline private trace x = trace "daemon" x
 let pipeaddr x =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
     then @"\\.\pipe\" + x
-    else "/tmp/" + x
+    else "/tmp/CoreFxPipe_" + x
 
 let pipename = sprintf "fvr_%s"
 

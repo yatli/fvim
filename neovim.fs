@@ -77,8 +77,10 @@ type Nvim() =
             trace "Connected, sending session request..."
             fvrConnect pipe verb
             RemoteSession pipe
-        | FVimRemote(_, Remote(prog, args), verb, _) ->
-            let proc = newProcess prog args Text.Encoding.UTF8
+        | FVimRemote(pipe, Remote(prog, args), verb, _) ->
+            let pname = Option.defaultValue defaultDaemonName pipe
+            let paddr = pipeaddr pname
+            let proc = newProcess prog (args @ [paddr]) Text.Encoding.UTF8
             proc.Start() |> ignore
             fvrConnect proc.StandardInput.BaseStream verb
             TunneledSession proc
