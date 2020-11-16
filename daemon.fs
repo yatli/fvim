@@ -14,7 +14,6 @@ open log
 open common
 open getopt
 open System.Security.Principal
-open MessagePack
 open System.IO
 
 type Session =
@@ -26,6 +25,7 @@ type Session =
     proc: Process
     // in case the daemon crashed and we happen to be running Windows(tm)...
     killHandle: IDisposable
+    exitHandle: IDisposable
   }
 
 let private sessions = hashmap []
@@ -56,18 +56,28 @@ let newSession nvim stderrenc args svrpipe =
 
   let pname = pipename (string myid)
   let paddr = pipeaddr pname
-  let proc = runProcess nvim ("--headless" :: "--listen" :: paddr :: args) stderrenc
-  let sub = AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> proc.Kill(true))
+  let args = "--headless" :: "--listen" :: paddr :: args
+  let proc = newProcess nvim args stderrenc
+  let killHandle = AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> proc.Kill(true))
   let session = 
     { 
       id = myid 
       server = Some svrpipe
       proc = proc
-      killHandle = sub
+      killHandle = killHandle
+      exitHandle =  proc.Exited |> Observable.subscribe(fun _ -> 
+        // remove the session
+        trace "Session %d terminated" myid
+        sessions.[myid].exitHandle.Dispose()
+        sessions.Remove(myid) |> ignore
+        killHandle.Dispose()
+        proc.Dispose()
+        )
     }
 
   sessionId <- sessionId + 1
   sessions.[myid] <- session
+  proc.Start() |> ignore
   Some session
 
 
@@ -79,27 +89,24 @@ let attachFirstSession svrpipe =
     Some ns
 
 let serveSession (session: Session) =
-  task {
+  async {
     let pname = pipename (string session.id)
+    trace "Start serving session %d at pipe %s" session.id pname
     use client = new NamedPipeClientStream(".", pname, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
-
+    do! Async.AwaitTask(client.ConnectAsync())
     let fromNvim = client.CopyToAsync(session.server.Value)
     let toNvim = session.server.Value.CopyToAsync(client)
-    let! _ = Task.WhenAny [| fromNvim; toNvim |]
+    let! _ = Async.AwaitTask(Task.WhenAny [| fromNvim; toNvim |])
     // Something is completed, let's investigate why
-    if not client.IsConnected then
-      // the connection to neovim server is gone
-      session.proc.Kill(true)
-      // remove the session
-      sessions.Remove(session.id) |> ignore
-    else
-      // the connection from the remote FVim is gone
+    if not session.proc.HasExited then
+      // the NeoVim server is still up and running
       sessions.[session.id] <- { session with server = None }
+      trace "Session %d detached" session.id
     return ()
   }
 
 let serve nvim stderrenc (pipe: NamedPipeServerStream) = 
-  run <| task {
+  async {
     try
       let rbuf = Array.zeroCreate 8192
       let rmem = rbuf.AsMemory()
@@ -107,19 +114,30 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
       // [magic header FVIM] 4B
       // [payload len] 4B, little-endian
       do! read pipe rmem.[0..7]
-      if rbuf.[0..3] <> FVR_MAGIC then return()
+      if rbuf.[0..3] <> FVR_MAGIC then 
+        trace "Incorrect handshake magic. Got: %A" rbuf.[0..3]
+        return()
       let len = rbuf.[4..7] |> toInt32LE
-      if len >= rbuf.Length || len <= 0 then return()
+      if len >= rbuf.Length || len <= 0 then 
+        trace "Invalid payload length %d" len
+        return()
       do! read pipe rmem.[0..len-1]
+
+      try
+        Text.Encoding.UTF8.GetString(rbuf,0,len)
+        |> Json.deserialize<FVimRemoteVerb>
+        |> ignore
+      with ex -> trace "%s" (ex.ToString())
       let request: FVimRemoteVerb = 
         (rbuf, 0, len)
         |> Text.Encoding.UTF8.GetString
         |> Json.deserialize
+      trace "Payload=%A" request
       let session = 
         match request with
         | NewSession args -> newSession nvim stderrenc args pipe
         | AttachTo id -> attachSession id pipe
-        | AttachFirst -> attachFirstSession pipe
+        | AttachFirst _ -> attachFirstSession pipe
 
       match session with
       | None -> return()
@@ -134,17 +152,19 @@ let daemon (pname: string option) (nvim: string) (stderrenc: Text.Encoding) =
     let paddr = pipeaddr pname
     trace "FVR server address is '%s'" paddr
 
-    while true do
-      runSync <| task {
+    Async.RunSynchronously <| async {
+      while true do
         let svrpipe =
             new NamedPipeServerStream(pname, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
                                       PipeTransmissionMode.Byte, PipeOptions.Asynchronous)
-        do! svrpipe.WaitForConnectionAsync()
-        serve nvim stderrenc svrpipe
-      }
+        do! Async.AwaitTask(svrpipe.WaitForConnectionAsync())
+        trace "Incoming connection."
+        Async.Start <| serve nvim stderrenc svrpipe
+      return ()
+    }
     0
 
-let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
+let fvrConnect (stdin: Stream) (verb: FVimRemoteVerb) =
   let payload = 
     verb
     |> Json.serialize
@@ -153,3 +173,4 @@ let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
   stdin.Write(FVR_MAGIC, 0, FVR_MAGIC.Length)
   stdin.Write(len, 0, len.Length)
   stdin.Write(payload, 0, payload.Length)
+  stdin.Flush()

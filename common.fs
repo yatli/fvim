@@ -119,17 +119,17 @@ let run (t: Task) =
     Task.Run(fun () -> t) |> ignore
 
 let runSync (t: Task) =
-    t.Wait()
+    t.ConfigureAwait(false).GetAwaiter().GetResult()
 
 let rec read (stream: System.IO.Stream) (buf: Memory<byte>) = 
-  task {
-    let! n = stream.ReadAsync(buf)
+  async {
+    let! n = Async.AwaitTask((stream.ReadAsync buf).AsTask())
     if n = 0 then failwith "read"
     if n < buf.Length then return! read stream (buf.Slice n)
   }
 
 let write (stream: System.IO.Stream) (buf: ReadOnlyMemory<byte>) = 
-  stream.WriteAsync(buf)
+  Async.AwaitTask(stream.WriteAsync(buf).AsTask())
 
 let inline toInt32LE (x: _[]) =
   int32 (x.[0])
@@ -145,7 +145,7 @@ let inline fromInt32LE (x: int32) =
     byte (x >>> 24)
   |]
 
-let runProcess prog args stderrenc =
+let newProcess prog args stderrenc =
   let args = args |> escapeArgs |> join
   let psi  = ProcessStartInfo(prog, args)
   psi.CreateNoWindow          <- true
@@ -157,7 +157,10 @@ let runProcess prog args stderrenc =
   psi.UseShellExecute         <- false
   psi.WindowStyle             <- ProcessWindowStyle.Hidden
   psi.WorkingDirectory        <- Environment.CurrentDirectory
-  Process.Start(psi)
+  let p = new Process()
+  p.StartInfo <- psi
+  p.EnableRaisingEvents <- true
+  p
 
 [<AutoOpen>]
 module internal helpers =

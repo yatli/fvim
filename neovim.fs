@@ -58,7 +58,8 @@ type Nvim() =
         match serveropts with
         | Embedded(prog, args, enc) ->
             trace "Starting process. Program: %s; Arguments: %A" prog args
-            let proc = runProcess prog args enc
+            let proc = newProcess prog args enc
+            proc.Start() |> ignore
             Standalone proc
         | NeovimRemote(Tcp ipe, _) ->
             let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
@@ -70,13 +71,16 @@ type Nvim() =
             RemoteSession pipe
         | FVimRemote(name, Local, verb, _) ->
             let name = Option.defaultValue defaultDaemonName name
+            trace "Connecting to local fvr session '%s'" name
             let pipe = new System.IO.Pipes.NamedPipeClientStream(".", name, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
             pipe.Connect()
-            fvrConnect pipe pipe verb
+            trace "Connected, sending session request..."
+            fvrConnect pipe verb
             RemoteSession pipe
         | FVimRemote(_, Remote(prog, args), verb, _) ->
-            let proc = runProcess prog args Text.Encoding.UTF8
-            fvrConnect proc.StandardInput.BaseStream proc.StandardOutput.BaseStream verb
+            let proc = newProcess prog args Text.Encoding.UTF8
+            proc.Start() |> ignore
+            fvrConnect proc.StandardInput.BaseStream verb
             TunneledSession proc
 
     member this.start opts =
