@@ -116,13 +116,14 @@ let main(args: string[]) =
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 
   // Avalonia initialization
+  let builder = lazy buildAvaloniaApp()
   let lifetime = lazy new ClassicDesktopStyleApplicationLifetime()
   let app = 
-    let lifetime = lifetime.Value
-    lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
-    let builder = buildAvaloniaApp()
-    let _ = builder.SetupWithLifetime(lifetime)
     (fun (win: Avalonia.Controls.Window) ->
+        let lifetime = lifetime.Value
+        let builder = builder.Value
+        let _ = builder.SetupWithLifetime(lifetime)
+        lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
         lifetime.MainWindow <- win
         lifetime.Start(args) |> ignore)
   // Avalonia is initialized. SynchronizationContext-reliant code should be working by now;
