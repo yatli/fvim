@@ -23,8 +23,6 @@ type Session =
     // Some=Exclusively connected
     server: NamedPipeServerStream option
     proc: Process
-    // in case the daemon crashed and we happen to be running Windows(tm)...
-    killHandle: IDisposable
     exitHandle: IDisposable
   }
 
@@ -34,10 +32,11 @@ let FVR_MAGIC = [| 0x46uy ; 0x56uy ; 0x49uy ; 0x4Duy |]
 
 let inline private trace x = trace "daemon" x
 
+let pipeaddrUnix x = "/tmp/CoreFxPipe_" + x
 let pipeaddr x =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
     then @"\\.\pipe\" + x
-    else "/tmp/CoreFxPipe_" + x
+    else pipeaddrUnix x
 
 let pipename = sprintf "fvr_%s"
 
@@ -58,19 +57,16 @@ let newSession nvim stderrenc args svrpipe =
   let paddr = pipeaddr pname
   let args = "--headless" :: "--listen" :: paddr :: args
   let proc = newProcess nvim args stderrenc
-  let killHandle = AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> proc.Kill(true))
   let session = 
     { 
       id = myid 
       server = Some svrpipe
       proc = proc
-      killHandle = killHandle
       exitHandle =  proc.Exited |> Observable.subscribe(fun _ -> 
         // remove the session
         trace "Session %d terminated" myid
         sessions.[myid].exitHandle.Dispose()
         sessions.Remove(myid) |> ignore
-        killHandle.Dispose()
         proc.Dispose()
         )
     }

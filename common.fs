@@ -160,6 +160,9 @@ let newProcess prog args stderrenc =
   let p = new Process()
   p.StartInfo <- psi
   p.EnableRaisingEvents <- true
+  // in case the parent crashed and we happen to be running Windows(tm)...
+  // TODO need further investigation.
+  ignore <| AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> p.Kill(true))
   p
 
 [<AutoOpen>]

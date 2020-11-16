@@ -79,7 +79,8 @@ type Nvim() =
             RemoteSession pipe
         | FVimRemote(pipe, Remote(prog, args), verb, _) ->
             let pname = Option.defaultValue defaultDaemonName pipe
-            let paddr = pipeaddr pname
+            let paddr = pipeaddrUnix pname
+            trace "Connecting to remote fvr session '%s'" paddr
             let proc = newProcess prog (args @ [paddr]) Text.Encoding.UTF8
             proc.Start() |> ignore
             fvrConnect proc.StandardInput.BaseStream verb
