@@ -81,7 +81,7 @@ let startMainWindow app serveropts =
     0
 
 let startCrashReportWindow app ex = 
-    FVim.log.trace "main" "%s" "displaying crash dialog"
+    FVim.log.trace "main" "displaying crash dialog"
     FVim.log.trace "main" "exception: %O" ex
     let code, msgs = States.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)

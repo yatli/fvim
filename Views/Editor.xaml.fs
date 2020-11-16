@@ -192,7 +192,7 @@ type Editor() as this =
 
   let onViewModelConnected(vm: EditorViewModel) =
     grid_vm <- vm
-    trace grid_vm "%s" "viewmodel connected"
+    trace grid_vm "viewmodel connected"
     resizeFrameBuffer()
     vm.Watch
       [ Observable.merge (vm.ObservableForProperty(fun x -> x.BufferWidth))
@@ -214,7 +214,7 @@ type Editor() as this =
         vm.ObservableForProperty(fun x -> x.IsFocused)
         |> Observable.subscribe(fun focused -> 
           if focused.Value && not this.IsFocused then 
-            trace grid_vm "%s" "viewmodel ask to focus"
+            trace grid_vm "viewmodel ask to focus"
             this.Focus())
 
         this.GotFocus.Subscribe(fun _ -> vm.IsFocused <- true)
@@ -266,7 +266,7 @@ type Editor() as this =
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
 
   let drawDirty () = 
-    trace grid_vm "%s" "drawing whole grid"
+    trace grid_vm "drawing whole grid"
     for row = 0 to grid_vm.Rows - 1 do
         drawBufferLine grid_dc row 0 grid_vm.Cols
     true
@@ -355,7 +355,7 @@ type Editor() as this =
 
   override this.Render ctx =
     if isNull grid_fb then
-      trace grid_vm "%s" "grid_fb is null"
+      trace grid_vm "grid_fb is null"
     else
     grid_dc.PushClip(Rect this.Bounds.Size)
     let timer = System.Diagnostics.Stopwatch.StartNew()

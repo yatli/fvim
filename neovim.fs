@@ -111,7 +111,7 @@ type Nvim() =
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () ->
-                trace "%s" "begin read loop"
+                trace "begin read loop"
                 let mutable ex = false
                 while not ex && not cancel.IsCancellationRequested do
                    try
@@ -134,7 +134,7 @@ type Nvim() =
                   else
                     ob.OnNext([|box Exit|])
                 else
-                  trace "%s" "end read loop."
+                  trace "end read loop."
                   ob.OnNext([|box Exit|])
                 ob.OnCompleted()
 

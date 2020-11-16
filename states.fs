@@ -272,7 +272,7 @@ let msg_dispatch =
       error "rpc" "neovim: %s" err
       _errormsgs.Add err
     | Exit -> 
-      trace "rpc" "%s" "shutting down application lifetime"
+      trace "rpc" "shutting down application lifetime"
       _appLifetime.Shutdown()
     | Crash code -> 
       trace "rpc" "neovim crashed with code %d" code

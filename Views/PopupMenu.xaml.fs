@@ -15,7 +15,7 @@ type PopupMenu() as this =
 
     let relayToParent (e: #Avalonia.Interactivity.RoutedEventArgs) =
         if this.Parent <> null then
-            trace "PopupMenu" "%s" "relay to parent"
+            trace "PopupMenu" "relay to parent"
             this.Parent.Focus()
 
     do

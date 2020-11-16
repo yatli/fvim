@@ -447,7 +447,7 @@ let UpdateUICapabilities() =
 /// Call this once at initialization.
 /// </summary>
 let Start (serveropts, norc, debugMultigrid) =
-    trace "%s" "starting neovim instance..."
+    trace "starting neovim instance..."
     trace "opts = %A" serveropts
     States.ui_multigrid <- debugMultigrid
     nvim.start serveropts
@@ -518,13 +518,13 @@ let Start (serveropts, norc, debugMultigrid) =
                 trace "get-clipboard: match, using clipboard lines with regtype %s" States.clipboard_regtype
                 States.clipboard_lines, States.clipboard_regtype
             else
-                trace "%s" "get-clipboard: mismatch, using system clipboard"
+                trace "get-clipboard: mismatch, using system clipboard"
                 sysClipboardLines, "v"
 
         return { result = Ok(box [| box lines; box regtype |])}
     })
 
-    trace "%s" "commencing early initialization..."
+    trace "commencing early initialization..."
 
     async {
         let! api_info = Async.AwaitTask(nvim.call { method = "nvim_get_api_info"; parameters = [||] })
@@ -730,12 +730,12 @@ let OnFocusGained() =
     } |> run
 
 let OnTerminated () =
-    trace "%s" "terminating nvim..."
+    trace "terminating nvim..."
     nvim.stop 1
 
 let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
-    trace "%s" "window is closing"
+    trace "window is closing"
     task {
         if nvim.isRemote then
             Detach()

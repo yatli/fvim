@@ -31,7 +31,7 @@ trace "Discovered %d file icons" FVimIcons.Length
 
 let private win32CheckUAC() =
     if not(UACHelper.IsElevated) then
-        trace "%s" "Starting setup in elevated environment..."
+        trace "Starting setup in elevated environment..."
         let exe = Path.Combine(FVimDir, "FVim.exe")
         let psi = ProcessStartInfo(exe, String.Join(" ", Environment.GetCommandLineArgs() |> Array.skip 1))
 
@@ -45,7 +45,7 @@ let private win32CheckUAC() =
         proc.WaitForExit()
         false
     else
-        trace "%s" "FVim is elevated"
+        trace "FVim is elevated"
         true
 
 let private noextkey ext =
@@ -54,7 +54,7 @@ let private noextkey ext =
 
 let private win32RegisterFileAssociation() =
 
-    trace "%s" "registering file associations..."
+    trace "registering file associations..."
 
     let HKCR = Registry.ClassesRoot
     let HKLM = Registry.LocalMachine
@@ -109,7 +109,7 @@ let private win32RegisterFileAssociation() =
             extKey.SetValue("", progId)
 
 let private win32UnregisterFileAssociation() =
-  trace "%s" "unregistering file associations..."
+  trace "unregistering file associations..."
   let HKCR = Registry.ClassesRoot
   let HKLM = Registry.LocalMachine
 

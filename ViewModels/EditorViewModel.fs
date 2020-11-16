@@ -268,7 +268,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_mouse_en <- en
 
     let closeGrid() =
-        trace _gridid "%s" "closeGrid"
+        trace _gridid "closeGrid"
         if this.IsFocused then
           this.IsFocused <- false
           match parent with
@@ -399,7 +399,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             MouseButton.None
 
     do
-        trace _gridid "%s" "ctor"
+        trace _gridid "ctor"
         fontConfig()
         setCursorEnabled theme.cursor_enabled
         clearBuffer false
