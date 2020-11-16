@@ -661,7 +661,7 @@ let Start (serveropts, norc, debugMultigrid) =
 
         // trigger ginit upon VimEnter
         if not norc then
-          let! _ = Async.AwaitTask(nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | autocmd VimEnter * runtime! ginit.vim | endif")
+          let! _ = Async.AwaitTask(nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | execute \"autocmd VimEnter * runtime! ginit.vim\" | endif")
           ()
     } |> Async.RunSynchronously
 

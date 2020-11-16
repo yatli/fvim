@@ -116,10 +116,11 @@ let main(args: string[]) =
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 
   // Avalonia initialization
-  let builder = buildAvaloniaApp()
-  let lifetime = new ClassicDesktopStyleApplicationLifetime()
+  let lifetime = lazy new ClassicDesktopStyleApplicationLifetime()
   let app = 
+    let lifetime = lifetime.Value
     lifetime.ShutdownMode <- Controls.ShutdownMode.OnMainWindowClose
+    let builder = buildAvaloniaApp()
     let _ = builder.SetupWithLifetime(lifetime)
     (fun (win: Avalonia.Controls.Window) ->
         lifetime.MainWindow <- win
