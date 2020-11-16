@@ -264,7 +264,7 @@ type Nvim() =
     member this.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
         this.events
         |> Observable.observeOnContext ctx
-        |> Observable.synchronize
+        (*|> Observable.synchronize*)
         |> Observable.subscribe fn
         |> this.pushSubscription
 

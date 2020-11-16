@@ -18,6 +18,7 @@ open System.ComponentModel
 open SkiaSharp
 open Avalonia.Layout
 open System.Threading.Tasks
+open System.Threading
 
 #nowarn "0058"
 #nowarn "0025"

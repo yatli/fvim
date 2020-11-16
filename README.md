@@ -18,9 +18,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
     - Arch Linux:  [Install via AUR](https://aur.archlinux.org/packages/fvim/)
     - RPM-based distributions: `rpm -ivh fvim_package_name.rpm`
     - Fedora: `dnf install fvim_package_name.rpm`
-    - Compile from Source (having dotnet-sdk-5+ installed):
+    - Compile from Source (having dotnet-sdk-3.1+ installed):
         ```
-            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f net5 -c Release -r linux-x64 --self-contained
+            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f netcoreapp3.1 -c Release -r linux-x64 --self-contained
         ```
 
 ### Features
@@ -70,7 +70,7 @@ endif
 ![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
 
 ### Building from source
-We're now targeting `net5` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.1).
+We're now targeting `netcoreapp3.1` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.1).
 We're actively tracking the head of `Avalonia`, and fetch the nightly packages from myget (see `NuGet.config`).
 
 Then, simply:
