@@ -18,22 +18,8 @@ let private _logsSink    = Observable.merge _logsPub _logsEPub
 
 let mutable private _n_logsSink = 0
 
-#if DEBUG
 let trace cat (fmt: Printf.StringFormat< 'a , unit >) =
     Printf.kprintf (fun s -> _logsSource.Trigger(cat, s)) fmt
-#else
-// #if FALSE
-type TraceIgnoreT = TraceIgnoreT with
-  static member ($) (T, _: unit) = ()
-  static member ($) (T, _: int) = ()
-
-let inline trace (cat: string) (fmt: Printf.StringFormat< ^a -> ^rest, unit>) (x: ^a): ^rest =
-  TraceIgnoreT $ Unchecked.defaultof< ^rest >
-
-type TraceIgnoreT with
-  static member inline ($) (T, _: ^t -> ^rest) = 
-    trace Unchecked.defaultof<string> Unchecked.defaultof< Printf.StringFormat< ^t -> ^rest, unit> > 
-#endif
 
 let error cat fmt =
     Printf.kprintf (fun s -> _logsESource.Trigger(cat, s)) fmt
