@@ -5,6 +5,7 @@ open getopt
 open log
 open common
 open States
+open Daemon
 
 open MessagePack
 
@@ -31,8 +32,12 @@ let private default_call (e: Request) =
 
 type NvimIO =
     | Disconnected
+    // Either local or tunneled. running NeoVim in embedded mode
     | Standalone of Process
+    // NeoVim RPC remoting, or FVR local session
     | RemoteSession of System.IO.Stream
+    // FVR tunneled session
+    | TunneledSession of Process
 
 type Nvim() = 
     let mutable m_notify      = default_notify
@@ -44,28 +49,17 @@ type Nvim() =
 
     member __.Id = Guid.NewGuid()
 
-    member private this.events =
+    member private __.events =
         match m_events with
         | Some events -> events
         | None -> failwith "events"
 
-    member private this.createIO serveropts = 
+    member private __.createIO serveropts = 
         match serveropts with
         | Embedded(prog, args, enc) ->
-            let args = args |> escapeArgs |> join
-            let psi  = ProcessStartInfo(prog, args)
-            psi.CreateNoWindow          <- true
-            psi.ErrorDialog             <- false
-            psi.RedirectStandardError   <- true
-            psi.RedirectStandardInput   <- true
-            psi.RedirectStandardOutput  <- true
-            psi.StandardErrorEncoding   <- enc
-            psi.UseShellExecute         <- false
-            psi.WindowStyle             <- ProcessWindowStyle.Hidden
-            psi.WorkingDirectory        <- Environment.CurrentDirectory
-
-            trace "Starting process. Program: %s; Arguments: %s" prog args
-            Standalone <| Process.Start(psi)
+            trace "Starting process. Program: %s; Arguments: %A" prog args
+            let proc = runProcess prog args enc
+            Standalone proc
         | NeovimRemote(Tcp ipe, _) ->
             let sock = new Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             sock.Connect(ipe)
@@ -74,8 +68,16 @@ type Nvim() =
             let pipe = new System.IO.Pipes.NamedPipeClientStream(".", addr, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
             pipe.Connect()
             RemoteSession pipe
-        | _ ->
-            failwith ""
+        | FVimRemote(name, Local, verb, _) ->
+            let name = Option.defaultValue defaultDaemonName name
+            let pipe = new System.IO.Pipes.NamedPipeClientStream(".", name, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
+            pipe.Connect()
+            fvrConnect pipe pipe verb
+            RemoteSession pipe
+        | FVimRemote(_, Remote(prog, args), verb, _) ->
+            let proc = runProcess prog args Text.Encoding.UTF8
+            fvrConnect proc.StandardInput.BaseStream proc.StandardOutput.BaseStream verb
+            TunneledSession proc
 
     member this.start opts =
         match m_io, m_events with
@@ -86,7 +88,8 @@ type Nvim() =
 
         let serverExitCode() =
             match io with
-            | Standalone proc -> 
+            | Standalone proc
+            | TunneledSession proc ->
               // note: on *Nix, when the nvim child process exits,
               // we don't get an exit code immediately. have to explicitly wait.
               if not <| RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
@@ -97,7 +100,8 @@ type Nvim() =
 
         let stdin, stdout, stderr = 
             match io with
-            | Standalone proc ->
+            | Standalone proc
+            | TunneledSession proc ->
                 let stdout = proc.StandardOutput.BaseStream
                 let stdin  = proc.StandardInput.BaseStream
                 let stderr = 
@@ -107,7 +111,7 @@ type Nvim() =
                 stdin, stdout, stderr
             | RemoteSession stream ->
                 stream, stream, Observable.empty
-            | _ -> failwith ""
+            | Disconnected -> failwith "not connected."
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () ->
@@ -242,7 +246,8 @@ type Nvim() =
 
         // Close the IO channel
         match m_io with
-        | Standalone proc ->
+        | Standalone proc
+        | TunneledSession proc ->
             proc.CancelErrorRead()
             if not <| proc.WaitForExit(timeout) then
                 proc.Kill()

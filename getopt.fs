@@ -8,9 +8,9 @@ type NeovimRemoteEndpoint =
     | NamedPipe of address: string
 
 type FVimRemoteVerb =
-    | AttachTo of id: int * files: string list
+    | AttachTo of id: int
     | NewSession of args: string list
-    | AttachFirst of files: string list
+    | AttachFirst
     // | Interactive
 
 type FVimRemoteTransport =
@@ -20,13 +20,13 @@ type FVimRemoteTransport =
 type ServerOptions =
     | Embedded of prog: string * args: string list * stderrenc: System.Text.Encoding
     | NeovimRemote of addr: NeovimRemoteEndpoint * files: string list
-    | FVimRemote of transport: FVimRemoteTransport * verb: FVimRemoteVerb
+    | FVimRemote of serverName: string option * transport: FVimRemoteTransport * verb: FVimRemoteVerb * files: string list
 
 type Intent =
     | Start of serveropts: ServerOptions * norc: bool * debugMultigrid: bool
     | Setup
     | Uninstall
-    | Daemon of pipe: string option * nvim: string
+    | Daemon of pipe: string option * nvim: string * stderrenc: System.Text.Encoding
 
 type Options =
     {
@@ -98,13 +98,17 @@ let parseOptions (args: string[]) =
         | None -> "+terminal"
         |> args.Add
 
+    let enc = 
+      if wsl then System.Text.Encoding.Unicode 
+      else System.Text.Encoding.UTF8
+
     // stop altering the args list now
     let argsL = List.ofSeq args
 
     let intent = 
         if setup then Setup
         elif uninstall then Uninstall
-        elif daemon then Daemon(pipe, nvim)
+        elif daemon then Daemon(pipe, nvim, enc)
         else 
         let serveropts = 
             match fvr, nvr with
@@ -116,10 +120,14 @@ let parseOptions (args: string[]) =
                 else Local
               let verb = 
                 match fvrVerb.ToLowerInvariant() with
-                | "attach" | "a" -> AttachFirst(argsL)
+                | "attach" | "a" -> AttachFirst
                 | "new" | "n" -> NewSession(argsL)
-                | v -> AttachTo(int v, argsL)
-              FVimRemote(transport, verb)
+                | v -> AttachTo(int v)
+              let files = 
+                match verb with
+                | NewSession _ -> []
+                | _ -> argsL
+              FVimRemote(pipe, transport, verb, files)
             | _, Some nvrAddr ->
               match nvrAddr.Split(":") with
               | [| ParseIp ipaddr; ParseUInt16 port |] -> NeovimRemote(Tcp <| IPEndPoint(ipaddr, int port), argsL)
@@ -132,9 +140,6 @@ let parseOptions (args: string[]) =
                     "ssh", [ssh.Value; nvim; "--embed"] @ argsL
                 else 
                     nvim, ["--embed"] @ argsL
-              let enc = 
-                if wsl then System.Text.Encoding.Unicode 
-                else System.Text.Encoding.UTF8
               in
                 Embedded(prog, args, enc)
         in

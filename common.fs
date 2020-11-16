@@ -1,7 +1,9 @@
 module FVim.common
 
-open System.Runtime.InteropServices
 open System.Threading.Tasks
+open System
+open FSharp.Control.Tasks.V2.ContextSensitive
+open System.Diagnostics
 
 let mkparams1 (t1: 'T1)                                          = [| box t1 |]
 let mkparams2 (t1: 'T1) (t2: 'T2)                                = [| box t1; box t2 |]
@@ -118,6 +120,44 @@ let run (t: Task) =
 
 let runSync (t: Task) =
     t.Wait()
+
+let rec read (stream: System.IO.Stream) (buf: Memory<byte>) = 
+  task {
+    let! n = stream.ReadAsync(buf)
+    if n = 0 then failwith "read"
+    if n < buf.Length then return! read stream (buf.Slice n)
+  }
+
+let write (stream: System.IO.Stream) (buf: ReadOnlyMemory<byte>) = 
+  stream.WriteAsync(buf)
+
+let inline toInt32LE (x: _[]) =
+  int32 (x.[0])
+  ||| (int32(x.[1]) <<< 8)
+  ||| (int32(x.[2]) <<< 16)
+  ||| (int32(x.[3]) <<< 24)
+
+let inline fromInt32LE (x: int32) =
+  [|
+    byte (x)
+    byte (x >>> 8)
+    byte (x >>> 16)
+    byte (x >>> 24)
+  |]
+
+let runProcess prog args stderrenc =
+  let args = args |> escapeArgs |> join
+  let psi  = ProcessStartInfo(prog, args)
+  psi.CreateNoWindow          <- true
+  psi.ErrorDialog             <- false
+  psi.RedirectStandardError   <- true
+  psi.RedirectStandardInput   <- true
+  psi.RedirectStandardOutput  <- true
+  psi.StandardErrorEncoding   <- stderrenc
+  psi.UseShellExecute         <- false
+  psi.WindowStyle             <- ProcessWindowStyle.Hidden
+  psi.WorkingDirectory        <- Environment.CurrentDirectory
+  Process.Start(psi)
 
 [<AutoOpen>]
 module internal helpers =

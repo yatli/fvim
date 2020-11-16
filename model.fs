@@ -553,10 +553,9 @@ let Start (serveropts, norc, debugMultigrid) =
             match serveropts with
             // for embedded & fvr new session, edit file args are passed thru to neovim
             | Embedded _             
-            | FVimRemote(_, NewSession _) -> []
+            | FVimRemote(_, _, NewSession _, _) -> []
             | NeovimRemote(_, files) 
-            | FVimRemote(_, (AttachTo(_, files) 
-                           | AttachFirst files))  -> files
+            | FVimRemote(_, _, _, files)  -> files
         for file in remoteEditFiles do
             let! _ = Async.AwaitTask(nvim.edit file)
             in ()

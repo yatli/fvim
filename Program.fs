@@ -132,7 +132,7 @@ let main(args: string[]) =
     match opts.intent with
     | Setup -> setup()
     | Uninstall -> uninstall()
-    | Daemon(pipe, nvim) -> daemon pipe nvim
+    | Daemon(pipe, nvim, enc) -> daemon pipe nvim enc
     | Start(a,b,c) -> startMainWindow app (a,b,c) 
   with 
     | ex -> startCrashReportWindow app ex
