@@ -12,7 +12,12 @@
     <OutputType>WinExe</OutputType>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <TrimMode>link</TrimMode>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.dll" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="DesignTime\TitleBarSampleData.fs" />
