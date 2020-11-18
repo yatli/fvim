@@ -52,6 +52,11 @@ let parseOptions (args: string[]) =
             res
         else None
 
+    let eat2d opt defaultValue = 
+        match eat2 opt with
+        | None -> if eat1 opt then Some defaultValue else None
+        | x -> x
+
     //  startup options
     let nvim                = eat2 "--nvim" |> Option.defaultValue "nvim"
     let terminal            = eat1 "--terminal"
@@ -60,7 +65,7 @@ let parseOptions (args: string[]) =
     let ssh                 = eat2 "--ssh"
     let wsl                 = eat1 "--wsl"
     let nvr                 = eat2 "--nvr"
-    let fvr                 = eat2 "--fvr"
+    let fvr                 = eat2d "--fvr" "new"
     //  shell
     let setup               = eat1 "--setup"
     let uninstall           = eat1 "--uninstall"
