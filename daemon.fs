@@ -47,8 +47,8 @@ let attachSession id svrpipe =
   | true, ({ server = None } as s) -> 
     let ns = {s with server = Some svrpipe}
     sessions.[id] <- ns
-    Some ns
-  | _ -> None
+    Ok ns
+  | _ -> Error -2
 
 let newSession nvim stderrenc args svrpipe = 
   let myid = sessionId
@@ -74,15 +74,16 @@ let newSession nvim stderrenc args svrpipe =
   sessionId <- sessionId + 1
   sessions.[myid] <- session
   proc.Start() |> ignore
-  Some session
+  Ok session
 
 
 let attachFirstSession svrpipe =
   sessions |> Seq.tryFind (fun kv -> kv.Value.server.IsNone)
-  >>= fun kv ->
+  >>= (fun kv ->
     let ns = {kv.Value with server = Some svrpipe}
     sessions.[kv.Key] <- ns
-    Some ns
+    Some ns)
+  |> function | Some ns -> Ok ns | None -> Error -1
 
 let serveSession (session: Session) =
   async {
@@ -130,11 +131,13 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
         | AttachFirst _ -> attachFirstSession pipe
 
       match session with
-      | None -> 
-        trace "Session unavailable for request %A" request
+      | Error errno -> 
+        trace "Session unavailable for request %A, errno=%d" request errno
+        do! fromInt32LE errno |> readonlymemory |> write pipe
         return()
-      | Some session -> 
+      | Ok session -> 
         trace "Request %A is attaching to session %d" request session.id
+        do! fromInt32LE session.id |> readonlymemory |> write pipe
         do! serveSession session
     finally
       try
@@ -165,8 +168,14 @@ let fvrConnect (stdin: Stream) (verb: FVimRemoteVerb) =
     verb
     |> Json.serialize
     |> Text.Encoding.UTF8.GetBytes
-  let len = fromInt32LE payload.Length
-  stdin.Write(FVR_MAGIC, 0, FVR_MAGIC.Length)
-  stdin.Write(len, 0, len.Length)
-  stdin.Write(payload, 0, payload.Length)
-  stdin.Flush()
+  let intbuf = fromInt32LE payload.Length
+  try
+    stdin.Write(FVR_MAGIC, 0, FVR_MAGIC.Length)
+    stdin.Write(intbuf, 0, intbuf.Length)
+    stdin.Write(payload, 0, payload.Length)
+    stdin.Flush()
+    Async.StartAsTask(read stdin (intbuf.AsMemory())).Wait()
+    toInt32LE intbuf
+  with ex ->
+    trace "%O" ex
+    -10
