@@ -87,7 +87,6 @@ let attachFirstSession svrpipe =
 let serveSession (session: Session) =
   async {
     let pname = pipename (string session.id)
-    trace "Start serving session %d at pipe %s" session.id pname
     use client = new NamedPipeClientStream(".", pname, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
     do! Async.AwaitTask(client.ConnectAsync())
     let fromNvim = client.CopyToAsync(session.server.Value)
@@ -119,11 +118,6 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
         return()
       do! read pipe rmem.[0..len-1]
 
-      try
-        Text.Encoding.UTF8.GetString(rbuf,0,len)
-        |> Json.deserialize<FVimRemoteVerb>
-        |> ignore
-      with ex -> trace "%s" (ex.ToString())
       let request: FVimRemoteVerb = 
         (rbuf, 0, len)
         |> Text.Encoding.UTF8.GetString
@@ -136,10 +130,16 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
         | AttachFirst _ -> attachFirstSession pipe
 
       match session with
-      | None -> return()
-      | Some session -> do! serveSession session
+      | None -> 
+        trace "Session unavailable for request %A" request
+        return()
+      | Some session -> 
+        trace "Request %A is attaching to session %d" request session.id
+        do! serveSession session
     finally
-      pipe.Dispose()
+      try
+        pipe.Dispose()
+      with ex -> trace "%O" ex
   }
 
 let daemon (pname: string option) (nvim: string) (stderrenc: Text.Encoding) =
