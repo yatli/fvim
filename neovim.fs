@@ -75,7 +75,7 @@ type Nvim() =
             let pipe = new System.IO.Pipes.NamedPipeClientStream(".", name, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
             pipe.Connect()
             trace "Connected, sending session request..."
-            let id = fvrConnect pipe verb
+            let id = fvrConnect pipe pipe verb
             if id < 0 then
               pipe.Dispose()
               failwithf "Remote daemon closed the connection with error code %d" id
@@ -86,7 +86,7 @@ type Nvim() =
             trace "Connecting to remote fvr session '%s'" paddr
             let proc = newProcess prog (args @ [paddr]) Text.Encoding.UTF8
             proc.Start() |> ignore
-            let id = fvrConnect proc.StandardInput.BaseStream verb
+            let id = fvrConnect proc.StandardInput.BaseStream proc.StandardOutput.BaseStream verb
             if id < 0 then
               proc.Kill()
               failwithf "Remote daemon closed the connection with error code %d" id

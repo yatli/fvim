@@ -163,7 +163,7 @@ let daemon (pname: string option) (nvim: string) (stderrenc: Text.Encoding) =
     }
     0
 
-let fvrConnect (stdin: Stream) (verb: FVimRemoteVerb) =
+let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
   let payload = 
     verb
     |> Json.serialize
@@ -174,7 +174,7 @@ let fvrConnect (stdin: Stream) (verb: FVimRemoteVerb) =
     stdin.Write(intbuf, 0, intbuf.Length)
     stdin.Write(payload, 0, payload.Length)
     stdin.Flush()
-    Async.StartAsTask(read stdin (intbuf.AsMemory())).Wait()
+    Async.StartAsTask(read stdout (intbuf.AsMemory())).Wait()
     toInt32LE intbuf
   with ex ->
     trace "%O" ex
