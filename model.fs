@@ -191,7 +191,8 @@ let Start (serveropts, norc, debugMultigrid) =
     states.register.request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {
         states.clipboard_lines <- lines
         states.clipboard_regtype <- regtype
-        let! _ = Avalonia.Application.Current.Clipboard.SetTextAsync(String.Join("\n", lines))
+        let text = String.Join("\n", lines)
+        let! _ = Avalonia.Application.Current.Clipboard.SetTextAsync(text)
         trace "set-clipboard called. regtype=%s" regtype
         return { result = Ok(box [||]) }
     })
@@ -295,6 +296,7 @@ let Start (serveropts, norc, debugMultigrid) =
         // Another instance is already up
         if fvimChannels.Length > 1 then
             Environment.Exit(0)
+        let! _ = nvim.set_var "fvim_channel" myChannel
 
         // Register clipboard provider by setting g:clipboard
         let clipboard = """let g:clipboard = {
@@ -306,11 +308,9 @@ let Start (serveropts, norc, debugMultigrid) =
   'paste': {
      '+': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
      '*': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
-  },
+  }
 }"""
-        let! _ = nvim.command <| clipboard.Replace("\r", "").Replace("\n","")
-
-        let! _ = nvim.set_var "fvim_channel" myChannel
+        let! _ = nvim.command <| clipboard.Replace("\r", "").Replace("\n","").Replace(" ","")
 
         let! _ = nvim.``command!`` "FVimDetach" 0 "call rpcnotify(g:fvim_channel, 'remote.detach')"
         let! _ = nvim.``command!`` "FVimToggleFullScreen" 0 "call rpcnotify(g:fvim_channel, 'ToggleFullScreen', 1)"
