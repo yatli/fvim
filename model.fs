@@ -119,8 +119,8 @@ module ModelImpl =
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
 let Detach() =
-    nvim.stop(0)
-    states.Shutdown(0)
+    if nvim.isRemote then
+      states.Shutdown(0)
 
 let UpdateUICapabilities() =
     let opts = hashmap[]

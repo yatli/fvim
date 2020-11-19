@@ -246,7 +246,9 @@ let backgroundCompositionToString =
     | Acrylic -> "acrylic"
     | Transparent -> "transparent" 
 
-let Shutdown code = _appLifetime.Value.Shutdown code
+let Shutdown code = 
+  try _appLifetime.Value.Shutdown code
+  with _ -> ()
 
 let get_crash_info() =
   _crashcode, _errormsgs
@@ -274,7 +276,7 @@ let msg_dispatch =
       _errormsgs.Add err
     | Exit -> 
       trace "rpc" "shutting down application lifetime"
-      _appLifetime.Value.Shutdown()
+      Shutdown 0
     | Crash code -> 
       trace "rpc" "neovim crashed with code %d" code
       _crashcode <- code

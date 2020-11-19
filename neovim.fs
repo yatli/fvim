@@ -23,10 +23,10 @@ open System.Runtime.InteropServices
 let inline private trace fmt = trace "neovim.process" fmt
 
 let private default_notify (e: Request) =
-    failwithf "%A" e
+  task { return () }
 
 let private default_call (e: Request) =
-    failwithf "%A" e
+  task { return {result=Result.Error(box "not connected")} }
 
 type NvimIO =
     | Disconnected
@@ -43,7 +43,7 @@ type Nvim() as nvim =
     let mutable m_events      = None
     let mutable m_io          = Disconnected
     let mutable m_disposables = []
-    let m_cancelSrc           = new CancellationTokenSource()
+    let mutable m_cancelSrc   = Unchecked.defaultof<CancellationTokenSource>
 
     member __.Id = Guid.NewGuid()
 
@@ -97,6 +97,7 @@ type Nvim() as nvim =
         | Disconnected, None -> ()
         | _ -> failwith "neovim: already started"
 
+        m_cancelSrc <- new CancellationTokenSource()
         let io = nvim.createIO opts
 
         let serverExitCode() =
@@ -254,6 +255,12 @@ type Nvim() as nvim =
 
     member __.stop (timeout: int) =
 
+        match m_io with
+        | Disconnected -> ()
+        | _ ->
+
+        trace "stopping"
+
         // Send cancellation signal
         m_cancelSrc.Cancel()
         m_cancelSrc.Dispose()
@@ -275,6 +282,7 @@ type Nvim() as nvim =
             stream.Dispose()
         | Disconnected -> ()
 
+        m_cancelSrc <- null
         m_io <- Disconnected
         m_events <- None
         m_notify <- default_notify
