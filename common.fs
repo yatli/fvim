@@ -118,8 +118,7 @@ let inline (>?=) (x: Result<'a, 'e>) (f: 'a -> Result<'b, 'e>) =
 let run (t: Task) =
     Task.Run(fun () -> t) |> ignore
 
-let inline runT<'T> (t: Task<'T>) =
-    Task.Run<'T>(fun () -> t) |> ignore
+let inline runAsync<'T> = Async.Ignore<'T> >> Async.Start
 
 let runSync (t: Task) =
     t.ConfigureAwait(false).GetAwaiter().GetResult()

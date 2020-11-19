@@ -39,7 +39,7 @@ type NvimIO =
     // FVR tunneled session
     | TunneledSession of Process
 
-type Nvim() = 
+type Nvim() as nvim = 
     let mutable m_notify      = default_notify
     let mutable m_call        = default_call
     let mutable m_events      = None
@@ -94,12 +94,12 @@ type Nvim() =
               trace "Connected to session %d" id
             TunneledSession proc
 
-    member this.start opts =
+    member nvim.start opts =
         match m_io, m_events with
         | Disconnected, None -> ()
         | _ -> failwith "neovim: already started"
 
-        let io = this.createIO opts
+        let io = nvim.createIO opts
 
         let serverExitCode() =
             match io with
@@ -286,26 +286,26 @@ type Nvim() =
     member __.pushSubscription(x: IDisposable) =
         m_disposables <- x :: m_disposables
 
-    member this.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
-        this.events
+    member __.subscribe (ctx: SynchronizationContext) (fn: Event -> unit) =
+        nvim.events
         |> Observable.observeOnContext ctx
         (*|> Observable.synchronize*)
         |> Observable.subscribe fn
-        |> this.pushSubscription
+        |> nvim.pushSubscription
 
     //  ========================== NeoVim API ===============================
 
     member __.input (key: string) =
-        m_call { method = "nvim_input"; parameters = [| box key |] }
+        nvim.call { method = "nvim_input"; parameters = [| box key |] }
 
     member __.input_mouse (button: string) (action: string) (mods: string) (grid: int) (row: int) (col: int)  =
-        m_call { method = "nvim_input_mouse"; parameters = [| box button; box action; box mods; box grid; box row; box col |] }
+        nvim.call { method = "nvim_input_mouse"; parameters = [| box button; box action; box mods; box grid; box row; box col |] }
 
     member __.grid_resize (id: int) (w: int) (h: int) =
         if ui_multigrid then
-            m_call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
+            nvim.call { method = "nvim_ui_try_resize_grid"; parameters = mkparams3 id w h }
         else
-            m_call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
+            nvim.call { method = "nvim_ui_try_resize"; parameters = mkparams2 w h }
 
     member __.ui_attach (w:int) (h:int) =
         let opts = hashmap [
@@ -313,11 +313,11 @@ type Nvim() =
             uiopt_ext_linegrid, true
         ]
         PopulateUIOptions opts
-        m_call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
+        nvim.call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 
     member __.exists (var: string) =
-        task {
-            let! response = m_call { method = "nvim_call_function"; parameters = mkparams2 "exists" (mkparams1 var) }
+        async {
+            let! response = nvim.call { method = "nvim_call_function"; parameters = mkparams2 "exists" (mkparams1 var) }
             //return response
             trace "exists: response = %A" response
             match response.result with
@@ -326,12 +326,12 @@ type Nvim() =
         }
 
     member __.set_var (var: string) (value: obj) =
-        m_call { method = "nvim_set_var"; parameters = mkparams2 var value }
+        nvim.call { method = "nvim_set_var"; parameters = mkparams2 var value }
 
     member __.command (cmd: string) =
-        m_call { method = "nvim_command"; parameters = mkparams1 cmd }
+        nvim.call { method = "nvim_command"; parameters = mkparams1 cmd }
 
-    member nvim.``command!`` (name: string) (nargs: int) (cmd: string) =
+    member __.``command!`` (name: string) (nargs: int) (cmd: string) =
         let nargs = 
             match nargs with
             | 0 -> "0"
@@ -340,23 +340,23 @@ type Nvim() =
 
         nvim.command(sprintf "command! -nargs=%s %s %s" nargs name cmd)
 
-    member nvim.edit (file: string) =
+    member __.edit (file: string) =
         nvim.command ("edit " + file)
 
-    member nvim.call = m_call
+    member __.call req = Async.AwaitTask(m_call req)
 
-    member nvim.quitall () =
+    member __.quitall () =
         nvim.command "confirm quitall"
 
     member __.set_client_info (name: string) (version: hashmap<string,string>) (_type: string) (methods: hashmap<string,string>) (attributes: hashmap<string,string>) =
-        m_call { 
+        nvim.call { 
             method = "nvim_set_client_info"
             parameters = mkparams5 name version _type methods attributes
         }
 
     member __.list_chans() =
-        task {
-            let! rsp = m_call { method = "nvim_list_chans"; parameters = [||] }
+        async {
+            let! rsp = nvim.call { method = "nvim_list_chans"; parameters = [||] }
 
             match rsp.result with
             | Ok(ObjArray arr) -> return arr
