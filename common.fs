@@ -162,7 +162,7 @@ let newProcess prog args stderrenc =
   p.EnableRaisingEvents <- true
   // in case the parent crashed and we happen to be running Windows(tm)...
   // TODO need further investigation.
-  ignore <| AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> p.Kill(true))
+  ignore <| AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> try p.Kill(true) with _ -> ())
   p
 
 [<AutoOpen>]

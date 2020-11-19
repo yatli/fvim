@@ -527,6 +527,8 @@ let Start (serveropts, norc, debugMultigrid) =
     trace "commencing early initialization..."
 
     async {
+        do! Async.SwitchToNewThread()
+
         let! api_info = Async.AwaitTask(nvim.call { method = "nvim_get_api_info"; parameters = [||] })
         let api_query_result = 
             match api_info.result with
@@ -663,7 +665,9 @@ let Start (serveropts, norc, debugMultigrid) =
         if not norc then
           let! _ = Async.AwaitTask(nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | execute \"autocmd VimEnter * runtime! ginit.vim\" | endif")
           ()
-    } |> Async.RunSynchronously
+    }
+    |> Async.Start
+    |> ignore
 
 let Flush =
     ev_flush.Publish

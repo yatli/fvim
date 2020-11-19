@@ -37,13 +37,10 @@ type MsgPackFormatter(resolver: IFormatterResolver) =
     member x.Deserialize(bytes: byte[] , offset: int, formatterResolver: IFormatterResolver , readSize: byref<int>) =
       if MessagePackBinary.GetMessagePackType(bytes, offset) = MessagePackType.Extension then
         let result = MessagePackBinary.ReadExtensionFormat(bytes, offset, &readSize)
-        if result.TypeCode = 1y then 
-          let mutable _size = 0
-          m_formatter.Deserialize(result.Data, 0, formatterResolver, &_size)
-        else 
-          m_formatter.Deserialize(bytes, offset, formatterResolver, &readSize)
+        let mutable _size = 0
+        m_formatter.Deserialize(result.Data, 0, formatterResolver, &_size)
       else
-          m_formatter.Deserialize(bytes, offset, formatterResolver, &readSize)
+        m_formatter.Deserialize(bytes, offset, formatterResolver, &readSize)
 
 type MsgPackResolver() =
   static let s_formatter = box(MsgPackFormatter(MessagePack.Resolvers.StandardResolver.Instance))

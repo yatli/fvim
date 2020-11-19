@@ -31,6 +31,7 @@ type Event =
 | Notification of nreq: Request
 | Error        of emsg: string
 | Crash        of ccode: int32
+| UnhandledException of ex: exn
 | Exit
 
 let private _stateChangeEvent = Event<string>()
@@ -278,6 +279,8 @@ let msg_dispatch =
       trace "rpc" "neovim crashed with code %d" code
       _crashcode <- code
       failwithf "neovim crashed"
+    | UnhandledException ex -> 
+      raise ex
     | other -> 
       trace "rpc" "unrecognized event: %A" other
 

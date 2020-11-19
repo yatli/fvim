@@ -90,6 +90,8 @@ type Nvim() =
             if id < 0 then
               proc.Kill()
               failwithf "Remote daemon closed the connection with error code %d" id
+            else
+              trace "Connected to session %d" id
             TunneledSession proc
 
     member this.start opts =
@@ -129,28 +131,33 @@ type Nvim() =
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
             Task.Factory.StartNew(fun () ->
                 trace "begin read loop"
-                let mutable ex = false
-                while not ex && not cancel.IsCancellationRequested do
+                let mutable channelClosed = false
+                let mutable unhandledException = None
+                while not channelClosed && not cancel.IsCancellationRequested && unhandledException.IsNone do
                    try
                        let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
                        ob.OnNext(data)
                    with 
-                   | :? InvalidOperationException 
+                   | :? InvalidOperationException as _ex when _ex.Message = "Invalid MessagePack code was detected, code:-1"
+                        -> channelClosed <- true
                    | :? System.IO.IOException
                    | :? System.Net.Sockets.SocketException
                    | :? ObjectDisposedException
-                       as _ex -> ex <- true
+                        -> channelClosed <- true
+                   | ex -> unhandledException <- Some ex
 
-                let ec = serverExitCode()
-                if ec.IsSome then
-                  let code = ec.Value
+                match serverExitCode(), unhandledException with
+                | Some code, _ ->
                   trace "end read loop: process exited, code = %d" code
                   if code <> 0 then
                     m_cancelSrc.Cancel()
                     ob.OnNext([|box (Crash code)|])
                   else
                     ob.OnNext([|box Exit|])
-                else
+                | _, Some ex ->
+                  trace "end read loop: unhandled exception."
+                  ob.OnNext([|box (UnhandledException ex)|])
+                | _ ->
                   trace "end read loop."
                   ob.OnNext([|box Exit|])
                 ob.OnCompleted()

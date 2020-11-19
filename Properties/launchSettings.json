@@ -1,8 +1,7 @@
 {
   "profiles": {
     "fvim": {
-      "commandName": "Project",
-      "commandLineArgs": "--daemon"
+      "commandName": "Project"
     },
     "norc": {
       "commandName": "Project",
