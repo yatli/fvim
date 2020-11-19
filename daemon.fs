@@ -1,19 +1,19 @@
 module FVim.daemon
 
-open System
-open System.IO.Pipes
-open System.Runtime.InteropServices
-open System.Diagnostics
-open System.Threading.Tasks
-
-open FSharp.Span.Utils
-open FSharp.Json
-
 open log
 open common
 open getopt
-open System.Security.Principal
+
+open FSharp.Span.Utils
+open System
+open System.Diagnostics
 open System.IO
+open System.IO.Pipes
+open System.Runtime.InteropServices
+open System.Security.Principal
+open System.Text.Json
+open System.Text.Json.Serialization
+open System.Threading.Tasks
 
 type Session =
   {
@@ -28,6 +28,10 @@ type Session =
 let private sessions = hashmap []
 let mutable private sessionId = 0
 let FVR_MAGIC = [| 0x46uy ; 0x56uy ; 0x49uy ; 0x4Duy |]
+let private jsonopts = JsonSerializerOptions()
+jsonopts.Converters.Add(JsonFSharpConverter())
+let inline private serialize x = JsonSerializer.Serialize(x, jsonopts)
+let inline private deserialize<'a> (x: string) = JsonSerializer.Deserialize<'a>(x, jsonopts)
 
 let inline private trace x = trace "daemon" x
 
@@ -121,13 +125,13 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
       let request: FVimRemoteVerb = 
         (rbuf, 0, len)
         |> Text.Encoding.UTF8.GetString
-        |> Json.deserialize
+        |> deserialize
       trace "Payload=%A" request
       let session = 
         match request with
         | NewSession args -> newSession nvim stderrenc args pipe
         | AttachTo id -> attachSession id pipe
-        | AttachFirst _ -> attachFirstSession pipe
+        | AttachFirst -> attachFirstSession pipe
 
       match session with
       | Error errno -> 
@@ -165,7 +169,7 @@ let daemon (pname: string option) (nvim: string) (stderrenc: Text.Encoding) =
 let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
   let payload = 
     verb
-    |> Json.serialize
+    |> serialize
     |> Text.Encoding.UTF8.GetBytes
   let intbuf = fromInt32LE payload.Length
   try

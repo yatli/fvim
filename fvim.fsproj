@@ -84,8 +84,8 @@
     <PackageReference Include="FSharp.Control.Reactive" Version="4.4.2" />
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
     <PackageReference Include="FSharp.Core" Version="5.0" />
-    <PackageReference Include="FSharp.Json" Version="0.4.0" />
     <PackageReference Include="FSharp.Span.Utils" Version="1.1.3353.13900" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="0.14.8" />
     <PackageReference Include="MessagePack" Version="1.9.11" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.7.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">

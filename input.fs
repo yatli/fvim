@@ -272,7 +272,7 @@ let rec (|ModifiersPrefix|_|) (x: InputEvent) =
     | TextInput _ -> None
     | _ -> None
 
-let mutable _imeArmed = false
+let mutable private _imeArmed = false
 
 let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
     let inputClassifier = 
@@ -307,14 +307,12 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
     let mouse = inputClassifier |> Observable.choose (function | Choice2Of3 x -> Some x | _ -> None)
     Disposables.compose [
         key |> Observable.subscribe(fun x -> 
-            nvim.input x
-            |> ignore
+            nvim.input x |> ignore
         )
         mouse |> Observable.subscribe(fun (grid, (but, act, r, c, rep), mods) -> 
             let mods = match mods with Some mods -> mods | _ -> ""
             for _ in 1..rep do
-                nvim.input_mouse but act mods grid r c
-                |> ignore
+                nvim.input_mouse but act mods grid r c |> ignore
         )
     ]
 

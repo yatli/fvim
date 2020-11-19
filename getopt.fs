@@ -10,7 +10,7 @@ type NeovimRemoteEndpoint =
 type FVimRemoteVerb =
     | AttachTo of id: int
     | NewSession of args: string list
-    | AttachFirst of args: int // FSharp.Json bug
+    | AttachFirst 
     // | Interactive
 
 type FVimRemoteTransport =
@@ -125,7 +125,7 @@ let parseOptions (args: string[]) =
                 else Local
               let verb = 
                 match fvrVerb.ToLowerInvariant() with
-                | "attach" | "a" -> AttachFirst 0
+                | "attach" | "a" -> AttachFirst
                 | "new" | "n" -> NewSession(argsL)
                 | v -> AttachTo(int v)
               let files = 

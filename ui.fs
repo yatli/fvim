@@ -159,7 +159,7 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     match w with
     | CharType.Wide  -> _get wfont
     | CharType.Powerline
-    | CharType.Nerd when states.font_nonerd -> nerd_typeface
+    | CharType.Nerd when not states.font_nonerd -> nerd_typeface
     | CharType.Emoji -> emoji_typeface
     | _              -> _get font
 
@@ -229,7 +229,9 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
 
     //  emoji, nerd params calibration hack...
     let isEmoji = emoji_typeface = font
+    let isNerd = nerd_typeface = font
     let fontSize = if isEmoji then fontSize - 1.0 else fontSize
+    let clip = clip || isNerd
 
     let glyphTypeface = font.GlyphTypeface
     let px_per_unit = fontSize /  float glyphTypeface.DesignEmHeight
