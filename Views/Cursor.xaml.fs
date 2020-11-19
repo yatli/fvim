@@ -49,8 +49,7 @@ type Cursor() as this =
             true
         else false
 
-    let _buffer_glyph = [| 0u |]
-    let _buffer_glyph_mem = ReadOnlyMemory(_buffer_glyph)
+    let _buffer_glyph: uint[] = Array.zeroCreate 16
 
     let cursorTimerRun action time =
         if cursor_timer <> null then
@@ -142,8 +141,10 @@ type Cursor() as this =
             let bounds = Rect(this.Bounds.Size)
             let render_block (ctx: 'a) =
                 if this.IsActive then
-                    _buffer_glyph.[0] <- this.ViewModel.text.Codepoint
-                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, Unshaped _buffer_glyph_mem, typeface, this.ViewModel.fontSize, true)
+                    let mutable _len = 0
+                    Rune.feed(this.ViewModel.text, _buffer_glyph, &_len)
+                    let span = Unshaped <| ReadOnlyMemory(_buffer_glyph, 0, _len)
+                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, span, typeface, this.ViewModel.fontSize, true)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(Brushes.Transparent, Pen(brush), RoundedRect(bounds))

@@ -2,6 +2,7 @@
 
 open FVim.ui
 open FVim.wcwidth
+open FVim.def
 
 open ReactiveUI
 open Avalonia
@@ -81,8 +82,8 @@ type Editor() as this =
     let px = pt * grid_scale
     Point(Math.Ceiling px.X, Math.Ceiling px.Y) / grid_scale
 
-  let mutable _render_glyph_buf = [||]
-  let mutable _render_char_buf = [||]
+  let mutable _render_glyph_buf: uint[] = [||]
+  let mutable _render_char_buf: char[] = [||]
 
   let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
@@ -92,12 +93,18 @@ type Editor() as this =
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
     let typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
+    let glyph_type = wswidth grid_vm.[row, colend - 1].text
     let nr_col =
-      match wswidth grid_vm.[row, colend - 1].text with
+      match glyph_type with
       | CharType.Wide
       | CharType.Nerd
       | CharType.Emoji -> colend - col + 1
       | _ -> colend - col
+    let clip = 
+      match glyph_type with
+      | CharType.Nerd
+      | CharType.Emoji -> true
+      | _ -> issym
 
     let topLeft = grid_vm.GetPoint row col
     let bottomRight = topLeft + grid_vm.GetPoint 1 nr_col
@@ -109,26 +116,19 @@ type Editor() as this =
           _render_char_buf <- Array.zeroCreate ((colend - col) * 2)
         let mutable _len = 0
         for i = col to colend - 1 do
-          match grid_vm.[row, i].text with
-          | { c1 = c1; c2 = c2; isSurrogatePair = true } ->
-            _render_char_buf.[_len] <- c1
-            _render_char_buf.[_len + 1] <- c2
-            _len <- _len + 2
-          | { c1 = c1 } ->
-            _render_char_buf.[_len] <- c1
-            _len <- _len + 1
-
+          Rune.feed(grid_vm.[row, i].text, _render_char_buf, &_len)
         Shaped <| ReadOnlyMemory(_render_char_buf, 0, _len)
       else
-        if _render_glyph_buf.Length < colend - col then
-          _render_glyph_buf <- Array.zeroCreate (colend - col)
+        if _render_glyph_buf.Length < (colend - col) * 2 then
+          _render_glyph_buf <- Array.zeroCreate ((colend - col)*2)
+        let mutable _len = 0
         for i = col to colend - 1 do
-          _render_glyph_buf.[i - col] <- grid_vm.[row, i].text.Codepoint
+          Rune.feed(grid_vm.[row, i].text, _render_glyph_buf, &_len)
 
-        Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, colend - col)
+        Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, _len)
 
     try
-        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize, issym)
+        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize, clip)
     with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.

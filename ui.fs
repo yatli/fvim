@@ -227,6 +227,10 @@ type TextRenderSpan =
 
 let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float, clip: bool) =
 
+    //  emoji, nerd params calibration hack...
+    let isEmoji = emoji_typeface = font
+    let fontSize = if isEmoji then fontSize - 1.0 else fontSize
+
     let glyphTypeface = font.GlyphTypeface
     let px_per_unit = fontSize /  float glyphTypeface.DesignEmHeight
 
@@ -240,8 +244,15 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
     let ascent = float glyphTypeface.Ascent * px_per_unit
     //  Text drawing is done at the coordinate of the baseline.
     let baseline = region.Top + ceil((total_padding / 2.0) - ascent)
-    (*printfn "scale=%A pad=%A base=%A region=%A" scale total_padding baseline region*)
-    let fontPos = Point(region.Left, baseline)
+    //  If emoji is drawn with the above algorithm, then it 
+    //  adds top and left paddings proportionally to font size
+    let fontPos = 
+      let p = Point(region.Left, baseline)
+      if not isEmoji then p
+      else
+        let emoji_pad = fontSize * 0.1
+        p - Point(emoji_pad * 1.5 , emoji_pad)
+
     let sp_thickness = float glyphTypeface.UnderlineThickness * px_per_unit
     let underline_pos = float glyphTypeface.UnderlinePosition * px_per_unit
 

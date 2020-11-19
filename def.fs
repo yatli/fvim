@@ -103,18 +103,43 @@ type RgbAttr =
 
 [<Struct>]
 type Rune =
-    {
-        c1: char
-        c2: char
-        isSurrogatePair: bool
-    }
+    | SingleChar of chr: char
+    | SurrogatePair of c1: char * c2: char
+    | Composed of Rune[]
     with
-    override x.ToString() = if x.isSurrogatePair then sprintf "%c%c" x.c1 x.c2 else x.c1.ToString()
+    override x.ToString() = 
+      match x with
+      | SingleChar c -> c.ToString()
+      | SurrogatePair(c1, c2) -> sprintf "%c%c" c1 c2
+      | Composed str -> String.Join("", str)
     member x.Codepoint with get() = 
-        if x.isSurrogatePair 
-        then 0x10000u + (uint x.c1 - 0xD800u) * 0x400u + (uint x.c2 - 0xDC00u) 
-        else uint x.c1
-    static member empty = { c1 = ' '; c2 = char 0; isSurrogatePair = false }
+      match x with
+      | SingleChar c -> uint c
+      | SurrogatePair(c1, c2) -> 0x10000u + (uint c1 - 0xD800u) * 0x400u + (uint c2 - 0xDC00u) 
+      | Composed _ -> 0u //TODO
+        (*else uint x.content.[0]*)
+    static member empty = SingleChar ' '
+    static member feed (x: Rune, buf: char[], len: byref<int>) =
+      match x with
+      | SurrogatePair(c1, c2) ->
+        buf.[len] <- c1
+        buf.[len + 1] <- c2
+        len <- len + 2
+      | SingleChar c1 ->
+        buf.[len] <- c1
+        len <- len + 1
+      | Composed xs ->
+        for x in xs do
+          Rune.feed(x, buf, &len)
+    static member feed (x: Rune, buf: uint[], len: byref<int>) =
+      match x with
+      | SurrogatePair _ 
+      | SingleChar _ as c ->
+        buf.[len] <- c.Codepoint
+        len <- len + 1
+      | Composed xs -> 
+        for x in xs do
+          Rune.feed(x, buf, &len)
 
 [<Struct>]
 type GridCell = 
@@ -505,11 +530,21 @@ let parse_hi_attr (x: obj) =
         -> Some {id = id; rgb_attr = rgb; cterm_attr = cterm; info = info }
     | _ -> None
 
-let (|Rune|_|) (x:obj) =
+let rec (|Rune|_|) (x:obj) =
     match x with
-    | :? string as x when x.Length = 0 -> Some Rune.empty
-    | :? string as x when x.Length = 1 -> Some { c1 = x.[0]; c2 = char 0; isSurrogatePair = false }
-    | :? string as x when x.Length = 2 -> Some { c1 = x.[0]; c2 = x.[1]; isSurrogatePair = true }
+    | :? string as x ->
+      if x.Length = 0 then Some Rune.empty
+      elif x.Length = 1 then Some (SingleChar x.[0])
+      elif x.Length = 2 && Char.IsSurrogatePair(x, 0) then Some(SurrogatePair(x.[0], x.[1]))
+      else
+        let xs = ResizeArray()
+        let mutable hc = ' '
+        for c in x do
+          if Char.IsLowSurrogate(c) then xs.Add(SurrogatePair(hc, c))
+          elif Char.IsHighSurrogate(c) then ()
+          else xs.Add(SingleChar c)
+          hc <- c
+        Some(Composed(xs.ToArray()))
     | _ -> failwithf "Rune parse failure: %O" x
 
 let parse_grid_cell (x: obj) =

@@ -564,7 +564,14 @@ let wcwidth(ucs: uint) =
         (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
         CharType.Narrow
 
-let wswidth (x: Rune) = wcwidth x.Codepoint
+let wswidth (x: Rune) = 
+  match x with
+  | SingleChar _
+  | SurrogatePair _ -> wcwidth x.Codepoint
+  | Composed xs -> 
+    match wcwidth xs.[0].Codepoint with
+    | CharType.Emoji -> CharType.Emoji
+    | _ -> CharType.Wide
 
 /// <summary>
 /// true if the string could be a part of a programming
@@ -572,11 +579,11 @@ let wswidth (x: Rune) = wcwidth x.Codepoint
 /// </summary>
 let isProgrammingSymbol = 
     function
-    | { isSurrogatePair = true } -> false
-    | { c1 = c1 } when System.Char.IsWhiteSpace c1 -> false 
+    | SingleChar c1 when System.Char.IsWhiteSpace c1 -> false 
     // disable the frequent symbols that's too expensive to draw
-    | { c1 = '\'' | '"' | '{' | '}' } -> false
-    | { c1 = chr } -> System.Char.IsSymbol chr || System.Char.IsPunctuation chr
+    | SingleChar('\'' | '"' | '{' | '}') -> false
+    | SingleChar chr -> System.Char.IsSymbol chr || System.Char.IsPunctuation chr
+    | _ -> false
 
 let CharTypeWidth(x: CharType): int =
     match x with
