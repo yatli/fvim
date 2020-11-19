@@ -32,7 +32,7 @@ let fontConfig() =
     trace "fontConfig: guifont=%s guifontwide=%s" guifont guifontwide
     fontconfig_ev.Trigger()
 
-let _ = States.Register.Watch "font" fontConfig
+let _ = states.register.watch "font" fontConfig
 
 let setHighlight x =
     if hi_defs.Length < x.id + 1 then
@@ -62,7 +62,7 @@ let GetDrawAttrs hlid =
 
     let alpha =
       if bg = default_bg then 0uy
-      else byte(States.background_altopacity * 255.0)
+      else byte(states.background_altopacity * 255.0)
     bg <- Avalonia.Media.Color(alpha, bg.R, bg.G, bg.B)
     fg, bg, sp, attrs
 

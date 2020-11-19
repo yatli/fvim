@@ -1,7 +1,7 @@
 ﻿module FVim.def
 
-open FVim.log
-open FVim.common
+open log
+open common
 
 open Avalonia.Media
 open System

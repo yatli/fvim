@@ -1,4 +1,4 @@
-module FVim.Shell
+module FVim.shell
 //  Provides shell integration for supported platforms
 //
 

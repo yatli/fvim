@@ -4,17 +4,15 @@ open def
 open getopt
 open log
 open common
-open States
-open Daemon
+open states
+open daemon
 
 open MessagePack
 
 open System
 open System.Diagnostics
 open System.Net.Sockets
-open System.Text
 open System.Collections.Concurrent
-open System.Collections.Generic
 open System.Security.Principal
 open System.Threading.Tasks
 open System.Threading

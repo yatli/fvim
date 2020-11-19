@@ -13,8 +13,8 @@ open MessagePack.Resolvers
 
 open getopt
 open common
-open Shell
-open Daemon
+open shell
+open daemon
 open MessagePack.Formatters
 
 // Avalonia configuration, don't remove; also used by visual designer.
@@ -54,15 +54,15 @@ type MsgPackResolver() =
 
 let startMainWindow app serveropts =
     let app = app()
-    Model.Start serveropts
+    model.Start serveropts
 
     let cfg = config.load()
     let cwd = Environment.CurrentDirectory |> Path.GetFullPath
     let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
     workspace 
     >>= fun workspace -> workspace.Mainwin.BackgroundComposition
-    >>= fun comp -> States.parseBackgroundComposition(box comp)
-    >>= fun comp -> States.background_composition <- comp; None
+    >>= fun comp -> states.parseBackgroundComposition(box comp)
+    >>= fun comp -> states.background_composition <- comp; None
     |> ignore
 
     let mainwin = new MainWindowViewModel(workspace)
@@ -75,14 +75,14 @@ let startMainWindow app serveropts =
       if x + w < 0 || y + h < 0
       then 0, 0, 800, 600
       else x, y, w, h
-    config.save cfg x y w h (mainwin.WindowState) (States.backgroundCompositionToString States.background_composition) mainwin.CustomTitleBar
+    config.save cfg x y w h (mainwin.WindowState) (states.backgroundCompositionToString states.background_composition) mainwin.CustomTitleBar
     0
 
 let startCrashReportWindow app ex = 
     let app = app()
     FVim.log.trace "main" "displaying crash dialog"
     FVim.log.trace "main" "exception: %O" ex
-    let code, msgs = States.get_crash_info()
+    let code, msgs = states.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)
     let win = new CrashReport(DataContext = crash)
     // there may be messages already posted into the sync context,

@@ -130,7 +130,7 @@ let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, 
 let private InvalidateFontCache () =
   fontcache.Clear()
 
-ignore(States.Register.Watch "font" InvalidateFontCache)
+ignore(states.register.watch "font" InvalidateFontCache)
 
 let GetReverseColor (c: Color) =
     let r = 255uy - c.R
@@ -146,7 +146,7 @@ let GetTypeface(txt, italic, bold, font, wfont) =
         | true, typeface -> typeface
         | _ ->
             trace "ui" "GetTypeface: allocating new typeface %s:%b:%b" fname italic bold
-            let weight   = if bold then States.font_weight_bold else States.font_weight_normal
+            let weight   = if bold then states.font_weight_bold else states.font_weight_normal
             let slang    = if italic then FontStyle.Italic else FontStyle.Normal
             let typeface = 
                 try Typeface(fname, slang, weight)
@@ -159,7 +159,7 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     match w with
     | CharType.Wide  -> _get wfont
     | CharType.Powerline
-    | CharType.Nerd when not States.font_nonerd -> nerd_typeface
+    | CharType.Nerd when states.font_nonerd -> nerd_typeface
     | CharType.Emoji -> emoji_typeface
     | _              -> _get font
 
@@ -183,10 +183,10 @@ let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scali
 
         let w' = bounds.Width
         let h'' = 
-            match States.font_lineheight with
-            | States.Absolute lh -> lh
-            | States.Default -> float typeface.LineHeight * u'
-            | States.Add lh -> float typeface.LineHeight * u' + lh
+            match states.font_lineheight with
+            | states.Absolute lh -> lh
+            | states.Default -> float typeface.LineHeight * u'
+            | states.Add lh -> float typeface.LineHeight * u' + lh
         let h' = round(h'' * scaling) / scaling
         let h' = max h' 1.0
 
@@ -201,7 +201,7 @@ let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scali
             h <- h'
             s <- s'
 
-    if States.font_autosnap then [-50 .. 50] else [0] 
+    if states.font_autosnap then [-50 .. 50] else [0] 
     |> List.iter search
 
     s, w, h
@@ -287,7 +287,7 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
     if clip then ctx.PopClip ()
 
     //  Text bounding box drawing:
-    if States.font_drawBounds then
+    if states.font_drawBounds then
         let sizevec = Point(glyphrun.Size.Width, glyphrun.Size.Height)
         ctx.DrawRectangle(Brushes.Transparent, Pen(_render_brush), RoundedRect(Rect(region.TopLeft, sizevec + region.TopLeft)))
 

@@ -46,7 +46,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
 
     let updateBackgroundImage() =
         try
-            let path = States.background_image_file
+            let path = states.background_image_file
             let path = if path.StartsWith("~/") then
                           Path.Join(
                             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -58,10 +58,10 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, m_bgimg_src.Size.Width, "BackgroundImageW")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_h, m_bgimg_src.Size.Height, "BackgroundImageH")
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_opacity, States.background_image_opacity, "BackgroundImageOpacity")
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_halign, States.background_image_halign, "BackgroundImageHAlign")
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_valign, States.background_image_valign, "BackgroundImageVAlign")
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_stretch, States.background_image_stretch, "BackgroundImageStretch")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_opacity, states.background_image_opacity, "BackgroundImageOpacity")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_halign, states.background_image_halign, "BackgroundImageHAlign")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_valign, states.background_image_valign, "BackgroundImageVAlign")
+            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_stretch, states.background_image_stretch, "BackgroundImageStretch")
         with _ -> 
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, null, "BackgroundImage")
 
@@ -80,11 +80,11 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             | _ -> ()
         | None -> ()
         this.Watch [
-            States.Register.Notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
-            States.Register.Notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
-            States.Register.Watch "background.image"  (fun _ -> updateBackgroundImage())
+            states.register.notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+            states.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
+            states.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
-        Model.OnWindowReady this
+        model.OnWindowReady this
 
     member __.MainGrid = mainGrid
 

@@ -41,7 +41,7 @@ type Editor() as this =
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: EditorViewModel = Unchecked.defaultof<_>
 
-  let mutable m_debug = States.ui_multigrid
+  let mutable m_debug = states.ui_multigrid
 
   // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
@@ -111,7 +111,7 @@ type Editor() as this =
     let bg_region = Rect(topLeft, bottomRight)
 
     let txt =
-      if nr_col > 1 && nr_col < 5 && issym && States.font_ligature then
+      if nr_col > 1 && nr_col < 5 && issym && states.font_ligature then
         if _render_char_buf.Length < (colend - col) * 2 then
           _render_char_buf <- Array.zeroCreate ((colend - col) * 2)
         let mutable _len = 0
@@ -203,7 +203,7 @@ type Editor() as this =
         Observable.interval(TimeSpan.FromMilliseconds 100.0)
         |> Observable.firstIf(fun _ -> this.IsInitialized && vm.Height > 0.0 && vm.Width > 0.0)
         |> Observable.subscribe(fun _ ->
-             Model.OnGridReady(vm :> IGridUI)
+             model.OnGridReady(vm :> IGridUI)
              if vm.Focusable then
                ignore <| Dispatcher.UIThread.InvokeAsync(this.Focus))
 
@@ -339,7 +339,7 @@ type Editor() as this =
         this.Bind(Canvas.LeftProperty, Binding("X"))
         this.Bind(Canvas.TopProperty, Binding("Y"))
 
-        States.Register.Watch "font" (fun () ->
+        states.register.watch "font" (fun () ->
           if grid_vm <> Unchecked.defaultof<_> then
             grid_vm.MarkAllDirty()
             this.InvalidateVisual())

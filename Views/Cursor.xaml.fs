@@ -89,13 +89,13 @@ type Cursor() as this =
 
     let setCursorAnimation() =
         let transitions = Transitions()
-        if States.cursor_smoothblink && this.IsActive then 
+        if states.cursor_smoothblink && this.IsActive then 
             let blink_transition = DoubleTransition()
             blink_transition.Property <- Cursor.OpacityProperty
             blink_transition.Duration <- TimeSpan.FromMilliseconds(150.0)
             blink_transition.Easing   <- Easings.LinearEasing()
             transitions.Add(blink_transition)
-        if States.cursor_smoothmove && this.IsActive then
+        if states.cursor_smoothmove && this.IsActive then
             let x_transition = DoubleTransition()
             x_transition.Property <- Canvas.LeftProperty
             x_transition.Duration <- TimeSpan.FromMilliseconds(80.0)
@@ -106,7 +106,7 @@ type Cursor() as this =
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
             transitions.Add(y_transition)
-        trace "cursor" "setCursorAnimation: blink=%b, move=%b" States.cursor_smoothblink States.cursor_smoothmove
+        trace "cursor" "setCursorAnimation: blink=%b, move=%b" states.cursor_smoothblink states.cursor_smoothmove
         this.Transitions <- transitions
         ()
 
@@ -117,7 +117,7 @@ type Cursor() as this =
             |> Observable.subscribe(fun _ -> 
               setCursorAnimation()
               this.InvalidateVisual())
-            States.Register.Watch "cursor" setCursorAnimation
+            states.register.watch "cursor" setCursorAnimation
         ] 
         AvaloniaXamlLoader.Load(this)
 

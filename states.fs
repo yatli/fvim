@@ -1,4 +1,4 @@
-module FVim.States
+module FVim.states
 
 open common
 open SkiaSharp
@@ -284,9 +284,9 @@ let msg_dispatch =
     | other -> 
       trace "rpc" "unrecognized event: %A" other
 
-module Register =
+module register =
     /// Register an rpc handler.
-    let Request name fn = 
+    let request name fn = 
         requestHandlers.Add(name, fun objs ->
             try fn objs
             with x -> 
@@ -294,22 +294,22 @@ module Register =
                 Task.FromResult {  result = Result.Error(box x) })
 
     /// Register an event handler.
-    let Notify name (fn: obj[] -> unit) = 
+    let notify name (fn: obj[] -> unit) = 
         (getNotificationEvent name).Publish.Subscribe(fun objs -> 
             try fn objs
             with x -> error "Notify" "exception thrown: %A" <| x.ToString())
 
     /// Watch for registered state
-    let Watch (name: string) fn =
+    let watch (name: string) fn =
         _stateChangeEvent.Publish
         |> Observable.filter (fun x -> x.StartsWith(name))
         |> Observable.subscribe (fun _ -> fn())
 
     /// Registers a state variable. Raises notification on change.
-    let Prop<'T> (parser: obj -> 'T option) (fullname: string) =
+    let prop<'T> (parser: obj -> 'T option) (fullname: string) =
         let section = fullname.Split(".").[0]
         let fieldName = fullname.Replace(".", "_")
-        Notify fullname (fun v ->
+        notify fullname (fun v ->
             match v with
             | [| v |] ->
                 match parser(v) with
@@ -319,7 +319,7 @@ module Register =
                 | None -> ()
             | _ -> ())
         |> ignore
-        Request fullname (fun _ -> task { 
+        request fullname (fun _ -> task { 
             let result = 
                 match Helper.GetProp fieldName with
                 | Some v -> Ok v
@@ -327,9 +327,9 @@ module Register =
             return { result=result }
         })
 
-    let Bool = Prop<bool> (|Bool|_|)
-    let String = Prop<string> (|String|_|)
-    let Float = Prop<float> (function
+    let bool = prop<bool> (|Bool|_|)
+    let string = prop<string> (|String|_|)
+    let float = prop<float> (function
         | Integer32 x -> Some(float x)
         | :? float as x -> Some x
         | _ -> None)

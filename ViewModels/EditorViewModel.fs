@@ -299,10 +299,10 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_popupmenu_vm.Selection <- i
 
     let selectPopupMenuActive i =
-        Model.SelectPopupMenuItem i true false
+        model.SelectPopupMenuItem i true false
 
     let commitPopupMenu i =
-        Model.SelectPopupMenuItem i true true
+        model.SelectPopupMenuItem i true true
 
     let showPopupMenu grid (items: CompleteItem[]) selected row col =
         if grid <> _gridid then
@@ -331,7 +331,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let h = m_popupmenu_vm.Height / m_glyphsize.Height
         let r = m_popupmenu_vm.Y / m_glyphsize.Height
         let c = m_popupmenu_vm.X / m_glyphsize.Width
-        Model.SetPopupMenuPos w h r c
+        model.SetPopupMenuPos w h r c
 
     let redraw(cmd: RedrawCommand) =
         //trace "%A" cmd
@@ -423,7 +423,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
                 if m_cursor_vm.ingrid then 
                     setCursorEnabled en)
 
-            States.Register.Watch "font" fontConfig
+            states.register.watch "font" fontConfig
 
             this.ObservableForProperty(fun x -> x.IsFocused)
             |> Observable.subscribe (fun x ->

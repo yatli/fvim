@@ -33,16 +33,16 @@ type MainWindow() as this =
 
     let mutable m_bgcolor: Color = Color()
     let mutable m_bgopacity: float = 1.0
-    let mutable m_bgcomp = States.NoComposition
+    let mutable m_bgcomp = states.NoComposition
 
     let configBackground() =
-        m_bgcomp <- States.background_composition
-        m_bgopacity <- States.background_opacity
+        m_bgcomp <- states.background_composition
+        m_bgopacity <- states.background_opacity
         let comp =
           match m_bgcomp with
-          | States.Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
-          | States.Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
-          | States.Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
+          | states.Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+          | states.Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
+          | states.Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
           | _                  -> ui.SolidBackground(m_bgopacity, m_bgcolor)
         trace "mainwindow" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
@@ -128,27 +128,27 @@ type MainWindow() as this =
               this.InvalidateVisual()
 
         this.Watch [
-            this.Closing.Subscribe (fun e -> Model.OnTerminating e)
-            this.Closed.Subscribe  (fun _ -> Model.OnTerminated())
+            this.Closing.Subscribe (fun e -> model.OnTerminating e)
+            this.Closed.Subscribe  (fun _ -> model.OnTerminated())
             this.Bind(XProp, Binding("X", BindingMode.TwoWay))
             this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
-            this.GotFocus.Subscribe (fun _ -> Model.OnFocusGained())
-            this.LostFocus.Subscribe (fun _ -> Model.OnFocusLost())
+            this.GotFocus.Subscribe (fun _ -> model.OnFocusGained())
+            this.LostFocus.Subscribe (fun _ -> model.OnFocusLost())
 
-            States.Register.Watch "background.composition" configBackground
-            States.Register.Watch "background.opacity" configBackground
-            States.Register.Notify "DrawFPS" (fun [| Bool(v) |] -> 
+            states.register.watch "background.composition" configBackground
+            states.register.watch "background.opacity" configBackground
+            states.register.notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
 
-            Model.Flush |> Observable.subscribe flushop
+            model.Flush |> Observable.subscribe flushop
         ]
 
         this.AddHandler(DragDrop.DropEvent, (fun _ (e: DragEventArgs) ->
             if e.Data.Contains(DataFormats.FileNames) then
-                Model.EditFiles <| e.Data.GetFileNames()
+                model.EditFiles <| e.Data.GetFileNames()
             elif e.Data.Contains(DataFormats.Text) then
-                Model.InsertText <| e.Data.GetText()
+                model.InsertText <| e.Data.GetText()
         ))
 
         this.AddHandler(DragDrop.DragOverEvent, (fun _ (e:DragEventArgs) ->

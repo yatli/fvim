@@ -1,4 +1,4 @@
-module FVim.Daemon
+module FVim.daemon
 
 open System
 open System.IO.Pipes
@@ -6,7 +6,6 @@ open System.Runtime.InteropServices
 open System.Diagnostics
 open System.Threading.Tasks
 
-open FSharp.Control.Tasks.V2.ContextSensitive
 open FSharp.Span.Utils
 open FSharp.Json
 
