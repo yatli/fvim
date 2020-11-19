@@ -698,39 +698,29 @@ let OnGridReady(gridui: IGridUI) =
         trace 
               "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
-        task {
-            let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
-            ()
-        } |> run
+        nvim.ui_attach gridui.GridWidth gridui.GridHeight
+        |> runT
 
 let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
     trace "SelectPopupMenuItem: index=%d insert=%b finish=%b" index insert finish
-    task {
-        let insert = if insert then "v:true" else "v:false"
-        let finish = if finish then "v:true" else "v:false"
-        let! _ = nvim.command (sprintf "call nvim_select_popupmenu_item(%d, %s, %s, {})" index insert finish)
-        in ()
-    } |> run
+    let insert = if insert then "v:true" else "v:false"
+    let finish = if finish then "v:true" else "v:false"
+    nvim.command (sprintf "call nvim_select_popupmenu_item(%d, %s, %s, {})" index insert finish)
+    |> runT
 
 let SetPopupMenuPos width height row col =
     trace "SetPopupMenuPos: w=%f h=%f r=%f c=%f" width height row col
-    task {
-      let! _ = nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
-      in ()
-    } |> run
+    nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
+    |> runT
 
 let OnFocusLost() =
-    task { 
-      let! _ = nvim.command "if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"
-      in ()
-    } |> run
+    nvim.command "if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"
+    |> runT
 
 // see: https://github.com/equalsraf/neovim-qt/blob/e13251a6774ec8c38e7f124b524cc36e4453eb35/src/gui/shell.cpp#L1405
 let OnFocusGained() =
-    task { 
-      let! _ = nvim.command "if exists('#FocusGained') | doautocmd <nomodeline> FocusGained | endif"
-      in ()
-    } |> run
+    nvim.command "if exists('#FocusGained') | doautocmd <nomodeline> FocusGained | endif"
+    |> runT
 
 let OnTerminated () =
     trace "terminating nvim..."
@@ -739,21 +729,12 @@ let OnTerminated () =
 let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
     trace "window is closing"
-    task {
-        if nvim.isRemote then
-            Detach()
-        else
-            let! _ = nvim.quitall()
-            ()
-    } |> run
-    ()
+    if nvim.isRemote then Detach()
+    else runT <| nvim.quitall()
 
 let EditFiles (files: string seq) =
-    task {
-        for file in files do
-            let! _ = nvim.edit file
-            ()
-    } |> run
+    for file in files do
+        nvim.edit file |> runT
 
 let InsertText text =
     let sb = new Text.StringBuilder()
@@ -770,4 +751,4 @@ let InsertText text =
 
     if not <| String.IsNullOrEmpty text then
         let text = sb.ToString()
-        ignore <| nvim.command text
+        nvim.command text |> runT
