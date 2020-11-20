@@ -31,6 +31,7 @@ module ModelImpl =
     let ev_flush      = Event<unit>()
     let grids         = hashmap[]
     let windows       = hashmap[]
+    let mutable init  = async { return () }
 
     let add_grid(grid: IGridUI) =
         let id = grid.Id
@@ -216,147 +217,146 @@ let Start (serveropts, norc, debugMultigrid) =
 
     trace "commencing early initialization..."
 
-    async {
-        do! Async.SwitchToNewThread()
+    init <- async {
+      do! Async.SwitchToNewThread()
 
-        let! api_info = nvim.call { method = "nvim_get_api_info"; parameters = [||] }
-        let api_query_result = 
-            match api_info.result with
-            | Ok(ObjArray [| Integer32 _; metadata |]) -> Ok metadata
-            | _ -> Result.Error("nvim_get_api_info")
-            >?= fun metadata ->
-            match metadata with
-            | FindKV "ui_options" (P (|String|_|) ui_options) -> Ok(Set.ofArray ui_options)
-            | _ -> Result.Error("find ui_options")
-            >?= fun ui_options ->
-            trace "available ui options: %A" ui_options
-            ui_available_opts <- ui_options
-            Ok()
-        match api_query_result with
-        | Ok() ->
-            if not (ui_available_opts.Contains uiopt_ext_linegrid) ||
-               not (ui_available_opts.Contains uiopt_rgb) then
-               failwithf "api_query_result: your NeoVim version is too low. fvim requires \"rgb\" and \"ext_linegrid\" options, got: %A" ui_available_opts
-        | Result.Error(msg) ->
-            failwithf "api_query_result: %s" msg
+      let! api_info = nvim.call { method = "nvim_get_api_info"; parameters = [||] }
+      let api_query_result = 
+          match api_info.result with
+          | Ok(ObjArray [| Integer32 _; metadata |]) -> Ok metadata
+          | _ -> Result.Error("nvim_get_api_info")
+          >?= fun metadata ->
+          match metadata with
+          | FindKV "ui_options" (P (|String|_|) ui_options) -> Ok(Set.ofArray ui_options)
+          | _ -> Result.Error("find ui_options")
+          >?= fun ui_options ->
+          trace "available ui options: %A" ui_options
+          ui_available_opts <- ui_options
+          Ok()
+      match api_query_result with
+      | Ok() ->
+          if not (ui_available_opts.Contains uiopt_ext_linegrid) ||
+             not (ui_available_opts.Contains uiopt_rgb) then
+             failwithf "api_query_result: your NeoVim version is too low. fvim requires \"rgb\" and \"ext_linegrid\" options, got: %A" ui_available_opts
+      | Result.Error(msg) ->
+          failwithf "api_query_result: %s" msg
 
-        // for remote, send open file args as edit commands
-        let remoteEditFiles =
-            match serveropts with
-            // for embedded & fvr new session, edit file args are passed thru to neovim
-            | Embedded _             
-            | FVimRemote(_, _, NewSession _, _) -> []
-            | NeovimRemote(_, files) 
-            | FVimRemote(_, _, _, files)  -> files
-        for file in remoteEditFiles do
-            let! _ = nvim.edit file
-            in ()
+      // for remote, send open file args as edit commands
+      let remoteEditFiles =
+          match serveropts with
+          // for embedded & fvr new session, edit file args are passed thru to neovim
+          | Embedded _             
+          | FVimRemote(_, _, NewSession _, _) -> []
+          | NeovimRemote(_, files) 
+          | FVimRemote(_, _, _, files)  -> files
+      for file in remoteEditFiles do
+          let! _ = nvim.edit file
+          in ()
 
-        let clientId = nvim.Id.ToString()
-        let clientName = "FVim"
-        let clientVersion = 
-            hashmap [
-                "major", "0"
-                "minor", "2"
-                "prerelease", "dev"
-            ]
-        let clientType = "ui"
-        let clientMethods = hashmap []
-        let clientAttributes = 
-            hashmap [
-                "InstanceId", clientId
-            ]
+      let clientId = nvim.Id.ToString()
+      let clientName = "FVim"
+      let clientVersion = 
+          hashmap [
+              "major", "0"
+              "minor", "2"
+              "prerelease", "dev"
+          ]
+      let clientType = "ui"
+      let clientMethods = hashmap []
+      let clientAttributes = 
+          hashmap [
+              "InstanceId", clientId
+          ]
 
-        let! _ = nvim.set_var "fvim_loaded" 1
-        let! _ = nvim.set_client_info clientName clientVersion clientType clientMethods clientAttributes
-        let! channels = nvim.list_chans()
+      let! _ = nvim.set_var "fvim_loaded" 1
+      let! _ = nvim.set_client_info clientName clientVersion clientType clientMethods clientAttributes
+      let! channels = nvim.list_chans()
 
-        let ch_finder ch =
-            FindKV("id") ch 
-            >>= Integer32
-            >>= fun chid ->
-            FindKV("client")ch
-            >>= fun client -> 
-                match client with
-                | FindKV("name")(String name) when name = clientName -> Some client
-                | _ -> None
-            >>= FindKV("attributes")
-            >>= FindKV("InstanceId")
-            >>= IsString
-            >>= (fun iid -> Some(iid, chid))
-        
-        let fvimChannels = Seq.choose ch_finder channels |> List.ofSeq
-        let _, myChannel = List.find (fun (iid, _) -> iid = clientId) fvimChannels
+      let ch_finder ch =
+          FindKV("id") ch 
+          >>= Integer32
+          >>= fun chid ->
+          FindKV("client")ch
+          >>= fun client -> 
+              match client with
+              | FindKV("name")(String name) when name = clientName -> Some client
+              | _ -> None
+          >>= FindKV("attributes")
+          >>= FindKV("InstanceId")
+          >>= IsString
+          >>= (fun iid -> Some(iid, chid))
+      
+      let fvimChannels = Seq.choose ch_finder channels |> List.ofSeq
+      let _, myChannel = List.find (fun (iid, _) -> iid = clientId) fvimChannels
 
-        trace "FVim connected clients: %A" fvimChannels
-        trace "FVim client channel is: %d" myChannel
+      trace "FVim connected clients: %A" fvimChannels
+      trace "FVim client channel is: %d" myChannel
 
-        states.channel_id <- myChannel
+      states.channel_id <- myChannel
 
-        // Another instance is already up
-        if fvimChannels.Length > 1 then
-            Environment.Exit(0)
-        let! _ = nvim.set_var "fvim_channel" myChannel
+      // Another instance is already up
+      if fvimChannels.Length > 1 then
+          Environment.Exit(0)
+      let! _ = nvim.set_var "fvim_channel" myChannel
 
-        // Register clipboard provider by setting g:clipboard
-        let clipboard = """let g:clipboard = {
-  'name': 'FVimClipboard',
-  'copy': {
-     '+': {lines, regtype -> rpcrequest(g:fvim_channel, 'set-clipboard', lines, regtype)},
-     '*': {lines, regtype -> rpcrequest(g:fvim_channel, 'set-clipboard', lines, regtype)},
-   },
-  'paste': {
-     '+': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
-     '*': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
-  }
+      // Register clipboard provider by setting g:clipboard
+      let clipboard = """let g:clipboard = {
+'name': 'FVimClipboard',
+'copy': {
+   '+': {lines, regtype -> rpcrequest(g:fvim_channel, 'set-clipboard', lines, regtype)},
+   '*': {lines, regtype -> rpcrequest(g:fvim_channel, 'set-clipboard', lines, regtype)},
+ },
+'paste': {
+   '+': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
+   '*': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
+}
 }"""
-        let! _ = nvim.command <| clipboard.Replace("\r", "").Replace("\n","").Replace(" ","")
+      let! _ = nvim.command <| clipboard.Replace("\r", "").Replace("\n","")
 
-        let! _ = nvim.``command!`` "FVimDetach" 0 "call rpcnotify(g:fvim_channel, 'remote.detach')"
-        let! _ = nvim.``command!`` "FVimToggleFullScreen" 0 "call rpcnotify(g:fvim_channel, 'ToggleFullScreen', 1)"
+      let! _ = nvim.``command!`` "FVimDetach" 0 "call rpcnotify(g:fvim_channel, 'remote.detach')"
+      let! _ = nvim.``command!`` "FVimToggleFullScreen" 0 "call rpcnotify(g:fvim_channel, 'ToggleFullScreen', 1)"
 
-        let! _ = nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 "call rpcnotify(g:fvim_channel, 'cursor.smoothmove', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 "call rpcnotify(g:fvim_channel, 'cursor.smoothblink', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontLineHeight" 1 "call rpcnotify(g:fvim_channel, 'font.lineheight', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 "call rpcnotify(g:fvim_channel, 'font.autosnap', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontAntialias" 1 "call rpcnotify(g:fvim_channel, 'font.antialias', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontLigature" 1 "call rpcnotify(g:fvim_channel, 'font.ligature', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 "call rpcnotify(g:fvim_channel, 'font.drawBounds', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontAutohint" 1 "call rpcnotify(g:fvim_channel, 'font.autohint', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontSubpixel" 1 "call rpcnotify(g:fvim_channel, 'font.subpixel', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 "call rpcnotify(g:fvim_channel, 'font.hintLevel', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.normal', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.bold', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimFontNoBuiltinSymbols" 1 "call rpcnotify(g:fvim_channel, 'font.nonerd', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 "call rpcnotify(g:fvim_channel, 'key.disableShiftSpace', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.popupmenu', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUITabLine" 1 "call rpcnotify(g:fvim_channel, 'ui.tabline', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUICmdLine" 1 "call rpcnotify(g:fvim_channel, 'ui.cmdline', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUIWildMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.wildmenu', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUIMessages" 1 "call rpcnotify(g:fvim_channel, 'ui.messages', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUITermColors" 1 "call rpcnotify(g:fvim_channel, 'ui.termcolors', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimUIHlState" 1 "call rpcnotify(g:fvim_channel, 'ui.hlstate', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimDrawFPS" 1 "call rpcnotify(g:fvim_channel, 'DrawFPS', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimCustomTitleBar" 1 "call rpcnotify(g:fvim_channel, 'CustomTitleBar', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimCursorSmoothMove" 1 "call rpcnotify(g:fvim_channel, 'cursor.smoothmove', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimCursorSmoothBlink" 1 "call rpcnotify(g:fvim_channel, 'cursor.smoothblink', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontLineHeight" 1 "call rpcnotify(g:fvim_channel, 'font.lineheight', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontAutoSnap" 1 "call rpcnotify(g:fvim_channel, 'font.autosnap', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontAntialias" 1 "call rpcnotify(g:fvim_channel, 'font.antialias', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontLigature" 1 "call rpcnotify(g:fvim_channel, 'font.ligature', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontDrawBounds" 1 "call rpcnotify(g:fvim_channel, 'font.drawBounds', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontAutohint" 1 "call rpcnotify(g:fvim_channel, 'font.autohint', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontSubpixel" 1 "call rpcnotify(g:fvim_channel, 'font.subpixel', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontHintLevel" 1 "call rpcnotify(g:fvim_channel, 'font.hintLevel', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontNormalWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.normal', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.bold', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimFontNoBuiltinSymbols" 1 "call rpcnotify(g:fvim_channel, 'font.nonerd', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 "call rpcnotify(g:fvim_channel, 'key.disableShiftSpace', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.popupmenu', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUITabLine" 1 "call rpcnotify(g:fvim_channel, 'ui.tabline', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUICmdLine" 1 "call rpcnotify(g:fvim_channel, 'ui.cmdline', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUIWildMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.wildmenu', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUIMessages" 1 "call rpcnotify(g:fvim_channel, 'ui.messages', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUITermColors" 1 "call rpcnotify(g:fvim_channel, 'ui.termcolors', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimUIHlState" 1 "call rpcnotify(g:fvim_channel, 'ui.hlstate', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimDrawFPS" 1 "call rpcnotify(g:fvim_channel, 'DrawFPS', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimCustomTitleBar" 1 "call rpcnotify(g:fvim_channel, 'CustomTitleBar', <args>)"
 
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundOpacity" 1 "call rpcnotify(g:fvim_channel, 'background.opacity', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 "call rpcnotify(g:fvim_channel, 'background.composition', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundAltOpacity" 1 "call rpcnotify(g:fvim_channel, 'background.altopacity', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImage" 1 "call rpcnotify(g:fvim_channel, 'background.image.file', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageOpacity" 1 "call rpcnotify(g:fvim_channel, 'background.image.opacity', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageStretch" 1 "call rpcnotify(g:fvim_channel, 'background.image.stretch', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageHAlign" 1 "call rpcnotify(g:fvim_channel, 'background.image.halign', <args>)"
-        let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageVAlign" 1 "call rpcnotify(g:fvim_channel, 'background.image.valign', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundOpacity" 1 "call rpcnotify(g:fvim_channel, 'background.opacity', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundComposition" 1 "call rpcnotify(g:fvim_channel, 'background.composition', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundAltOpacity" 1 "call rpcnotify(g:fvim_channel, 'background.altopacity', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImage" 1 "call rpcnotify(g:fvim_channel, 'background.image.file', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageOpacity" 1 "call rpcnotify(g:fvim_channel, 'background.image.opacity', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageStretch" 1 "call rpcnotify(g:fvim_channel, 'background.image.stretch', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageHAlign" 1 "call rpcnotify(g:fvim_channel, 'background.image.halign', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimBackgroundImageVAlign" 1 "call rpcnotify(g:fvim_channel, 'background.image.valign', <args>)"
 
 
-        // trigger ginit upon VimEnter
-        if not norc then
-          let! _ = nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | execute \"autocmd VimEnter * runtime! ginit.vim\" | endif"
-          ()
+      // trigger ginit upon VimEnter
+      if not norc then
+        let! _ = nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | execute \"autocmd VimEnter * runtime! ginit.vim\" | endif"
+        ()
     }
-    |> Async.Start
-    |> ignore
+    Async.Start init
 
 let Flush =
     ev_flush.Publish
@@ -386,8 +386,11 @@ let OnGridReady(gridui: IGridUI) =
         // Notify nvim about its presence
         trace "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
-        nvim.ui_attach gridui.GridWidth gridui.GridHeight
-        |> runAsync
+        async {
+          do! init
+          let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
+          in ()
+        } |> runAsync
 
 let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
     trace "SelectPopupMenuItem: index=%d insert=%b finish=%b" index insert finish
