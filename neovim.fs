@@ -76,7 +76,7 @@ type Nvim() as nvim =
             let id = fvrConnect pipe pipe verb
             if id < 0 then
               pipe.Dispose()
-              failwithf "Remote daemon closed the connection with error code %d" id
+              getErrorMsg id |> failwith 
             RemoteSession pipe
         | FVimRemote(pipe, Remote(prog, args), verb, _) ->
             let pname = Option.defaultValue defaultDaemonName pipe
@@ -87,7 +87,7 @@ type Nvim() as nvim =
             let id = fvrConnect proc.StandardInput.BaseStream proc.StandardOutput.BaseStream verb
             if id < 0 then
               proc.Kill()
-              failwithf "Remote daemon closed the connection with error code %d" id
+              getErrorMsg id |> failwith 
             else
               trace "Connected to session %d" id
             TunneledSession proc

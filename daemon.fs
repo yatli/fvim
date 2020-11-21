@@ -27,7 +27,22 @@ type Session =
 
 let private sessions = hashmap []
 let mutable private sessionId = 0
-let FVR_MAGIC = [| 0x46uy ; 0x56uy ; 0x49uy ; 0x4Duy |]
+let private FVR_MAGIC = [| 0x46uy ; 0x56uy ; 0x49uy ; 0x4Duy |]
+
+[<Literal>]
+let private FVR_NO_FREE_SESSION = -1
+[<Literal>]
+let private FVR_SESSION_NOT_FOUND = -2
+[<Literal>]
+let private FVR_CLIENT_EXCEPTION = -10
+
+let getErrorMsg =
+  function
+  | FVR_NO_FREE_SESSION -> "No attachable free session available."
+  | FVR_SESSION_NOT_FOUND -> "The specified session is not found."
+  | FVR_CLIENT_EXCEPTION -> "Could not connect to the session server."
+  | _ -> "Unknown error."
+
 let private jsonopts = JsonSerializerOptions()
 jsonopts.Converters.Add(JsonFSharpConverter())
 let inline private serialize x = JsonSerializer.Serialize(x, jsonopts)
@@ -51,7 +66,7 @@ let attachSession id svrpipe =
     let ns = {s with server = Some svrpipe}
     sessions.[id] <- ns
     Ok ns
-  | _ -> Error -2
+  | _ -> Error FVR_SESSION_NOT_FOUND
 
 let newSession nvim stderrenc args svrpipe = 
   let myid = sessionId
@@ -86,13 +101,14 @@ let attachFirstSession svrpipe =
     let ns = {kv.Value with server = Some svrpipe}
     sessions.[kv.Key] <- ns
     Some ns)
-  |> function | Some ns -> Ok ns | None -> Error -1
+  |> function | Some ns -> Ok ns | None -> Error FVR_NO_FREE_SESSION
 
 let serveSession (session: Session) =
   async {
     let pname = pipename (string session.id)
     use client = new NamedPipeClientStream(".", pname, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
     do! Async.AwaitTask(client.ConnectAsync())
+    trace "Connected to NeoVim server at %s" pname
     let fromNvim = client.CopyToAsync(session.server.Value)
     let toNvim = session.server.Value.CopyToAsync(client)
     let! _ = Async.AwaitTask(Task.WhenAny [| fromNvim; toNvim |])
@@ -181,4 +197,4 @@ let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
     toInt32LE intbuf
   with ex ->
     trace "%O" ex
-    -10
+    FVR_CLIENT_EXCEPTION
