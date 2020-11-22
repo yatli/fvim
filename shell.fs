@@ -11,6 +11,7 @@ open System.IO
 open System.Reflection
 open System.Diagnostics
 open System.Runtime.InteropServices
+open System.Linq
 open Microsoft.Win32
 open UACHelper
 
@@ -110,16 +111,55 @@ let private win32RegisterFileAssociation() =
 
 let private win32UnregisterFileAssociation() =
   trace "unregistering file associations..."
-  let HKCR = Registry.ClassesRoot
-  let HKLM = Registry.LocalMachine
+  use HKCR = Registry.ClassesRoot
+  use HKLM = Registry.LocalMachine
+  use HKCU = Registry.CurrentUser
 
   HKLM.DeleteSubKeyTree(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\FVim.exe", false)
   HKCR.DeleteSubKeyTree(@"Applications\FVim.exe", false)
   HKLM.DeleteSubKeyTree(@"SOFTWARE\Classes\Applications\FVim.exe", false)
 
-  for (ico,ext) in FVimIcons do
+  for (_,ext) in FVimIcons do
       let progId = "FVim" + ext
+      trace "Deleting %s" progId
       HKCR.DeleteSubKeyTree(progId, false)
+
+  let tryCreateSubKey subKeyName (rootKey: RegistryKey) =
+    try Some(rootKey.CreateSubKey(subKeyName))
+    with _ -> None
+
+  let tryOpenSubKey subKeyName (rootKey: RegistryKey) =
+    if rootKey.GetSubKeyNames().Contains(subKeyName) then Some(rootKey.CreateSubKey subKeyName)
+    else None
+
+  let tryDeleteFVimShellKey (rootKey: RegistryKey) (subkey: RegistryKey) = 
+      let name = subkey.Name
+      match subkey.GetValue("") with
+      | :? string as v when v.Contains("FVim") ->
+        trace "Deleting %O" subkey
+        let path = name.Substring(rootKey.Name.Length + 1)
+        subkey.Dispose()
+        rootKey.DeleteSubKeyTree path
+        Some()
+      | _ -> None
+
+  let removeExtShellCommands (rootKey: RegistryKey) subKeyName =
+    let shell = rootKey 
+                |>  tryCreateSubKey subKeyName
+                >>= tryOpenSubKey "shell"
+    shell >>= (fun shell -> tryOpenSubKey "new" shell >>= tryDeleteFVimShellKey shell) |> ignore
+    shell >>= (fun shell -> tryOpenSubKey "open" shell >>= tryDeleteFVimShellKey shell) |> ignore
+    shell >>= (fun shell -> Some <| shell.Dispose()) |> ignore
+
+  let removeFVimShellCommands (rootKey: RegistryKey) =
+    rootKey.GetSubKeyNames()
+    |> Seq.where(fun x -> x.StartsWith("."))
+    |> Seq.iter(removeExtShellCommands rootKey)
+
+  use hkcu_classes = HKCU.CreateSubKey(@"SOFTWARE\Classes")
+  removeFVimShellCommands HKCR
+  removeFVimShellCommands hkcu_classes
+
 
 let setup() =
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
