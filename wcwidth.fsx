@@ -1,7 +1,10 @@
 #r "nuget: FSharp.Control.Reactive"
 #r "nuget: FSharp.Data"
 #r "nuget: System.Reactive.Linq"
-#r "nuget: Avalonia"
+#r "nuget: Avalonia, 0.10.0-preview6"
+#r "nuget: Avalonia.Desktop, 0.10.0-preview6"
+#r "nuget: Avalonia.ReactiveUI, 0.10.0-preview6"
+#r "nuget: Avalonia.Skia, 0.10.0-preview6"
 
 #load "common.fs"
 #load "getopt.fs"
@@ -315,4 +318,16 @@ let rune_2448 = "⑈" |> parse
 let rune_2449 = "⑉" |> parse
 let rune_244A = "⑊" |> parse
 
+// Now, some avalonia tests
+open Avalonia.Media
+open Avalonia.Visuals
+open Avalonia.Platform
+open Avalonia.Media.TextFormatting
 
+
+Avalonia.Skia.SkiaPlatform.Initialize();;
+let iosevka = Typeface("Iosevka Slab")
+let iosevka_glyph = iosevka.GlyphTypeface
+
+iosevka_glyph.GetGlyph(rune_03.Codepoint) // 0 for the block symbol
+iosevka_glyph.GetGlyph(rune_244A.Codepoint)
