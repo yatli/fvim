@@ -75,7 +75,7 @@ let startMainWindow app serveropts =
       if x + w < 0 || y + h < 0
       then 0, 0, 800, 600
       else x, y, w, h
-    config.save cfg x y w h (mainwin.WindowState) (states.backgroundCompositionToString states.background_composition) mainwin.CustomTitleBar
+    config.save cfg x y w h (mainwin.WindowState.ToString()) (states.backgroundCompositionToString states.background_composition) mainwin.CustomTitleBar
     0
 
 let startCrashReportWindow app ex = 

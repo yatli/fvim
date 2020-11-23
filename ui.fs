@@ -1,19 +1,15 @@
 ﻿module FVim.ui
 
 open def
-open common
 open wcwidth
 open log
 
-open ReactiveUI
 open Avalonia
 open Avalonia.Input
 open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Platform
 open System
-open System.Reflection
-open Avalonia.Controls.Shapes
 open Avalonia.Media.TextFormatting
 open System.Globalization
 

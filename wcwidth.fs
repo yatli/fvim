@@ -4,8 +4,6 @@
 *)
 module FVim.wcwidth
 
-open log
-open System.Numerics
 open def
 
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
@@ -301,95 +299,95 @@ let ZeroWidth = [|
 // ref: https://unicode.org/reports/tr51/
 
 let Emoji = [|
-    (0x23u, 0x23u)  // keycap: #               ..keycap: #               
-    (0x2Au, 0x2Au)  // keycap: *               ..keycap: *               
-    (0x30u, 0x39u)  // keycap: 0               ..keycap: 9               
-    (0xA9u, 0xA9u)  // copyright               ..copyright               
-    (0xAEu, 0xAEu)  // registered              ..registered              
-    (0x203Cu, 0x203Cu)  // double exclamation mark ..double exclamation mark 
-    (0x2049u, 0x2049u)  // exclamation question mark..exclamation question mark
-    (0x2122u, 0x2122u)  // trade mark              ..trade mark              
-    (0x2139u, 0x2139u)  // information             ..information             
-    (0x2194u, 0x2199u)  // left-right arrow        ..down-left arrow         
-    (0x21A9u, 0x21AAu)  // right arrow curving left..left arrow curving right
-    (0x231Au, 0x231Bu)  // watch                   ..hourglass done          
-    (0x2328u, 0x2328u)  // keyboard                ..keyboard                
-    (0x23CFu, 0x23CFu)  // eject button            ..eject button            
-    (0x23E9u, 0x23F3u)  // fast-forward button     ..hourglass not done      
-    (0x23F8u, 0x23FAu)  // pause button            ..record button           
-    (0x24C2u, 0x24C2u)  // circled M               ..circled M               
-    (0x25AAu, 0x25ABu)  // black small square      ..white small square      
-    (0x25B6u, 0x25B6u)  // play button             ..play button             
-    (0x25C0u, 0x25C0u)  // reverse button          ..reverse button          
-    (0x25FBu, 0x25FEu)  // white medium square     ..black medium-small square
-    (0x2600u, 0x2604u)  // sun                     ..comet                   
-    (0x260Eu, 0x260Eu)  // telephone               ..telephone               
-    (0x2611u, 0x2611u)  // check box with check    ..check box with check    
-    (0x2614u, 0x2615u)  // umbrella with rain drops..hot beverage            
-    (0x2618u, 0x2618u)  // shamrock                ..shamrock                
-    (0x261Du, 0x261Du)  // index pointing up       ..index pointing up       
-    (0x2620u, 0x2620u)  // skull and crossbones    ..skull and crossbones    
-    (0x2622u, 0x2623u)  // radioactive             ..biohazard               
-    (0x2626u, 0x2626u)  // orthodox cross          ..orthodox cross          
-    (0x262Au, 0x262Au)  // star and crescent       ..star and crescent       
-    (0x262Eu, 0x262Fu)  // peace symbol            ..yin yang                
-    (0x2638u, 0x263Au)  // wheel of dharma         ..smiling face            
-    (0x2640u, 0x2640u)  // female sign             ..female sign             
-    (0x2642u, 0x2642u)  // male sign               ..male sign               
-    (0x2648u, 0x2653u)  // Aries                   ..Pisces                  
-    (0x265Fu, 0x2660u)  // chess pawn              ..spade suit              
-    (0x2663u, 0x2663u)  // club suit               ..club suit               
-    (0x2665u, 0x2666u)  // heart suit              ..diamond suit            
-    (0x2668u, 0x2668u)  // hot springs             ..hot springs             
-    (0x267Bu, 0x267Bu)  // recycling symbol        ..recycling symbol        
-    (0x267Eu, 0x267Fu)  // infinity                ..wheelchair symbol       
-    (0x2692u, 0x2697u)  // hammer and pick         ..alembic                 
-    (0x2699u, 0x2699u)  // gear                    ..gear                    
-    (0x269Bu, 0x269Cu)  // atom symbol             ..fleur-de-lis            
-    (0x26A0u, 0x26A1u)  // warning                 ..high voltage            
-    (0x26AAu, 0x26ABu)  // white circle            ..black circle            
-    (0x26B0u, 0x26B1u)  // coffin                  ..funeral urn             
-    (0x26BDu, 0x26BEu)  // soccer ball             ..baseball                
-    (0x26C4u, 0x26C5u)  // snowman without snow    ..sun behind cloud        
-    (0x26C8u, 0x26C8u)  // cloud with lightning and rain..cloud with lightning and rain
-    (0x26CEu, 0x26CFu)  // Ophiuchus               ..pick                    
-    (0x26D1u, 0x26D1u)  // rescue worker’s helmet  ..rescue worker’s helmet  
-    (0x26D3u, 0x26D4u)  // chains                  ..no entry                
-    (0x26E9u, 0x26EAu)  // shinto shrine           ..church                  
-    (0x26F0u, 0x26F5u)  // mountain                ..sailboat                
-    (0x26F7u, 0x26FAu)  // skier                   ..tent                    
-    (0x26FDu, 0x26FDu)  // fuel pump               ..fuel pump               
-    (0x2702u, 0x2702u)  // scissors                ..scissors                
-    (0x2705u, 0x2705u)  // check mark button       ..check mark button       
-    (0x2708u, 0x270Du)  // airplane                ..writing hand            
-    (0x270Fu, 0x270Fu)  // pencil                  ..pencil                  
-    (0x2712u, 0x2712u)  // black nib               ..black nib               
-    (0x2714u, 0x2714u)  // check mark              ..check mark              
-    (0x2716u, 0x2716u)  // multiplication sign     ..multiplication sign     
-    (0x271Du, 0x271Du)  // latin cross             ..latin cross             
-    (0x2721u, 0x2721u)  // star of David           ..star of David           
-    (0x2728u, 0x2728u)  // sparkles                ..sparkles                
-    (0x2733u, 0x2734u)  // eight-spoked asterisk   ..eight-pointed star      
-    (0x2744u, 0x2744u)  // snowflake               ..snowflake               
-    (0x2747u, 0x2747u)  // sparkle                 ..sparkle                 
-    (0x274Cu, 0x274Cu)  // cross mark              ..cross mark              
-    (0x274Eu, 0x274Eu)  // cross mark button       ..cross mark button       
-    (0x2753u, 0x2755u)  // question mark           ..white exclamation mark  
-    (0x2757u, 0x2757u)  // exclamation mark        ..exclamation mark        
-    (0x2763u, 0x2764u)  // heart exclamation       ..red heart               
-    (0x2795u, 0x2797u)  // plus sign               ..division sign           
-    (0x27A1u, 0x27A1u)  // right arrow             ..right arrow             
-    (0x27B0u, 0x27B0u)  // curly loop              ..curly loop              
-    (0x27BFu, 0x27BFu)  // double curly loop       ..double curly loop       
-    (0x2934u, 0x2935u)  // right arrow curving up  ..right arrow curving down
-    (0x2B05u, 0x2B07u)  // left arrow              ..down arrow              
-    (0x2B1Bu, 0x2B1Cu)  // black large square      ..white large square      
-    (0x2B50u, 0x2B50u)  // star                    ..star                    
-    (0x2B55u, 0x2B55u)  // hollow red circle       ..hollow red circle       
-    (0x3030u, 0x3030u)  // wavy dash               ..wavy dash               
-    (0x303Du, 0x303Du)  // part alternation mark   ..part alternation mark   
-    (0x3297u, 0x3297u)  // Japanese “congratulations” button..Japanese “congratulations” button
-    (0x3299u, 0x3299u)  // Japanese “secret” button..Japanese “secret” button
+    ( 0x0023u,  0x0023u)  // keycap: #               ..keycap: #               
+    ( 0x002Au,  0x002Au)  // keycap: *               ..keycap: *               
+    ( 0x0030u,  0x0039u)  // keycap: 0               ..keycap: 9               
+    ( 0x00A9u,  0x00A9u)  // copyright               ..copyright               
+    ( 0x00AEu,  0x00AEu)  // registered              ..registered              
+    ( 0x203Cu,  0x203Cu)  // double exclamation mark ..double exclamation mark 
+    ( 0x2049u,  0x2049u)  // exclamation question mark..exclamation question mark
+    ( 0x2122u,  0x2122u)  // trade mark              ..trade mark              
+    ( 0x2139u,  0x2139u)  // information             ..information             
+    ( 0x2194u,  0x2199u)  // left-right arrow        ..down-left arrow         
+    ( 0x21A9u,  0x21AAu)  // right arrow curving left..left arrow curving right
+    ( 0x231Au,  0x231Bu)  // watch                   ..hourglass done          
+    ( 0x2328u,  0x2328u)  // keyboard                ..keyboard                
+    ( 0x23CFu,  0x23CFu)  // eject button            ..eject button            
+    ( 0x23E9u,  0x23F3u)  // fast-forward button     ..hourglass not done      
+    ( 0x23F8u,  0x23FAu)  // pause button            ..record button           
+    ( 0x24C2u,  0x24C2u)  // circled M               ..circled M               
+    ( 0x25AAu,  0x25ABu)  // black small square      ..white small square      
+    ( 0x25B6u,  0x25B6u)  // play button             ..play button             
+    ( 0x25C0u,  0x25C0u)  // reverse button          ..reverse button          
+    ( 0x25FBu,  0x25FEu)  // white medium square     ..black medium-small square
+    ( 0x2600u,  0x2604u)  // sun                     ..comet                   
+    ( 0x260Eu,  0x260Eu)  // telephone               ..telephone               
+    ( 0x2611u,  0x2611u)  // check box with check    ..check box with check    
+    ( 0x2614u,  0x2615u)  // umbrella with rain drops..hot beverage            
+    ( 0x2618u,  0x2618u)  // shamrock                ..shamrock                
+    ( 0x261Du,  0x261Du)  // index pointing up       ..index pointing up       
+    ( 0x2620u,  0x2620u)  // skull and crossbones    ..skull and crossbones    
+    ( 0x2622u,  0x2623u)  // radioactive             ..biohazard               
+    ( 0x2626u,  0x2626u)  // orthodox cross          ..orthodox cross          
+    ( 0x262Au,  0x262Au)  // star and crescent       ..star and crescent       
+    ( 0x262Eu,  0x262Fu)  // peace symbol            ..yin yang                
+    ( 0x2638u,  0x263Au)  // wheel of dharma         ..smiling face            
+    ( 0x2640u,  0x2640u)  // female sign             ..female sign             
+    ( 0x2642u,  0x2642u)  // male sign               ..male sign               
+    ( 0x2648u,  0x2653u)  // Aries                   ..Pisces                  
+    ( 0x265Fu,  0x2660u)  // chess pawn              ..spade suit              
+    ( 0x2663u,  0x2663u)  // club suit               ..club suit               
+    ( 0x2665u,  0x2666u)  // heart suit              ..diamond suit            
+    ( 0x2668u,  0x2668u)  // hot springs             ..hot springs             
+    ( 0x267Bu,  0x267Bu)  // recycling symbol        ..recycling symbol        
+    ( 0x267Eu,  0x267Fu)  // infinity                ..wheelchair symbol       
+    ( 0x2692u,  0x2697u)  // hammer and pick         ..alembic                 
+    ( 0x2699u,  0x2699u)  // gear                    ..gear                    
+    ( 0x269Bu,  0x269Cu)  // atom symbol             ..fleur-de-lis            
+    ( 0x26A0u,  0x26A1u)  // warning                 ..high voltage            
+    ( 0x26AAu,  0x26ABu)  // white circle            ..black circle            
+    ( 0x26B0u,  0x26B1u)  // coffin                  ..funeral urn             
+    ( 0x26BDu,  0x26BEu)  // soccer ball             ..baseball                
+    ( 0x26C4u,  0x26C5u)  // snowman without snow    ..sun behind cloud        
+    ( 0x26C8u,  0x26C8u)  // cloud with lightning and rain..cloud with lightning and rain
+    ( 0x26CEu,  0x26CFu)  // Ophiuchus               ..pick                    
+    ( 0x26D1u,  0x26D1u)  // rescue worker’s helmet  ..rescue worker’s helmet  
+    ( 0x26D3u,  0x26D4u)  // chains                  ..no entry                
+    ( 0x26E9u,  0x26EAu)  // shinto shrine           ..church                  
+    ( 0x26F0u,  0x26F5u)  // mountain                ..sailboat                
+    ( 0x26F7u,  0x26FAu)  // skier                   ..tent                    
+    ( 0x26FDu,  0x26FDu)  // fuel pump               ..fuel pump               
+    ( 0x2702u,  0x2702u)  // scissors                ..scissors                
+    ( 0x2705u,  0x2705u)  // check mark button       ..check mark button       
+    ( 0x2708u,  0x270Du)  // airplane                ..writing hand            
+    ( 0x270Fu,  0x270Fu)  // pencil                  ..pencil                  
+    ( 0x2712u,  0x2712u)  // black nib               ..black nib               
+    ( 0x2714u,  0x2714u)  // check mark              ..check mark              
+    ( 0x2716u,  0x2716u)  // multiplication sign     ..multiplication sign     
+    ( 0x271Du,  0x271Du)  // latin cross             ..latin cross             
+    ( 0x2721u,  0x2721u)  // star of David           ..star of David           
+    ( 0x2728u,  0x2728u)  // sparkles                ..sparkles                
+    ( 0x2733u,  0x2734u)  // eight-spoked asterisk   ..eight-pointed star      
+    ( 0x2744u,  0x2744u)  // snowflake               ..snowflake               
+    ( 0x2747u,  0x2747u)  // sparkle                 ..sparkle                 
+    ( 0x274Cu,  0x274Cu)  // cross mark              ..cross mark              
+    ( 0x274Eu,  0x274Eu)  // cross mark button       ..cross mark button       
+    ( 0x2753u,  0x2755u)  // question mark           ..white exclamation mark  
+    ( 0x2757u,  0x2757u)  // exclamation mark        ..exclamation mark        
+    ( 0x2763u,  0x2764u)  // heart exclamation       ..red heart               
+    ( 0x2795u,  0x2797u)  // plus sign               ..division sign           
+    ( 0x27A1u,  0x27A1u)  // right arrow             ..right arrow             
+    ( 0x27B0u,  0x27B0u)  // curly loop              ..curly loop              
+    ( 0x27BFu,  0x27BFu)  // double curly loop       ..double curly loop       
+    ( 0x2934u,  0x2935u)  // right arrow curving up  ..right arrow curving down
+    ( 0x2B05u,  0x2B07u)  // left arrow              ..down arrow              
+    ( 0x2B1Bu,  0x2B1Cu)  // black large square      ..white large square      
+    ( 0x2B50u,  0x2B50u)  // star                    ..star                    
+    ( 0x2B55u,  0x2B55u)  // hollow red circle       ..hollow red circle       
+    ( 0x3030u,  0x3030u)  // wavy dash               ..wavy dash               
+    ( 0x303Du,  0x303Du)  // part alternation mark   ..part alternation mark   
+    ( 0x3297u,  0x3297u)  // Japanese “congratulations” button..Japanese “congratulations” button
+    ( 0x3299u,  0x3299u)  // Japanese “secret” button..Japanese “secret” button
     (0x1F004u, 0x1F004u)  // mahjong red dragon      ..mahjong red dragon      
     (0x1F0CFu, 0x1F0CFu)  // joker                   ..joker                   
     (0x1F170u, 0x1F171u)  // A button (blood type)   ..B button (blood type)   
@@ -457,45 +455,45 @@ let Emoji = [|
 // https://github.com/jquast/wcwidth/blob/master/wcwidth/table_wide.py
 // at commit 0d7de112202cc8b2ebe9232ff4a5c954f19d561a (2016-07-02):
 let WideEastAsian = [|
-    (0x1100u, 0x115fu)  // Hangul Choseong Kiyeok  ..Hangul Choseong Filler
-    (0x2329u, 0x232au)  // Left-pointing Angle Brac..Right-pointing Angle Bra
-    (0x2e80u, 0x2e99u)  // Cjk Radical Repeat      ..Cjk Radical Rap
-    (0x2e9bu, 0x2ef3u)  // Cjk Radical Choke       ..Cjk Radical C-simplified
-    (0x2f00u, 0x2fd5u)  // Kangxi Radical One      ..Kangxi Radical Flute
-    (0x2ff0u, 0x2ffbu)  // Ideographic Description ..Ideographic Description
-    (0x3000u, 0x303eu)  // Ideographic Space       ..Ideographic Variation In
-    (0x3041u, 0x3096u)  // Hiragana Letter Small A ..Hiragana Letter Small Ke
-    (0x3099u, 0x30ffu)  // Combining Katakana-hirag..Katakana Digraph Koto
-    (0x3105u, 0x312du)  // Bopomofo Letter B       ..Bopomofo Letter Ih
-    (0x3131u, 0x318eu)  // Hangul Letter Kiyeok    ..Hangul Letter Araeae
-    (0x3190u, 0x31bau)  // Ideographic Annotation L..Bopomofo Letter Zy
-    (0x31c0u, 0x31e3u)  // Cjk Stroke T            ..Cjk Stroke Q
-    (0x31f0u, 0x321eu)  // Katakana Letter Small Ku..Parenthesized K||ean Cha
-    (0x3220u, 0x3247u)  // Parenthesized Ideograph ..Circled Ideograph Koto
-    (0x3250u, 0x32feu)  // Partnership Sign        ..Circled Katakana Wo
-    (0x3300u, 0x4dbfu)  // Square Apaato           ..
-    (0x4e00u, 0xa48cu)  // Cjk Unified Ideograph-4e..Yi Syllable Yyr
-    (0xa490u, 0xa4c6u)  // Yi Radical Qot          ..Yi Radical Ke
-    (0xa960u, 0xa97cu)  // Hangul Choseong Tikeut-m..Hangul Choseong Ssangyeo
-    (0xac00u, 0xd7a3u)  // Hangul Syllable Ga      ..Hangul Syllable Hih
-    (0xf900u, 0xfaffu)  // Cjk Compatibility Ideogr..
-    (0xfe10u, 0xfe19u)  // Presentation F||m F|| Ve..Presentation F||m F|| Ve
-    (0xfe30u, 0xfe52u)  // Presentation F||m F|| Ve..Small Full Stop
-    (0xfe54u, 0xfe66u)  // Small Semicolon         ..Small Equals Sign
-    (0xfe68u, 0xfe6bu)  // Small Reverse Solidus   ..Small Commercial At
-    (0xff01u, 0xff60u)  // Fullwidth Exclamation Ma..Fullwidth Right White Pa
-    (0xffe0u, 0xffe6u)  // Fullwidth Cent Sign     ..Fullwidth Won Sign
+    ( 0x1100u,  0x115fu)  // Hangul Choseong Kiyeok  ..Hangul Choseong Filler
+    ( 0x2329u,  0x232au)  // Left-pointing Angle Brac..Right-pointing Angle Bra
+    ( 0x2e80u,  0x2e99u)  // Cjk Radical Repeat      ..Cjk Radical Rap
+    ( 0x2e9bu,  0x2ef3u)  // Cjk Radical Choke       ..Cjk Radical C-simplified
+    ( 0x2f00u,  0x2fd5u)  // Kangxi Radical One      ..Kangxi Radical Flute
+    ( 0x2ff0u,  0x2ffbu)  // Ideographic Description ..Ideographic Description
+    ( 0x3000u,  0x303eu)  // Ideographic Space       ..Ideographic Variation In
+    ( 0x3041u,  0x3096u)  // Hiragana Letter Small A ..Hiragana Letter Small Ke
+    ( 0x3099u,  0x30ffu)  // Combining Katakana-hirag..Katakana Digraph Koto
+    ( 0x3105u,  0x312du)  // Bopomofo Letter B       ..Bopomofo Letter Ih
+    ( 0x3131u,  0x318eu)  // Hangul Letter Kiyeok    ..Hangul Letter Araeae
+    ( 0x3190u,  0x31bau)  // Ideographic Annotation L..Bopomofo Letter Zy
+    ( 0x31c0u,  0x31e3u)  // Cjk Stroke T            ..Cjk Stroke Q
+    ( 0x31f0u,  0x321eu)  // Katakana Letter Small Ku..Parenthesized K||ean Cha
+    ( 0x3220u,  0x3247u)  // Parenthesized Ideograph ..Circled Ideograph Koto
+    ( 0x3250u,  0x32feu)  // Partnership Sign        ..Circled Katakana Wo
+    ( 0x3300u,  0x4dbfu)  // Square Apaato           ..
+    ( 0x4e00u,  0xa48cu)  // Cjk Unified Ideograph-4e..Yi Syllable Yyr
+    ( 0xa490u,  0xa4c6u)  // Yi Radical Qot          ..Yi Radical Ke
+    ( 0xa960u,  0xa97cu)  // Hangul Choseong Tikeut-m..Hangul Choseong Ssangyeo
+    ( 0xac00u,  0xd7a3u)  // Hangul Syllable Ga      ..Hangul Syllable Hih
+    ( 0xf900u,  0xfaffu)  // Cjk Compatibility Ideogr..
+    ( 0xfe10u,  0xfe19u)  // Presentation F||m F|| Ve..Presentation F||m F|| Ve
+    ( 0xfe30u,  0xfe52u)  // Presentation F||m F|| Ve..Small Full Stop
+    ( 0xfe54u,  0xfe66u)  // Small Semicolon         ..Small Equals Sign
+    ( 0xfe68u,  0xfe6bu)  // Small Reverse Solidus   ..Small Commercial At
+    ( 0xff01u,  0xff60u)  // Fullwidth Exclamation Ma..Fullwidth Right White Pa
+    ( 0xffe0u,  0xffe6u)  // Fullwidth Cent Sign     ..Fullwidth Won Sign
     (0x20000u, 0x2fffdu)  // Cjk Unified Ideograph-20..
     (0x30000u, 0x3fffdu)  // (nil)                   ..
 |]
 
 let Powerline = [|
-    (0xe0a0u, 0xe0a2u)  // Powerline Symbols
-    (0xe0a3u, 0xe0a3u)  // Powerline Extra Symbols
-    (0xe0b0u, 0xe0b3u)  // Powerline Symbols 
-    (0xe0b4u, 0xe0c8u)  // Powerline Extra Symbols
-    (0xe0cau, 0xe0cau)  // Powerline Extra Symbols
-    (0xe0ccu, 0xe0d4u)  // Powerline Extra Symbols
+    (0xE0A0u, 0xE0A2u)  // Powerline Symbols
+    (0xE0A3u, 0xE0A3u)  // Powerline Extra Symbols
+    (0xE0B0u, 0xE0B3u)  // Powerline Symbols 
+    (0xE0B4u, 0xE0C8u)  // Powerline Extra Symbols
+    (0xE0CAu, 0xE0CAu)  // Powerline Extra Symbols
+    (0xE0CCu, 0xE0D4u)  // Powerline Extra Symbols
 |]
 
 // The complete set is recorded in nerdfont.txt
@@ -512,12 +510,13 @@ let NerdFont = [|
     (0xe0cau, 0xe0cau)  // Powerline Extra Symbols
     (0xe0ccu, 0xe0d4u)  // Powerline Extra Symbols
     (0xe200u, 0xe2a9u)  // Font Awesome Extension
-    (0xe300u, 0xe3e3u)  // Weather
-    (0xe5fau, 0xe62eu)  // Custom + Seti
+    (0xe300u, 0xe3ebu)  // Weather Icons
+    (0xe5fau, 0xe62fu)  // Seti-UI + Custom
     (0xe700u, 0xe7c5u)  // Devicons
     (0xf000u, 0xf2e0u)  // Font Awesome
     (0xf300u, 0xf31cu)  // Font Logos (Font Linux)
-    (0xf400u, 0xf4a8u)  // Octicons
+    (0xf400u, 0xf505u)  // Octicons
+    (0xf4a9u, 0xf4a9u)  // Octicons
     (0xf500u, 0xfd46u)  // Material
 |]
 

@@ -2,7 +2,6 @@ module FVim.common
 
 open System.Threading.Tasks
 open System
-open FSharp.Control.Tasks.V2.ContextSensitive
 open System.Diagnostics
 
 let mkparams1 (t1: 'T1)                                          = [| box t1 |]

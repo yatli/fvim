@@ -3,10 +3,7 @@
 open FSharp.Data
 open System.Runtime.InteropServices
 open System.IO
-open Avalonia
 open System
-open Avalonia.Controls
-open System.Diagnostics
 
 [<Literal>]
 let sample_config = """
@@ -62,10 +59,10 @@ let load() =
         cfg
     with _ -> ConfigObject.Parse("{}")
 
-let save (cfg: ConfigObject.Root) (x: int) (y: int) (w: int) (h: int) (state: WindowState) (composition: string) (customTitleBar: bool) = 
+let save (cfg: ConfigObject.Root) (x: int) (y: int) (w: int) (h: int) (state: string) (composition: string) (customTitleBar: bool) = 
     let dict = cfg.Workspace |> Array.map (fun ws -> (ws.Path, ws)) |> Map.ofArray
     let cwd  = Environment.CurrentDirectory |> Path.GetFullPath
-    let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, w, h, state.ToString(), Some composition, Some customTitleBar))
+    let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, w, h, state, Some composition, Some customTitleBar))
     let dict = dict.Add(cwd, ws)
     let cfg  = ConfigObject.Root(dict |> Map.toArray |> Array.map snd, cfg.Logging)
     try File.WriteAllText(configfile, cfg.ToString())
