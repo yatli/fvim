@@ -15,6 +15,7 @@ open FSharp.Control.Reactive
 open System.ComponentModel
 open SkiaSharp
 open Avalonia.Layout
+open System.Threading.Tasks
 
 #nowarn "0025"
 
@@ -26,12 +27,12 @@ let inline private trace x = trace "model" x
 [<AutoOpen>]
 module ModelImpl =
 
-    let nvim = Nvim()
+    let nvim          = Nvim()
     let ev_uiopt      = Event<unit>()
     let ev_flush      = Event<unit>()
     let grids         = hashmap[]
     let windows       = hashmap[]
-    let mutable init  = async { return () }
+    let init          = new TaskCompletionSource<unit>()
 
     let add_grid(grid: IGridUI) =
         let id = grid.Id
@@ -127,11 +128,12 @@ let UpdateUICapabilities() =
     let opts = hashmap[]
     states.PopulateUIOptions opts
     trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
-    task {
-        for KeyValue(k, v) in opts do
-            let! _ = nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
-            in ()
-    } |> run
+    async {
+      do! Async.AwaitTask(init.Task)
+      for KeyValue(k, v) in opts do
+        let! _ = nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
+        in ()
+    } |> runAsync
 
 /// <summary>
 /// Call this once at initialization.
@@ -217,7 +219,7 @@ let Start (serveropts, norc, debugMultigrid) =
 
     trace "commencing early initialization..."
 
-    init <- async {
+    async {
       do! Async.SwitchToNewThread()
 
       let! api_info = nvim.call { method = "nvim_get_api_info"; parameters = [||] }
@@ -355,8 +357,10 @@ let Start (serveropts, norc, debugMultigrid) =
       if not norc then
         let! _ = nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | execute \"autocmd VimEnter * runtime! ginit.vim\" | endif"
         ()
-    }
-    Async.Start init
+
+      // initialization complete. no more messages will be sent from this thread.
+      init.SetResult()
+    } |> runAsync
 
 let Flush =
     ev_flush.Publish
@@ -370,11 +374,15 @@ let OnWindowReady(win: IWindow) =
 // connect the grid redraw commands and events
 let OnGridReady(gridui: IGridUI) =
 
+    add_grid gridui
+
+    // do not send messages until the initializer has done its job.
+    // otherwise the two threads will be racing over the channel.
+    init.Task.Wait()
+
     gridui.Resized 
     |> Observable.throttle (TimeSpan.FromMilliseconds 20.0)
     |> Observable.add onGridResize
-
-    add_grid gridui
 
     gridui.Input 
     |> input.onInput nvim
@@ -387,7 +395,6 @@ let OnGridReady(gridui: IGridUI) =
         trace "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
         async {
-          do! init
           let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
           in ()
         } |> runAsync
