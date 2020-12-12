@@ -85,15 +85,30 @@ let mutable font_lineheight    = LineHeightOption.Default
 let mutable font_nonerd        = false
 
 // ui
-let mutable ui_available_opts  = Set.empty<string>
-let mutable ui_multigrid       = false
-let mutable ui_popupmenu       = true
-let mutable ui_tabline         = false
-let mutable ui_cmdline         = false
-let mutable ui_wildmenu        = false
-let mutable ui_messages        = false
-let mutable ui_termcolors      = false
-let mutable ui_hlstate         = false
+//  - option literals
+let [<Literal>] uiopt_rgb            = "rgb"
+let [<Literal>] uiopt_ext_linegrid   = "ext_linegrid"
+let [<Literal>] uiopt_ext_multigrid  = "ext_multigrid"
+let [<Literal>] uiopt_ext_popupmenu  = "ext_popupmenu"
+let [<Literal>] uiopt_ext_tabline    = "ext_tabline"
+let [<Literal>] uiopt_ext_cmdline    = "ext_cmdline"
+let [<Literal>] uiopt_ext_wildmenu   = "ext_wildmenu"
+let [<Literal>] uiopt_ext_messages   = "ext_messages"
+let [<Literal>] uiopt_ext_hlstate    = "ext_hlstate"
+let [<Literal>] uiopt_ext_termcolors = "ext_termcolors"
+let [<Literal>] uiopt_ext_windows    = "ext_windows"
+//  - options supported by neovim, collected at startup
+let mutable ui_available_opts        = Set.empty<string>
+//  - options supported by fvim
+let mutable ui_multigrid             = true
+let mutable ui_popupmenu             = true
+let mutable ui_tabline               = false
+let mutable ui_cmdline               = false
+let mutable ui_wildmenu              = false
+let mutable ui_messages              = false
+let mutable ui_termcolors            = false
+let mutable ui_hlstate               = false
+let mutable ui_windows               = true
 
 type BackgroundComposition =
   | NoComposition
@@ -112,27 +127,6 @@ let mutable background_image_halign  = HorizontalAlignment.Left
 let mutable background_image_valign  = VerticalAlignment.Top
 
 
-[<Literal>]
-let uiopt_rgb            = "rgb"
-[<Literal>]
-let uiopt_ext_linegrid   = "ext_linegrid"
-[<Literal>]
-let uiopt_ext_multigrid  = "ext_multigrid"
-[<Literal>]
-let uiopt_ext_popupmenu  = "ext_popupmenu"
-[<Literal>]
-let uiopt_ext_tabline    = "ext_tabline"
-[<Literal>]
-let uiopt_ext_cmdline    = "ext_cmdline"
-[<Literal>]
-let uiopt_ext_wildmenu   = "ext_wildmenu"
-[<Literal>]
-let uiopt_ext_messages   = "ext_messages"
-[<Literal>]
-let uiopt_ext_hlstate    = "ext_hlstate"
-[<Literal>]
-let uiopt_ext_termcolors = "ext_termcolors"
-
 ///  !Note does not include rgb and ext_linegrid
 let PopulateUIOptions (opts: hashmap<_,_>) =
     let c k v = 
@@ -146,6 +140,7 @@ let PopulateUIOptions (opts: hashmap<_,_>) =
     c uiopt_ext_messages ui_messages
     c uiopt_ext_hlstate ui_hlstate
     c uiopt_ext_termcolors ui_termcolors
+    c uiopt_ext_windows ui_windows
 
 module private Helper =
     type Foo = A

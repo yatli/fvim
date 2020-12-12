@@ -171,6 +171,7 @@ let Start (serveropts, norc, debugMultigrid) =
     states.register.bool "ui.messages"
     states.register.bool "ui.termcolors"
     states.register.bool "ui.hlstate"
+    states.register.bool "ui.windows"
 
     states.register.prop<states.BackgroundComposition> states.parseBackgroundComposition "background.composition"
     states.register.float "background.opacity"
