@@ -108,7 +108,7 @@ let mutable ui_wildmenu              = false
 let mutable ui_messages              = false
 let mutable ui_termcolors            = false
 let mutable ui_hlstate               = false
-let mutable ui_windows               = true
+let mutable ui_windows               = false
 
 type BackgroundComposition =
   | NoComposition

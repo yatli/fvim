@@ -2,7 +2,7 @@
   "profiles": {
     "fvim": {
       "commandName": "Project",
-      "commandLineArgs": "--daemon"
+      "commandLineArgs": "--debug-multigrid"
     },
     "norc": {
       "commandName": "Project",

@@ -5,11 +5,10 @@ open ReactiveUI
 open FVim.def
 open FVim.common.helpers
 
-type CursorViewModel(cursorMode: int option) =
+type CursorViewModel(cursorMode: int option, isRootCursor: bool) =
     inherit ViewModelBase(None, None, Some 1.0, Some 1.0)
 
     member val enabled: bool       = true with get,set
-    member val ingrid: bool        = false with get,set
     member val row: int            = 0 with get,set
     member val col: int            = 0 with get,set
     member val modeidx: int        = _d -1 cursorMode with get,set
@@ -28,6 +27,7 @@ type CursorViewModel(cursorMode: int option) =
     member val blinkoff: int       = 0 with get,set
     member val blinkwait: int      = 0 with get,set
     member val cellPercentage: int = 100 with get,set
+    member val IsRootCursor:bool   = isRootCursor with get
     member val shape: CursorShape  = CursorShape.Block with get,set
     
     member this.Clone() =
