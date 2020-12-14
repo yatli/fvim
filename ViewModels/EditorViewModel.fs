@@ -87,7 +87,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
 
-        if _gridid = 1 && States.ui_multigrid then () else
+        if _gridid = 1 && states.ui_multigrid then () else
 
         this.DoWithRootCursorVM((fun cursor_vm x y ->
           let chksum = m_cursor_vm.VisualChecksum()
