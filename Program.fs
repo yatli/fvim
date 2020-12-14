@@ -16,6 +16,9 @@ open common
 open shell
 open daemon
 open MessagePack.Formatters
+open FVim.ui
+
+let inline trace x = FVim.log.trace "main" x
 
 // Avalonia configuration, don't remove; also used by visual designer.
 [<CompiledName "BuildAvaloniaApp">]
@@ -65,23 +68,39 @@ let startMainWindow app serveropts =
     >>= fun comp -> states.background_composition <- comp; None
     |> ignore
 
-    let mainwin = new MainWindowViewModel(workspace)
-    app <| MainWindow(DataContext = mainwin)
-    let x, y, w, h = 
-      let x, y, w, h = (int mainwin.X), (int mainwin.Y), (int mainwin.Width), (int mainwin.Height)
-      // sometimes the metrics will just go off...
-      // see #136
-      let x, y = (max x 0), (max y 0)
-      if x + w < 0 || y + h < 0
-      then 0, 0, 800, 600
-      else x, y, w, h
-    config.save cfg x y w h (mainwin.WindowState.ToString()) (states.backgroundCompositionToString states.background_composition) mainwin.CustomTitleBar
+    let mainwinVM = new MainWindowViewModel(workspace)
+    let mainwin = MainWindow(DataContext = mainwinVM)
+    // sometimes the metrics will just go off...
+    // see #136
+    let screenBounds = 
+      mainwin.Screens.All
+      |> Seq.fold (fun r (s: Platform.Screen) -> s.Bounds.Union r) (PixelRect()) 
+    let boundcheck() = 
+      let mutable winBounds = 
+        PixelRect(max (int mainwinVM.X) screenBounds.X, 
+                  max (int mainwinVM.Y) screenBounds.Y, 
+                  min (int mainwinVM.Width) screenBounds.Width, 
+                  min (int mainwinVM.Height) screenBounds.Height)
+      if winBounds.Right > screenBounds.Right then
+        winBounds <- winBounds.WithX(screenBounds.Right - winBounds.Width)
+      if winBounds.Bottom > screenBounds.Bottom then
+        winBounds <- winBounds.WithY(screenBounds.Bottom - winBounds.Height)
+      trace "mainwin bound adjusted to %O" winBounds
+      mainwinVM.X <- float winBounds.X
+      mainwinVM.Y <- float winBounds.Y
+      mainwinVM.Width <- float winBounds.Width
+      mainwinVM.Height <- float winBounds.Height
+    boundcheck()
+    app <| mainwin
+    boundcheck()
+    let x, y, w, h = (int mainwinVM.X), (int mainwinVM.Y), (int mainwinVM.Width), (int mainwinVM.Height)
+    config.save cfg x y w h (mainwinVM.WindowState.ToString()) (states.backgroundCompositionToString states.background_composition) mainwinVM.CustomTitleBar
     0
 
 let startCrashReportWindow app ex = 
     let app = app()
-    FVim.log.trace "main" "displaying crash dialog"
-    FVim.log.trace "main" "exception: %O" ex
+    trace "displaying crash dialog"
+    trace "exception: %O" ex
     let code, msgs = states.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)
     let win = new CrashReport(DataContext = crash)
