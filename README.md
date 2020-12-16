@@ -9,8 +9,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 ### Installation
 [Download](https://github.com/yatli/fvim/releases) the latest release package for your system, extract and run `FVim`!
 
-- For Windows 7, use the `win7-x64` package.
-    - Make sure you have [KB2533623](https://www.microsoft.com/en-us/download/details.aspx?id=26764) installed.
+- For Windows 7 / Vista / 8.1 / Server 2008 R2 / Server 2012 R2, use the `win7-x64` package.
+    - Follow [these additional steps to install compatibility patches](https://docs.microsoft.com/en-us/dotnet/core/install/windows?tabs=netcore31&pivots=os-windows#additional-deps).
+    - The link to the KB update is no longer functioning. [The issue is tracked here](https://github.com/dotnet/docs/issues/20459).
 - For Windows 10, use the `win-x64` package -- this version has faster startup.
 - For macOS, it's packaged as an app bundle -- unzip and drag it to your applications folder.
 - For Linux:
