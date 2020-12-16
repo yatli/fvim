@@ -1,8 +1,7 @@
 namespace FVim
 
-open ui
-open log
 open common
+open Avalonia.Media
 
 type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
     inherit ViewModelBase()
@@ -25,3 +24,5 @@ type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
                "Feel free to create new issues, and I'll help to triage and fix the problem."
         tip + generic_message
 
+    member __.Font =
+        FontFamily(ui.DefaultFont)

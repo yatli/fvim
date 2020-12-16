@@ -11,33 +11,11 @@ open Avalonia.Layout
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2
 
-[<Struct>]
-type Request = 
-    {
-        method:     string
-        parameters: obj[]
-    }
-
-[<Struct>]
-type Response = 
-    {
-        result: Result<obj, obj>
-    }
-
-[<Struct>]
-type Event =
-| Request      of reqId: int32 * req: Request * handler: (int32 -> Response -> unit Task)
-| Response     of rspId: int32 * rsp: Response
-| Notification of nreq: Request
-| Error        of emsg: string
-| Crash        of ccode: int32
-| UnhandledException of ex: exn
-| Exit
-
 let private _stateChangeEvent = Event<string>()
 let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
 let mutable private _crashcode = 0
 let private _errormsgs = ResizeArray<string>()
+let private _bytemsg = ResizeArray<byte>()
 
 // request handlers are explicitly registered, 1:1, with no broadcast.
 let requestHandlers      = hashmap[]
@@ -274,7 +252,12 @@ let msg_dispatch =
     | Error err -> 
       error "rpc" "neovim: %s" err
       _errormsgs.Add err
+    | ByteMessage bmsg -> 
+      _bytemsg.Add bmsg
     | Exit -> 
+      if _bytemsg.Count <> 0 then
+        let _bytemsg = System.Text.Encoding.UTF8.GetString(_bytemsg.ToArray())
+        failwithf "neovim says:\n%s" _bytemsg
       trace "rpc" "shutting down application lifetime"
       Shutdown 0
     | Crash code -> 

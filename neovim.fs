@@ -174,18 +174,22 @@ type Nvim() as nvim =
 
         let pending = ConcurrentDictionary<int, TaskCompletionSource<Response>>()
         let parse (data: obj) : Event =
-            match data :?> obj[] with
-            // request
-            | [| (Integer32 0); (Integer32 msg_id) ; (String method); :? (obj[]) as parameters |] 
-                -> Request(msg_id, { method = method; parameters = parameters }, reply)
-            // response
-            | [| (Integer32 1); (Integer32 msg_id) ; err; result |]
-                -> Response(msg_id, { result = if err = null then Ok result else Result.Error err })
-            // notification
-            | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
-                -> Notification { method = method; parameters = parameters }
-            // event forwarding
-            | [| :? Event as e |] -> e
+            match data with
+            | :? (obj[]) as data ->
+              match data with
+              // request
+              | [| (Integer32 0); (Integer32 msg_id) ; (String method); :? (obj[]) as parameters |] 
+                  -> Request(msg_id, { method = method; parameters = parameters }, reply)
+              // response
+              | [| (Integer32 1); (Integer32 msg_id) ; err; result |]
+                  -> Response(msg_id, { result = if err = null then Ok result else Result.Error err })
+              // notification
+              | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
+                  -> Notification { method = method; parameters = parameters }
+              // event forwarding
+              | [| :? Event as e |] -> e
+              | _ -> raise <| EventParseException(data)
+            | :? byte as b -> ByteMessage b
             | _ -> raise <| EventParseException(data)
 
         let intercept (ev: Event) =

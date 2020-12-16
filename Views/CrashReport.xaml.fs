@@ -11,3 +11,4 @@ type CrashReport() as this =
 
     do
         AvaloniaXamlLoader.Load(this)
+
