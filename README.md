@@ -19,7 +19,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
     - Arch Linux:  [Install via AUR](https://aur.archlinux.org/packages/fvim/)
     - RPM-based distributions: `rpm -ivh fvim_package_name.rpm`
     - Fedora: `dnf install fvim_package_name.rpm`
-    - Compile from Source (having dotnet-sdk-3.1+ installed):
+    - Compile from Source (having dotnet-sdk-3.1.404+ installed):
         ```
             git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f netcoreapp3.1 -c Release -r linux-x64 --self-contained
         ```
