@@ -1,0 +1,14 @@
+{
+  "configurations": {
+    "launch - netcoredbg": {
+      "adapter": "netcoredbg",
+      "configuration": {
+        "request": "launch",
+        "program": "${workspaceRoot}/bin/Debug/netcoreapp3.1/FVim.dll",
+        "args": [],
+        "stopAtEntry": true,
+        "cwd": "${workspaceRoot}"
+      }
+    }
+  }
+}
