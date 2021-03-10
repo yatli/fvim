@@ -5,8 +5,34 @@ open common
 
 open Avalonia.Media
 open System
+open System.Threading.Tasks
 
 let inline private trace fmt = trace "def" fmt
+
+[<Struct>]
+type Request = 
+    {
+        method:     string
+        parameters: obj[]
+    }
+
+[<Struct>]
+type Response = 
+    {
+        result: Result<obj, obj>
+    }
+
+[<Struct>]
+type Event =
+| Request      of reqId: int32 * req: Request * handler: (int32 -> Response -> unit Task)
+| Response     of rspId: int32 * rsp: Response
+| Notification of nreq: Request
+| Error        of emsg: string
+| Crash        of ccode: int32
+| ByteMessage  of bmsg: byte
+| UnhandledException of ex: exn
+| Exit
+
 
 [<Struct>]
 type CursorShape =
