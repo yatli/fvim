@@ -76,6 +76,7 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.10.0-rc1" />
+    <PackageReference Include="Avalonia.Cubism" Version="0.0.1-rc" />
     <PackageReference Include="Avalonia.Desktop" Version="0.10.0-rc1" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.0-rc1" />
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.0.2020091801" />

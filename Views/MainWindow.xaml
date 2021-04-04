@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:fvim="clr-namespace:FVim;assembly=FVim"
+        xmlns:live2d="clr-namespace:Avalonia.Cubism;assembly=Avalonia.Cubism"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="300"
         x:Class="FVim.MainWindow"
         CanResize="True"
@@ -42,6 +43,17 @@
       Stretch             = "{Binding BackgroundImageStretch}"
       Opacity             = "{Binding BackgroundImageOpacity}"
       />
+
+    <live2d:Live2DControl Grid.Row="1" Grid.Column="1"
+      Asset               = "{Binding BackgroundImage}"
+      ZIndex              = "-1"
+      Focusable           = "False"
+      HorizontalAlignment = "{Binding BackgroundImageHAlign}"
+      VerticalAlignment   = "{Binding BackgroundImageVAlign}"
+      Width               = "{Binding BackgroundImageW}"
+      Height              = "{Binding BackgroundImageH}"
+      Opacity             = "{Binding BackgroundImageOpacity}"
+	  />
   
     <fvim:Editor Grid.Row="1" Grid.Column="1" DataContext="{Binding MainGrid}" GridId="{Binding GridId}" Name="RootEditor" />
     <Panel Name="LeftBorder" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" IsVisible="{Binding CustomTitleBar}" Background="{Binding NormalBackground}" />

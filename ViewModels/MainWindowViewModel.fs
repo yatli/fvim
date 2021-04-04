@@ -13,6 +13,8 @@ open Avalonia.Media.Imaging
 open Avalonia.Media
 open Avalonia.Layout
 
+open CubismFramework
+
 #nowarn "0025"
 
 /// <summary>
@@ -31,7 +33,8 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     let mutable m_fullscreen = false
     let mutable m_title = "FVim"
 
-    let mutable m_bgimg_src: Bitmap = null
+    let mutable m_bgimg_src: obj    = null
+    let mutable m_bgimg_path        = ""
     let mutable m_bgimg_stretch     = Stretch.None
     let mutable m_bgimg_w           = 0.0
     let mutable m_bgimg_h           = 0.0
@@ -53,11 +56,20 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
                             path.[2..])
                         else
                           path
-            trace (sprintf "MainWindowVM #%d" mainGrid.GridId) "%s" path
-            let new_img = new Bitmap(path)
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, m_bgimg_src.Size.Width, "BackgroundImageW")
-            ignore <| this.RaiseAndSetIfChanged(&m_bgimg_h, m_bgimg_src.Size.Height, "BackgroundImageH")
+            if path <> m_bgimg_path then
+                m_bgimg_path <- path
+                trace (sprintf "MainWindowVM #%d" mainGrid.GridId) "%s" path
+                let img, w, h = 
+                    match Path.GetExtension path with
+                    | ".json" ->
+                        let live2d = new CubismAsset(path)
+                        box live2d, 100.0, 100.0
+                    | _ -> 
+                        let img = new Bitmap(path)
+                        box img, img.Size.Width, img.Size.Height
+                ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, img, "BackgroundImage")
+                ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, w, "BackgroundImageW")
+                ignore <| this.RaiseAndSetIfChanged(&m_bgimg_h, h, "BackgroundImageH")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_opacity, states.background_image_opacity, "BackgroundImageOpacity")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_halign, states.background_image_halign, "BackgroundImageHAlign")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_valign, states.background_image_valign, "BackgroundImageVAlign")
@@ -124,7 +136,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             this.RaisePropertyChanged("CustomTitleBarHeight")
             this.RaisePropertyChanged("BorderSize")
 
-    member __.BackgroundImage with get(): IBitmap = m_bgimg_src :> IBitmap
+    member __.BackgroundImage with get(): obj = m_bgimg_src
     member __.BackgroundImageHAlign with get(): HorizontalAlignment = m_bgimg_halign
     member __.BackgroundImageVAlign with get(): VerticalAlignment = m_bgimg_valign
     member __.BackgroundImageW with get(): float = m_bgimg_w
