@@ -68,8 +68,10 @@ type Cursor() as this =
     let cursorTimerRun action time =
         let timer_active = this.ViewModel.enabled && this.ViewModel.focused
         if timer_active && (not prev_timer_active) then
+            trace "cursor" "timer start"
             cursor_timer.Start()
         elif (not timer_active) && prev_timer_active then
+            trace "cursor" "timer stop"
             cursor_timer.Stop()
         prev_timer_active <- timer_active
         timer_cnt <- 0

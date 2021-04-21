@@ -93,7 +93,6 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
 
         if _gridid = 1 && states.ui_multigrid then () else
 
-        let chksum = m_cursor_vm.VisualChecksum()
         m_cursor_vm.typeface       <- theme.guifont
         m_cursor_vm.wtypeface      <- theme.guifontwide
         m_cursor_vm.fontSize       <- m_fontsize
@@ -114,9 +113,8 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         m_cursor_vm.Y              <- origin.Y
         m_cursor_vm.Width          <- width
         m_cursor_vm.Height         <- m_glyphsize.Height
-        if chksum <> m_cursor_vm.VisualChecksum() then
-          m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
-          trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+        m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+        trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
@@ -199,11 +197,9 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
             cursorConfig()
-        else
-            let f = m_cursor_vm.focused
+        elif m_cursor_vm.focused then
             m_cursor_vm.focused <- false
-            if f then
-                m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+            m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
@@ -265,7 +261,9 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
 
-        if top <= m_cursor_vm.row 
+        if m_cursor_vm.enabled 
+           && m_cursor_vm.focused
+           && top <= m_cursor_vm.row 
            && m_cursor_vm.row <= bot 
            && left <= m_cursor_vm.col 
            && m_cursor_vm.col <= right
