@@ -77,6 +77,9 @@ type GridRect =
 
         x.width - y.width
 
+type ICursor =
+    interface end
+
 /// Represents a grid in neovim
 type IGridUI =
     abstract Id: int
@@ -92,7 +95,8 @@ type IGridUI =
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
 
-type IWindow =
+/// Represents an OS window
+type IFrame =
     abstract Title: string with get, set
     abstract RootId: int
 

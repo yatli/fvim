@@ -46,6 +46,7 @@ let setHighlight x =
 
 let setModeInfo (cs_en: bool) (info: ModeInfo[]) =
     mode_defs <- info
+    cursor_enabled <- cs_en
     cursoren_ev.Trigger cs_en
 
 let GetDrawAttrs hlid = 

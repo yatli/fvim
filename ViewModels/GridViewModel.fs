@@ -16,18 +16,22 @@ open System.Collections.ObjectModel
 
 #nowarn "0025"
 
-module private EditorViewModelHelper =
+module private GridViewModelHelper =
   let inline trace id fmt =
     FVim.log.trace (sprintf "editorvm #%d" id) fmt
 
-open EditorViewModelHelper
+open GridViewModelHelper
 
 [<Struct>]
 type GridDrawOperation = 
   | Scroll of int * int * int * int * int * int
   | Put of GridRect
 
-type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
+/// <summary>
+/// A Grid is a 2D surface for characters, and central to
+/// the Frame-Grid-Window hierarchy.
+/// </summary>
+type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
@@ -447,7 +451,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         member __.CreateChild id r c =
             trace _gridid "CreateChild: #%d" id
             let child_size = this.GetPoint r c
-            let child = EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
+            let child = GridViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
             m_child_grids.Add child
             child :> IGridUI
         member __.RemoveChild c =

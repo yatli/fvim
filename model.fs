@@ -31,7 +31,7 @@ module ModelImpl =
     let ev_uiopt      = Event<unit>()
     let ev_flush      = Event<unit>()
     let grids         = hashmap[]
-    let windows       = hashmap[]
+    let frames        = hashmap[]
     let init          = new TaskCompletionSource<unit>()
 
     let add_grid(grid: IGridUI) =
@@ -45,11 +45,11 @@ module ModelImpl =
         ignore <| grids.Remove id
         grid.Detach()
 
-    let add_window(win: IWindow) = 
+    let add_frame(win: IFrame) = 
         let id = win.RootId
-        windows.[id] <- win
+        frames.[id] <- win
 
-    let setTitle id title = windows.[id].Title <- title
+    let setTitle id title = frames.[id].Title <- title
 
     let unicast id cmd = 
         match grids.TryGetValue id with
@@ -368,8 +368,8 @@ let Flush =
     |> flush_throttle
     |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
 
-let OnWindowReady(win: IWindow) =
-    add_window win
+let OnFrameReady(win: IFrame) =
+    add_frame win
 
 
 // connect the grid redraw commands and events

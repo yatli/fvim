@@ -16,14 +16,28 @@ open Avalonia.Layout
 #nowarn "0025"
 
 /// <summary>
-/// A MainWindow is a top-level container that holds a main grid as the root.
-/// Other grids may be anchored to the main grid as children.
+/// A Frame is a top-level OS Window, and contains one or more nvim windows.
+/// 
+/// It also contains one (or more, TBD) cursor widget that can jump around in 
+/// the frame, between multiple nvim windows.
+///
+/// It also contains a completion popup window that can be anchored to a grid 
+/// position.
+/// 
+/// There are multiple ways to organize the nvim windows inside the frame.
+/// - The classic "linegrid" model: there is a single nvim grid, the MainGrid.
+///   All nvim windows live in this grid, and the Frame knows nothing about them.
+/// - The "multigrid" model: the MainGrid is the root (and background), and 
+///   each nvim window lives in its own grid, attached to the main grid.
+/// - The "windows" model: Each nvim window lives in its own grid, and there is no
+///   root grid -- the window management methods are delegated to the frame, and
+///   the frame should organize the grids.
 /// </summary>
-type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: EditorViewModel) as this =
+type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridViewModel) as this =
     inherit ThemableViewModelBase(Some 300.0, Some 300.0, Some 800.0, Some 600.0)
 
     let mainGrid = 
-        if _maingrid.IsNone then EditorViewModel(1)
+        if _maingrid.IsNone then GridViewModel(1)
         else _maingrid.Value
 
     let mutable m_windowState = WindowState.Normal
@@ -42,7 +56,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     let toggleFullScreen(gridid: int) =
         if gridid = mainGrid.GridId then
             this.Fullscreen <- not this.Fullscreen
-            trace (sprintf "MainWindowVM #%d" mainGrid.GridId) "ToggleFullScreen %A" this.Fullscreen
+            trace (sprintf "FrameVM #%d" mainGrid.GridId) "ToggleFullScreen %A" this.Fullscreen
 
     let updateBackgroundImage() =
         try
@@ -53,7 +67,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
                             path.[2..])
                         else
                           path
-            trace (sprintf "MainWindowVM #%d" mainGrid.GridId) "%s" path
+            trace (sprintf "FrameVM #%d" mainGrid.GridId) "%s" path
             let new_img = new Bitmap(path)
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, m_bgimg_src.Size.Width, "BackgroundImageW")
@@ -84,7 +98,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
             states.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
             states.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
-        model.OnWindowReady this
+        model.OnFrameReady this
 
     member __.MainGrid = mainGrid
 
@@ -132,7 +146,7 @@ type MainWindowViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: 
     member __.BackgroundImageOpacity with get(): float = m_bgimg_opacity
     member __.BackgroundImageStretch with get(): Stretch = m_bgimg_stretch
 
-    interface IWindow with
+    interface IFrame with
         member __.RootId = this.MainGrid.GridId
         member __.Title
             with get() = this.Title

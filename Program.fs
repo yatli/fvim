@@ -68,8 +68,8 @@ let startMainWindow app serveropts =
     >>= fun comp -> states.background_composition <- comp; None
     |> ignore
 
-    let mainwinVM = new MainWindowViewModel(workspace)
-    let mainwin = MainWindow(DataContext = mainwinVM)
+    let mainwinVM = new FrameViewModel(workspace)
+    let mainwin = Frame(DataContext = mainwinVM)
     // sometimes the metrics will just go off...
     // see #136
     let screenBounds = 
