@@ -18,7 +18,6 @@
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
     Width               = "{Binding Width, Mode=OneWay}"
-    IsVisible           = "{Binding IsRootCursor}"
     IsActive            = "{Binding $parent[Window].IsActive, Mode=OneWay}"
     HorizontalAlignment = "Left"
     VerticalAlignment   = "Top"

@@ -35,7 +35,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
-    let m_cursor_vm              = new CursorViewModel(_cursormode, parent.IsNone)
+    let m_cursor_vm              = new CursorViewModel(_cursormode)
     let m_popupmenu_vm           = new PopupMenuViewModel()
     let m_child_grids            = ObservableCollection<IGridUI>()
     let m_resize_ev              = Event<IGridUI>()
@@ -93,32 +93,30 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
 
         if _gridid = 1 && states.ui_multigrid then () else
 
-        this.DoWithRootCursorVM((fun cursor_vm x y ->
-          let chksum = m_cursor_vm.VisualChecksum()
-          cursor_vm.typeface       <- theme.guifont
-          cursor_vm.wtypeface      <- theme.guifontwide
-          cursor_vm.fontSize       <- m_fontsize
-          cursor_vm.text           <- text
-          cursor_vm.fg             <- fg
-          cursor_vm.bg             <- bg
-          cursor_vm.sp             <- sp
-          cursor_vm.underline      <- attrs.underline
-          cursor_vm.undercurl      <- attrs.undercurl
-          cursor_vm.bold           <- attrs.bold
-          cursor_vm.italic         <- attrs.italic
-          cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-          cursor_vm.blinkon        <- on
-          cursor_vm.blinkoff       <- off
-          cursor_vm.blinkwait      <- wait
-          cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
-          cursor_vm.X              <- x
-          cursor_vm.Y              <- y
-          cursor_vm.Width          <- width
-          cursor_vm.Height         <- m_glyphsize.Height
-          if chksum <> m_cursor_vm.VisualChecksum() then
-            cursor_vm.RenderTick     <- cursor_vm.RenderTick + 1
-            trace _gridid "set cursor info, color = %A %A %A" fg bg sp
-        ), origin.X, origin.Y)
+        let chksum = m_cursor_vm.VisualChecksum()
+        m_cursor_vm.typeface       <- theme.guifont
+        m_cursor_vm.wtypeface      <- theme.guifontwide
+        m_cursor_vm.fontSize       <- m_fontsize
+        m_cursor_vm.text           <- text
+        m_cursor_vm.fg             <- fg
+        m_cursor_vm.bg             <- bg
+        m_cursor_vm.sp             <- sp
+        m_cursor_vm.underline      <- attrs.underline
+        m_cursor_vm.undercurl      <- attrs.undercurl
+        m_cursor_vm.bold           <- attrs.bold
+        m_cursor_vm.italic         <- attrs.italic
+        m_cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
+        m_cursor_vm.blinkon        <- on
+        m_cursor_vm.blinkoff       <- off
+        m_cursor_vm.blinkwait      <- wait
+        m_cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
+        m_cursor_vm.X              <- origin.X
+        m_cursor_vm.Y              <- origin.Y
+        m_cursor_vm.Width          <- width
+        m_cursor_vm.Height         <- m_glyphsize.Height
+        if chksum <> m_cursor_vm.VisualChecksum() then
+          m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+          trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
@@ -197,9 +195,15 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
 
     let cursorGoto id row col =
         if id = _gridid then
+            m_cursor_vm.focused <- true
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
             cursorConfig()
+        else
+            let f = m_cursor_vm.focused
+            m_cursor_vm.focused <- false
+            if f then
+                m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
@@ -213,8 +217,6 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         trace _gridid "neovim: busy: %A" v
         m_busy <- v
         setCursorEnabled <| not v
-        //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
-        //else this.Cursor <- Cursor(StandardCursorType.Arrow)
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -427,9 +429,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
             |> Observable.subscribe fontConfig
 
             theme.cursoren_ev.Publish
-            |> Observable.subscribe (fun en ->
-                if m_cursor_vm.IsRootCursor then 
-                    setCursorEnabled en)
+            |> Observable.subscribe setCursorEnabled
 
             states.register.watch "font" fontConfig
 
@@ -481,11 +481,6 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         if gw <> gw' || gh <> gh' then 
             if this.IsTopLevel then
                 m_resize_ev.Trigger(this)
-
-    member __.DoWithRootCursorVM (fn: CursorViewModel -> float -> float -> unit, x: float, y: float) =
-        match parent with
-        | Some p -> p.DoWithRootCursorVM(fn, x + this.X, y + this.Y)
-        | None -> fn m_cursor_vm x y
 
     (*******************   Exposed properties   ***********************)
 
