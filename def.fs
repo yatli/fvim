@@ -625,7 +625,7 @@ let parse_complete_item =
 let parse_semantic_hlgroup =
     function
     | ObjArray [| (String key); (Integer32 id) |] ->
-        trace "parse_semantic_hlgroup: %s" key
+        //trace "parse_semantic_hlgroup: %s" key
         match SemanticHighlightGroup.TryParse key with
         | true, key -> Some(key, id)
         | _ -> None

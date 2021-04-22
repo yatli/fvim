@@ -361,7 +361,7 @@ type Grid() as this =
     let timer = System.Diagnostics.Stopwatch.StartNew()
     let drawn = if grid_vm.Dirty then drawDirty()
                 else drawOps(grid_vm.DrawOps)
-    (*if m_debug then drawDebug grid_dc*)
+    if m_debug then drawDebug grid_dc
     grid_dc.PopClip()
 
     grid_vm.MarkClean()

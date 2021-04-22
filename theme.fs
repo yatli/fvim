@@ -29,7 +29,7 @@ let themeconfig_ev = Event<Color*Color*Color*Color*Color*Color*Color*Color>()
 
 let fontConfig() =
     fontsize <- max fontsize 1.0
-    trace "fontConfig: guifont=%s guifontwide=%s" guifont guifontwide
+    //trace "fontConfig: guifont=%s guifontwide=%s" guifont guifontwide
     fontconfig_ev.Trigger()
 
 let _ = states.register.watch "font" fontConfig

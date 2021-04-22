@@ -367,7 +367,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         let s, w, h = MeasureText(Rune.empty, theme.guifont, theme.guifontwide, theme.fontsize, m_gridscale)
         m_glyphsize <- Size(w, h)
         m_fontsize <- s
-        trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
+        //trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
 
         // sync font to cursor vm
         cursorConfig()

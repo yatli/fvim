@@ -141,7 +141,9 @@ let UpdateUICapabilities() =
 let Start (serveropts, norc, debugMultigrid) =
     trace "starting neovim instance..."
     trace "opts = %A" serveropts
-    states.ui_multigrid <- debugMultigrid
+    if debugMultigrid then
+        states.ui_multigrid <- true
+        states.ui_windows <- true
     nvim.start serveropts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
