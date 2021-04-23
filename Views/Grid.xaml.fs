@@ -26,6 +26,7 @@ module private GridHelper =
     FVim.log.trace ("editor #" + nr) fmt
 
 open GridHelper
+open model
 
 type Grid() as this =
   inherit Canvas()
@@ -339,7 +340,7 @@ type Grid() as this =
         this.Bind(Canvas.LeftProperty, Binding("X"))
         this.Bind(Canvas.TopProperty, Binding("Y"))
 
-        states.register.watch "font" (fun () ->
+        rpc.register.watch "font" (fun () ->
           if grid_vm <> Unchecked.defaultof<_> then
             grid_vm.MarkAllDirty()
             this.InvalidateVisual())

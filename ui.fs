@@ -127,10 +127,8 @@ let private nerd_typeface =
 let private emoji_typeface = Typeface(DefaultFontEmoji)
 let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, Typeface>()
 
-let private InvalidateFontCache () =
+let InvalidateFontCache () =
   fontcache.Clear()
-
-ignore(states.register.watch "font" InvalidateFontCache)
 
 let GetReverseColor (c: Color) =
     let r = 255uy - c.R
@@ -184,9 +182,9 @@ let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scali
         let w' = bounds.Width
         let h'' = 
             match states.font_lineheight with
-            | states.Absolute lh -> lh
-            | states.Default -> float typeface.LineHeight * u'
-            | states.Add lh -> float typeface.LineHeight * u' + lh
+            | Absolute lh -> lh
+            | Default -> float typeface.LineHeight * u'
+            | Add lh -> float typeface.LineHeight * u' + lh
         let h' = round(h'' * scaling) / scaling
         let h' = max h' 1.0
 

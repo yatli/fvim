@@ -13,6 +13,7 @@ open FSharp.Control.Reactive
 
 open System
 open System.Collections.ObjectModel
+open model
 
 #nowarn "0025"
 
@@ -429,7 +430,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
             theme.cursoren_ev.Publish
             |> Observable.subscribe setCursorEnabled
 
-            states.register.watch "font" fontConfig
+            rpc.register.watch "font" fontConfig
 
             this.ObservableForProperty(fun x -> x.IsFocused)
             |> Observable.subscribe (fun x ->

@@ -2,13 +2,14 @@
 
 open log
 open common
+open ui
+open model
 
 open ReactiveUI
 open Avalonia
 open Avalonia.Controls
 open System
 open System.IO
-open ui
 open Avalonia.Media.Imaging
 open Avalonia.Media
 open Avalonia.Layout
@@ -94,9 +95,9 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             | _ -> ()
         | None -> ()
         this.Watch [
-            states.register.notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
-            states.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
-            states.register.watch "background.image"  (fun _ -> updateBackgroundImage())
+            rpc.register.notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+            rpc.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
+            rpc.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
         model.OnFrameReady this
 

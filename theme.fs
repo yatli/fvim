@@ -32,8 +32,6 @@ let fontConfig() =
     //trace "fontConfig: guifont=%s guifontwide=%s" guifont guifontwide
     fontconfig_ev.Trigger()
 
-let _ = states.register.watch "font" fontConfig
-
 let setHighlight x =
     if hi_defs.Length < x.id + 1 then
         System.Array.Resize(&hi_defs, x.id + 100)

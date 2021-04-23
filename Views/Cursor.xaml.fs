@@ -4,6 +4,7 @@ open log
 open ui
 open common
 open def
+open model
 
 open Avalonia
 open Avalonia.Animation
@@ -138,7 +139,7 @@ type Cursor() as this =
             |> Observable.subscribe(fun _ -> 
               setCursorAnimation()
               this.InvalidateVisual())
-            states.register.watch "cursor" setCursorAnimation
+            rpc.register.watch "cursor" setCursorAnimation
         ] 
         cursor_timer.Start()
         AvaloniaXamlLoader.Load(this)

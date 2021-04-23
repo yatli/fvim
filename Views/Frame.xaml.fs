@@ -18,6 +18,7 @@ open Avalonia.Interactivity
 open Avalonia.VisualTree
 
 open Avalonia.Diagnostics
+open model
 
 #nowarn "0025"
 
@@ -33,16 +34,16 @@ type Frame() as this =
 
     let mutable m_bgcolor: Color = Color()
     let mutable m_bgopacity: float = 1.0
-    let mutable m_bgcomp = states.NoComposition
+    let mutable m_bgcomp = NoComposition
 
     let configBackground() =
         m_bgcomp <- states.background_composition
         m_bgopacity <- states.background_opacity
         let comp =
           match m_bgcomp with
-          | states.Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
-          | states.Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
-          | states.Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
+          | Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+          | Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
+          | Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
           | _                  -> ui.SolidBackground(m_bgopacity, m_bgcolor)
         trace "frame" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
@@ -135,9 +136,9 @@ type Frame() as this =
             this.GotFocus.Subscribe (fun _ -> model.OnFocusGained())
             this.LostFocus.Subscribe (fun _ -> model.OnFocusLost())
 
-            states.register.watch "background.composition" configBackground
-            states.register.watch "background.opacity" configBackground
-            states.register.notify "DrawFPS" (fun [| Bool(v) |] -> 
+            rpc.register.watch "background.composition" configBackground
+            rpc.register.watch "background.opacity" configBackground
+            rpc.register.notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
 

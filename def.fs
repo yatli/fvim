@@ -6,6 +6,8 @@ open common
 open Avalonia.Media
 open System
 open System.Threading.Tasks
+open SkiaSharp
+open Avalonia.Layout
 
 let inline private trace fmt = trace "def" fmt
 
@@ -686,4 +688,102 @@ let parse_redrawcmd (x: obj) =
     | _                                                                                    -> UnknownCommand x
     //| C("suspend", _)                                                                    -> 
     //| C("update_menu", _)                                                                -> 
+
+
+//  FVim-specific types
+
+type LineHeightOption =
+| Absolute of float
+| Add of float
+| Default
+
+type BackgroundComposition =
+| NoComposition
+| Transparent
+| Blur
+| Acrylic
+
+
+let parseHintLevel (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "none" -> Some SKPaintHinting.NoHinting
+        | "slight" -> Some SKPaintHinting.Slight
+        | "normal" -> Some SKPaintHinting.Normal
+        | "full" -> Some SKPaintHinting.Full
+        | _ -> None
+    | _ -> None
+
+let parseFontWeight (v: obj) =
+    match v with
+    | Integer32 v -> Some(LanguagePrimitives.EnumOfValue v)
+    | _ -> None
+
+let parseLineHeightOption (v: obj) =
+    match v with
+    | String v ->
+        if v.StartsWith("+") then
+            Some(Add(float v.[1..]))
+        elif v.StartsWith("-") then
+            Some(Add(-float v.[1..]))
+        elif v.ToLowerInvariant() = "default" then
+            Some Default
+        else
+            let v = float v
+            if v > 0.0 then Some(Absolute v) 
+            else None
+    | _ -> None
+
+let parseBackgroundComposition (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "none" -> Some NoComposition
+        | "blur" -> Some Blur
+        | "acrylic" -> Some Acrylic
+        | "transparent" -> Some Transparent
+        | _ -> None
+    | _ -> None
+
+let parseStretch (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "none" -> Some Stretch.None
+        | "fill" -> Some Stretch.Fill
+        | "uniform" -> Some Stretch.Uniform
+        | "uniformfill" -> Some Stretch.UniformToFill
+        | _ -> None
+    | _ -> None
+
+let parseHorizontalAlignment (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "left" -> Some HorizontalAlignment.Left
+        | "center" -> Some HorizontalAlignment.Center
+        | "right" -> Some HorizontalAlignment.Right
+        | "stretch" -> Some HorizontalAlignment.Stretch
+        | _ -> None
+    | _ -> None
+
+let parseVerticalAlignment (v: obj) = 
+    match v with
+    | String v ->
+        match v.ToLower() with
+        | "top" -> Some VerticalAlignment.Top
+        | "center" -> Some VerticalAlignment.Center
+        | "bottom" -> Some VerticalAlignment.Bottom
+        | "stretch" -> Some VerticalAlignment.Stretch
+        | _ -> None
+    | _ -> None
+
+let backgroundCompositionToString = 
+  function
+    | NoComposition -> "none"
+    | Blur -> "blur"
+    | Acrylic -> "acrylic"
+    | Transparent -> "transparent" 
+
 
