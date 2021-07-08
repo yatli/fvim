@@ -445,6 +445,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         member __.GridWidth  = int( this.Width  / m_glyphsize.Width  )
         member __.Resized = m_resize_ev.Publish
         member __.Input = m_input_ev.Publish
+        member __.BackgroundColor with get(): Color = theme.default_bg
         member __.HasChildren = m_child_grids.Count <> 0
         member __.Redraw cmd = redraw cmd
         member __.CreateChild id r c =
@@ -494,7 +495,6 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         with get() : float = m_gridscale
         and set(v) = m_gridscale <- v
     member __.FontAttrs with get() = theme.guifont, theme.guifontwide, m_fontsize
-    member __.BackgroundColor with get(): Color = theme.default_bg
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w
     member __.GlyphHeight with get(): float = m_glyphsize.Height

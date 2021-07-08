@@ -208,7 +208,7 @@ type Frame() as this =
                     this.SetValue(XProp, p.Point.X - deltaX) |> ignore
                     this.SetValue(YProp, p.Point.Y - deltaY) |> ignore
                 )
-            ctx.MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
+            (ctx :> IFrame).MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
             |> Observable.subscribe(fun c -> 
                 trace "mainwindow" "update background color: %s" (c.Value.ToString())
                 m_bgcolor <- c.Value

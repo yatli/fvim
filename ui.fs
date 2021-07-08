@@ -89,16 +89,22 @@ type IGridUI =
     abstract GridWidth: int
     abstract Resized: IEvent<IGridUI>
     abstract Input: IEvent<int*InputEvent>
+    abstract BackgroundColor: Color
     abstract HasChildren: bool
     abstract Redraw: RedrawCommand -> unit
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
 
+and WindowLayout =
+| Window of IGridUI
+| VSplit of WindowLayout list
+| HSplit of WindowLayout list
+
 /// Represents an OS window
-type IFrame =
+and IFrame =
     abstract Title: string with get, set
-    abstract RootId: int
+    abstract MainGrid: IGridUI
 
 open System.Runtime.InteropServices
 

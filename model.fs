@@ -48,7 +48,7 @@ module private ModelImpl =
         grid.Detach()
 
     let add_frame(win: IFrame) = 
-        let id = win.RootId
+        let id = win.MainGrid.Id
         frames.[id] <- win
 
     let setTitle id title = frames.[id].Title <- title
@@ -183,8 +183,7 @@ module rpc =
           trace "unrecognized event: %A" other
 
     module private Helper =
-        type Foo = A
-        let _StatesModuleType = typeof<Foo>.DeclaringType.DeclaringType
+        let _StatesModuleType = typeof<states.Foo>.DeclaringType
         let SetProp name v =
             let propDesc = _StatesModuleType.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
             if propDesc <> null then
@@ -256,7 +255,7 @@ let Detach() =
     if nvim.isRemote then
       Shutdown(0)
 
-let UpdateUICapabilities() =
+let private UpdateUICapabilities() =
     let opts = hashmap[]
     states.PopulateUIOptions opts
     trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
@@ -266,6 +265,14 @@ let UpdateUICapabilities() =
         let! _ = nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
         in ()
     } |> runAsync
+
+let private UpdateUIWindows() =
+    if ui_windows then
+        // TODO maybe also tabline?
+        ui_multigrid <- true
+    else
+        ui_multigrid <- false
+    
 
 /// <summary>
 /// Call this once at initialization.
@@ -297,15 +304,15 @@ let Start (serveropts, norc, debugMultigrid) =
     rpc.register.bool "cursor.smoothblink"
     rpc.register.bool "cursor.smoothmove"
     rpc.register.bool "key.disableShiftSpace"
-    rpc.register.bool "ui.multigrid"
+    //rpc.register.bool "ui.multigrid"
     rpc.register.bool "ui.popupmenu"
-    rpc.register.bool "ui.tabline"
-    rpc.register.bool "ui.cmdline"
+    //rpc.register.bool "ui.tabline"
+    //rpc.register.bool "ui.cmdline"
     rpc.register.bool "ui.wildmenu"
-    rpc.register.bool "ui.messages"
-    rpc.register.bool "ui.termcolors"
-    rpc.register.bool "ui.hlstate"
-    rpc.register.bool "ui.windows"
+    //rpc.register.bool "ui.messages"
+    //rpc.register.bool "ui.termcolors"
+    //rpc.register.bool "ui.hlstate"
+    //rpc.register.bool "ui.windows"
 
     rpc.register.prop<BackgroundComposition> parseBackgroundComposition "background.composition"
     rpc.register.float "background.opacity"
@@ -323,6 +330,7 @@ let Start (serveropts, norc, debugMultigrid) =
         |> Observable.subscribe(UpdateUICapabilities)
         rpc.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
         rpc.register.notify "remote.detach" (fun _ -> Detach())
+        rpc.register.watch "ui.windows" UpdateUIWindows
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
@@ -469,14 +477,16 @@ let Start (serveropts, norc, debugMultigrid) =
       let! _ = nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.bold', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimFontNoBuiltinSymbols" 1 "call rpcnotify(g:fvim_channel, 'font.nonerd', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 "call rpcnotify(g:fvim_channel, 'key.disableShiftSpace', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
+
+      //let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.popupmenu', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUITabLine" 1 "call rpcnotify(g:fvim_channel, 'ui.tabline', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUICmdLine" 1 "call rpcnotify(g:fvim_channel, 'ui.cmdline', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUITabLine" 1 "call rpcnotify(g:fvim_channel, 'ui.tabline', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUICmdLine" 1 "call rpcnotify(g:fvim_channel, 'ui.cmdline', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimUIWildMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.wildmenu', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUIMessages" 1 "call rpcnotify(g:fvim_channel, 'ui.messages', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUITermColors" 1 "call rpcnotify(g:fvim_channel, 'ui.termcolors', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUIHlState" 1 "call rpcnotify(g:fvim_channel, 'ui.hlstate', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUIMessages" 1 "call rpcnotify(g:fvim_channel, 'ui.messages', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUITermColors" 1 "call rpcnotify(g:fvim_channel, 'ui.termcolors', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUIHlState" 1 "call rpcnotify(g:fvim_channel, 'ui.hlstate', <args>)"
+
       let! _ = nvim.``command!`` "-complete=expression FVimDrawFPS" 1 "call rpcnotify(g:fvim_channel, 'DrawFPS', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimCustomTitleBar" 1 "call rpcnotify(g:fvim_channel, 'CustomTitleBar', <args>)"
 

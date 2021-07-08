@@ -101,7 +101,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
         ]
         model.OnFrameReady this
 
-    member __.MainGrid = mainGrid
+    member __.MainGrid = mainGrid :> IGridUI
 
     member this.Title
         with get() = m_title
@@ -148,7 +148,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
     member __.BackgroundImageStretch with get(): Stretch = m_bgimg_stretch
 
     interface IFrame with
-        member __.RootId = this.MainGrid.GridId
+        member __.MainGrid = this.MainGrid
         member __.Title
             with get() = this.Title
             and set (v: string): unit = 

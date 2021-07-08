@@ -49,7 +49,7 @@ let [<Literal>] uiopt_ext_windows    = "ext_windows"
 //  - options supported by neovim, collected at startup
 let mutable ui_available_opts        = Set.empty<string>
 //  - options supported by fvim
-let mutable ui_multigrid             = true
+let mutable ui_multigrid             = false
 let mutable ui_popupmenu             = true
 let mutable ui_tabline               = false
 let mutable ui_cmdline               = false
@@ -85,3 +85,4 @@ let PopulateUIOptions (opts: hashmap<_,_>) =
     c uiopt_ext_termcolors ui_termcolors
     c uiopt_ext_windows ui_windows
 
+type Foo = A
