@@ -3,6 +3,10 @@
     "fvim": {
       "commandName": "Project"
     },
+    "multigrid": {
+      "commandName": "Project",
+      "commandLineArgs": "--debug-multigrid"
+    },
     "norc": {
       "commandName": "Project",
       "commandLineArgs": "-u NORC"

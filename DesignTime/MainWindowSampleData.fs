@@ -7,4 +7,4 @@ type MainWindowSampleData() =
     member __.UseCustomTitleBar = true
     member __.CustomTitleBarHeight = GridLength 26.0
     member __.BorderSize = GridLength 1.0
-    //member __.MainGrid = EditorSampleData()
+    //member __.MainGrid = GridSampleData()

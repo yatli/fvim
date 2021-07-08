@@ -4,6 +4,7 @@ open log
 open ui
 open common
 open def
+open model
 
 open Avalonia
 open Avalonia.Animation
@@ -27,7 +28,6 @@ type Cursor() as this =
 
     static let IsActiveProperty = AvaloniaProperty.Register<Cursor, bool>("IsActive")
 
-    let mutable cursor_timer: IDisposable = null
     let mutable fg = Colors.White
     let mutable bg = Colors.Black
     let mutable sp = Colors.Red
@@ -51,17 +51,39 @@ type Cursor() as this =
 
     let _buffer_glyph: uint[] = Array.zeroCreate 16
 
+    let mutable timer_action = fun () -> ()
+    let mutable timer_ref = 0
+    let mutable timer_cnt = 0
+    let timer_res = 50
+    let timer_callback _ _ =
+        if timer_ref <= 0 then ()
+        else
+        timer_cnt <- timer_cnt + timer_res
+        if timer_cnt >= timer_ref then
+            timer_action()
+            timer_cnt <- 0
+
+    let cursor_timer = new DispatcherTimer(TimeSpan.FromMilliseconds(float timer_res), DispatcherPriority.Render, EventHandler(timer_callback))
+
+    let mutable prev_timer_active = false
     let cursorTimerRun action time =
-        if cursor_timer <> null then
-            cursor_timer.Dispose()
-            cursor_timer <- null
-        if time > 0 then
-            cursor_timer <- DispatcherTimer.RunOnce(Action(action), TimeSpan.FromMilliseconds(float time), DispatcherPriority.Render)
+        let timer_active = this.ViewModel.enabled && this.ViewModel.focused
+        if timer_active && (not prev_timer_active) then
+            trace "cursor" "timer start"
+            cursor_timer.Start()
+        elif (not timer_active) && prev_timer_active then
+            trace "cursor" "timer stop"
+            cursor_timer.Stop()
+        prev_timer_active <- timer_active
+        timer_cnt <- 0
+        timer_ref <- time
+        timer_action <- action
 
     let showCursor (v: bool) =
         let opacity = 
-            if (v && this.ViewModel.enabled && this.ViewModel.ingrid)
+            if ((v && this.ViewModel.enabled)
                || not this.IsActive // don't blink if inactive
+               ) && this.ViewModel.focused
             then 1.0
             else 0.0
         this.Opacity <- opacity
@@ -117,8 +139,9 @@ type Cursor() as this =
             |> Observable.subscribe(fun _ -> 
               setCursorAnimation()
               this.InvalidateVisual())
-            states.register.watch "cursor" setCursorAnimation
+            rpc.register.watch "cursor" setCursorAnimation
         ] 
+        cursor_timer.Start()
         AvaloniaXamlLoader.Load(this)
 
     member this.IsActive

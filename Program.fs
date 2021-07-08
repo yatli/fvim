@@ -11,6 +11,7 @@ open Avalonia.Controls.ApplicationLifetimes
 open MessagePack
 open MessagePack.Resolvers
 
+open def
 open getopt
 open common
 open shell
@@ -64,12 +65,12 @@ let startMainWindow app serveropts =
     let workspace = cfg.Workspace |> Array.tryFind(fun w -> w.Path = cwd)
     workspace 
     >>= fun workspace -> workspace.Mainwin.BackgroundComposition
-    >>= fun comp -> states.parseBackgroundComposition(box comp)
+    >>= fun comp -> parseBackgroundComposition(box comp)
     >>= fun comp -> states.background_composition <- comp; None
     |> ignore
 
-    let mainwinVM = new MainWindowViewModel(workspace)
-    let mainwin = MainWindow(DataContext = mainwinVM)
+    let mainwinVM = new FrameViewModel(workspace)
+    let mainwin = Frame(DataContext = mainwinVM)
     // sometimes the metrics will just go off...
     // see #136
     let screenBounds = 
@@ -94,14 +95,14 @@ let startMainWindow app serveropts =
     app <| mainwin
     boundcheck()
     let x, y, w, h = (int mainwinVM.X), (int mainwinVM.Y), (int mainwinVM.Width), (int mainwinVM.Height)
-    config.save cfg x y w h (mainwinVM.WindowState.ToString()) (states.backgroundCompositionToString states.background_composition) mainwinVM.CustomTitleBar
+    config.save cfg x y w h (mainwinVM.WindowState.ToString()) (backgroundCompositionToString states.background_composition) mainwinVM.CustomTitleBar
     0
 
 let startCrashReportWindow app ex = 
     let app = app()
     trace "displaying crash dialog"
     trace "exception: %O" ex
-    let code, msgs = states.get_crash_info()
+    let code, msgs = model.get_crash_info()
     let crash = new CrashReportViewModel(ex, code, msgs)
     let win = new CrashReport(DataContext = crash)
     // there may be messages already posted into the sync context,

@@ -16,6 +16,8 @@ open System.ComponentModel
 open SkiaSharp
 open Avalonia.Layout
 open System.Threading.Tasks
+open FSharp.Control.Tasks.V2
+open System.Reflection
 
 #nowarn "0025"
 
@@ -25,13 +27,13 @@ open System.Runtime.InteropServices
 let inline private trace x = trace "model" x
 
 [<AutoOpen>]
-module ModelImpl =
+module private ModelImpl =
 
     let nvim          = Nvim()
     let ev_uiopt      = Event<unit>()
     let ev_flush      = Event<unit>()
     let grids         = hashmap[]
-    let windows       = hashmap[]
+    let frames        = hashmap[]
     let init          = new TaskCompletionSource<unit>()
 
     let add_grid(grid: IGridUI) =
@@ -45,11 +47,11 @@ module ModelImpl =
         ignore <| grids.Remove id
         grid.Detach()
 
-    let add_window(win: IWindow) = 
-        let id = win.RootId
-        windows.[id] <- win
+    let add_frame(win: IFrame) = 
+        let id = win.MainGrid.Id
+        frames.[id] <- win
 
-    let setTitle id title = windows.[id].Title <- title
+    let setTitle id title = frames.[id].Title <- title
 
     let unicast id cmd = 
         match grids.TryGetValue id with
@@ -120,11 +122,140 @@ module ModelImpl =
         trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
+let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+let Shutdown code = 
+  try _appLifetime.Value.Shutdown code
+  with _ -> ()
+
+module rpc =
+    let mutable _crashcode = 0
+    let _errormsgs = ResizeArray<string>()
+    let _bytemsg = ResizeArray<byte>()
+    // request handlers are explicitly registered, 1:1, with no broadcast.
+    let private requestHandlers      = hashmap[]
+    // notification events are broadcasted to all subscribers.
+    let private notificationEvents   = hashmap[]
+
+    let private getNotificationEvent eventName =
+        match notificationEvents.TryGetValue eventName with
+        | true, ev -> ev
+        | _ ->
+        let ev = Event<obj[]>()
+        notificationEvents.[eventName] <- ev
+        ev
+
+    let msg_dispatch =
+        function
+        | Request(id, req, reply) -> 
+            match requestHandlers.TryGetValue req.method with
+            | true, method ->
+                task { 
+                    try
+                        let! rsp = method(req.parameters)
+                        do! reply id rsp
+                    with
+                    | Failure msg -> error "rpc" "request %d(%s) failed: %s" id req.method msg
+                } |> run
+            | _ -> error "rpc" "request handler [%s] not found" req.method
+
+        | Notification(req) ->
+            let event = getNotificationEvent req.method
+            try event.Trigger req.parameters
+            with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
+        | Error err -> 
+          error "rpc" "neovim: %s" err
+          _errormsgs.Add err
+        | ByteMessage bmsg -> 
+          _bytemsg.Add bmsg
+        | Exit -> 
+          if _bytemsg.Count <> 0 then
+            let _bytemsg = System.Text.Encoding.UTF8.GetString(_bytemsg.ToArray())
+            failwithf "neovim says:\n%s" _bytemsg
+          trace "shutting down application lifetime"
+          Shutdown 0
+        | Crash code -> 
+          trace "neovim crashed with code %d" code
+          _crashcode <- code
+          failwithf "neovim crashed"
+        | UnhandledException ex -> 
+          raise ex
+        | other -> 
+          trace "unrecognized event: %A" other
+
+    module private Helper =
+        let _StatesModuleType = typeof<states.Foo>.DeclaringType
+        let SetProp name v =
+            let propDesc = _StatesModuleType.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
+            if propDesc <> null then
+                propDesc.SetValue(null, v)
+            else
+                error "states" "The property %s is not found" name
+        let GetProp name =
+            let propDesc = _StatesModuleType.GetProperty(name, BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
+            if propDesc <> null then
+                Some <| propDesc.GetValue(null)
+            else
+                error "states" "The property %s is not found" name
+                None
+    module register =
+        let private _stateChangeEvent = Event<string>()
+        /// Register an rpc handler.
+        let request name fn = 
+            requestHandlers.Add(name, fun objs ->
+                try fn objs
+                with x -> 
+                    error "Request" "exception thrown: %O" x
+                    Task.FromResult {  result = Result.Error(box x) })
+
+        /// Register an event handler.
+        let notify name (fn: obj[] -> unit) = 
+            (getNotificationEvent name).Publish.Subscribe(fun objs -> 
+                try fn objs
+                with x -> error "Notify" "exception thrown: %A" <| x.ToString())
+
+        /// Watch for registered state
+        let watch (name: string) fn =
+            _stateChangeEvent.Publish
+            |> Observable.filter (fun x -> x.StartsWith(name))
+            |> Observable.subscribe (fun _ -> fn())
+
+        /// Registers a state variable. Raises notification on change.
+        let prop<'T> (parser: obj -> 'T option) (fullname: string) =
+            let section = fullname.Split(".").[0]
+            let fieldName = fullname.Replace(".", "_")
+            notify fullname (fun v ->
+                match v with
+                | [| v |] ->
+                    match parser(v) with
+                    | Some v -> 
+                        Helper.SetProp fieldName v
+                        _stateChangeEvent.Trigger fullname
+                    | None -> ()
+                | _ -> ())
+            |> ignore
+            request fullname (fun _ -> task { 
+                let result = 
+                    match Helper.GetProp fieldName with
+                    | Some v -> Ok v
+                    | None -> Result.Error(box "not found")
+                return { result=result }
+            })
+
+        let bool = prop<bool> (|Bool|_|)
+        let string = prop<string> (|String|_|)
+        let float = prop<float> (function
+            | Integer32 x -> Some(float x)
+            | :? float as x -> Some x
+            | _ -> None)
+
+let get_crash_info() =
+  rpc._crashcode, rpc._errormsgs
+
 let Detach() =
     if nvim.isRemote then
-      states.Shutdown(0)
+      Shutdown(0)
 
-let UpdateUICapabilities() =
+let private UpdateUICapabilities() =
     let opts = hashmap[]
     states.PopulateUIOptions opts
     trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
@@ -135,63 +266,77 @@ let UpdateUICapabilities() =
         in ()
     } |> runAsync
 
+let private UpdateUIWindows() =
+    if ui_windows then
+        // TODO maybe also tabline?
+        ui_multigrid <- true
+    else
+        ui_multigrid <- false
+    
+
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
 let Start (serveropts, norc, debugMultigrid) =
     trace "starting neovim instance..."
     trace "opts = %A" serveropts
-    states.ui_multigrid <- debugMultigrid
+    if debugMultigrid then
+        states.ui_multigrid <- true
+        states.ui_windows <- true
     nvim.start serveropts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
-        (states.msg_dispatch)
+        (rpc.msg_dispatch)
 
     // rpc handlers
-    states.register.bool "font.autosnap"
-    states.register.bool "font.antialias"
-    states.register.bool "font.drawBounds"
-    states.register.bool "font.autohint"
-    states.register.bool "font.subpixel"
-    states.register.bool "font.lcdrender"
-    states.register.bool "font.ligature"
-    states.register.prop<SKPaintHinting> states.parseHintLevel "font.hintLevel"
-    states.register.prop<FontWeight> states.parseFontWeight "font.weight.normal"
-    states.register.prop<FontWeight> states.parseFontWeight "font.weight.bold"
-    states.register.prop<states.LineHeightOption> states.parseLineHeightOption "font.lineheight"
-    states.register.bool "font.nonerd"
-    states.register.bool "cursor.smoothblink"
-    states.register.bool "cursor.smoothmove"
-    states.register.bool "key.disableShiftSpace"
-    states.register.bool "ui.multigrid"
-    states.register.bool "ui.popupmenu"
-    states.register.bool "ui.tabline"
-    states.register.bool "ui.cmdline"
-    states.register.bool "ui.wildmenu"
-    states.register.bool "ui.messages"
-    states.register.bool "ui.termcolors"
-    states.register.bool "ui.hlstate"
+    rpc.register.bool "font.autosnap"
+    rpc.register.bool "font.antialias"
+    rpc.register.bool "font.drawBounds"
+    rpc.register.bool "font.autohint"
+    rpc.register.bool "font.subpixel"
+    rpc.register.bool "font.lcdrender"
+    rpc.register.bool "font.ligature"
+    rpc.register.prop<SKPaintHinting> parseHintLevel "font.hintLevel"
+    rpc.register.prop<FontWeight> parseFontWeight "font.weight.normal"
+    rpc.register.prop<FontWeight> parseFontWeight "font.weight.bold"
+    rpc.register.prop<LineHeightOption> parseLineHeightOption "font.lineheight"
+    rpc.register.bool "font.nonerd"
+    rpc.register.bool "cursor.smoothblink"
+    rpc.register.bool "cursor.smoothmove"
+    rpc.register.bool "key.disableShiftSpace"
+    //rpc.register.bool "ui.multigrid"
+    rpc.register.bool "ui.popupmenu"
+    //rpc.register.bool "ui.tabline"
+    //rpc.register.bool "ui.cmdline"
+    rpc.register.bool "ui.wildmenu"
+    //rpc.register.bool "ui.messages"
+    //rpc.register.bool "ui.termcolors"
+    //rpc.register.bool "ui.hlstate"
+    //rpc.register.bool "ui.windows"
 
-    states.register.prop<states.BackgroundComposition> states.parseBackgroundComposition "background.composition"
-    states.register.float "background.opacity"
-    states.register.float "background.altopacity"
-    states.register.float "background.image.opacity"
-    states.register.string "background.image.file"
-    states.register.prop<Stretch> states.parseStretch "background.image.stretch"
-    states.register.prop<HorizontalAlignment> states.parseHorizontalAlignment "background.image.halign"
-    states.register.prop<VerticalAlignment> states.parseVerticalAlignment "background.image.valign"
+    rpc.register.prop<BackgroundComposition> parseBackgroundComposition "background.composition"
+    rpc.register.float "background.opacity"
+    rpc.register.float "background.altopacity"
+    rpc.register.float "background.image.opacity"
+    rpc.register.string "background.image.file"
+    rpc.register.prop<Stretch> parseStretch "background.image.stretch"
+    rpc.register.prop<HorizontalAlignment> parseHorizontalAlignment "background.image.halign"
+    rpc.register.prop<VerticalAlignment> parseVerticalAlignment "background.image.valign"
 
 
     List.iter ignore [
         ev_uiopt.Publish
         |> Observable.throttle(TimeSpan.FromMilliseconds 20.0)
         |> Observable.subscribe(UpdateUICapabilities)
-        states.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
-        states.register.notify "remote.detach" (fun _ -> Detach())
-        states.register.watch "ui" ev_uiopt.Trigger
+        rpc.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
+        rpc.register.notify "remote.detach" (fun _ -> Detach())
+        rpc.register.watch "ui.windows" UpdateUIWindows
+        rpc.register.watch "ui" ev_uiopt.Trigger
+        rpc.register.watch "font" theme.fontConfig
+        rpc.register.watch "font" ui.InvalidateFontCache
     ]
 
-    states.register.request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {
+    rpc.register.request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {
         states.clipboard_lines <- lines
         states.clipboard_regtype <- regtype
         let text = String.Join("\n", lines)
@@ -200,7 +345,7 @@ let Start (serveropts, norc, debugMultigrid) =
         return { result = Ok(box [||]) }
     })
 
-    states.register.request "get-clipboard" (fun _ -> task {
+    rpc.register.request "get-clipboard" (fun _ -> task {
         let! sysClipboard = Avalonia.Application.Current.Clipboard.GetTextAsync()
         let sysClipboard = if String.IsNullOrEmpty sysClipboard then "" else sysClipboard
         let sysClipboardLines = sysClipboard.Replace("\r\n", "\n").Split("\n")
@@ -332,14 +477,16 @@ let Start (serveropts, norc, debugMultigrid) =
       let! _ = nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.bold', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimFontNoBuiltinSymbols" 1 "call rpcnotify(g:fvim_channel, 'font.nonerd', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 "call rpcnotify(g:fvim_channel, 'key.disableShiftSpace', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
+
+      //let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.popupmenu', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUITabLine" 1 "call rpcnotify(g:fvim_channel, 'ui.tabline', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUICmdLine" 1 "call rpcnotify(g:fvim_channel, 'ui.cmdline', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUITabLine" 1 "call rpcnotify(g:fvim_channel, 'ui.tabline', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUICmdLine" 1 "call rpcnotify(g:fvim_channel, 'ui.cmdline', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimUIWildMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.wildmenu', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUIMessages" 1 "call rpcnotify(g:fvim_channel, 'ui.messages', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUITermColors" 1 "call rpcnotify(g:fvim_channel, 'ui.termcolors', <args>)"
-      let! _ = nvim.``command!`` "-complete=expression FVimUIHlState" 1 "call rpcnotify(g:fvim_channel, 'ui.hlstate', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUIMessages" 1 "call rpcnotify(g:fvim_channel, 'ui.messages', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUITermColors" 1 "call rpcnotify(g:fvim_channel, 'ui.termcolors', <args>)"
+      //let! _ = nvim.``command!`` "-complete=expression FVimUIHlState" 1 "call rpcnotify(g:fvim_channel, 'ui.hlstate', <args>)"
+
       let! _ = nvim.``command!`` "-complete=expression FVimDrawFPS" 1 "call rpcnotify(g:fvim_channel, 'DrawFPS', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimCustomTitleBar" 1 "call rpcnotify(g:fvim_channel, 'CustomTitleBar', <args>)"
 
@@ -367,8 +514,8 @@ let Flush =
     |> flush_throttle
     |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
 
-let OnWindowReady(win: IWindow) =
-    add_window win
+let OnFrameReady(win: IFrame) =
+    add_frame win
 
 
 // connect the grid redraw commands and events

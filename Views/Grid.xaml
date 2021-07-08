@@ -5,23 +5,24 @@
   xmlns:mc   = "http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:fvim = "clr-namespace:FVim;assembly=FVim"
   Focusable  = "{Binding Focusable}"
-  x:Class    = "FVim.Editor"
+  x:Class    = "FVim.Grid"
   Background = "Transparent"
   Design.Height="300"
   Design.Width="400"
   >
   <Design.DataContext>
-    <fvim:EditorSampleData />
+    <fvim:GridSampleData />
   </Design.DataContext>
 
   <fvim:Cursor
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
     Width               = "{Binding Width, Mode=OneWay}"
+    IsActive            = "{Binding $parent[Window].IsActive, Mode=OneWay}"
     HorizontalAlignment = "Left"
     VerticalAlignment   = "Top"
     Focusable           = "False"
-    IsActive            = "{Binding $parent[Window].IsActive, Mode=OneWay}"
+    ZIndex              = "10"
     >
   </fvim:Cursor>
 

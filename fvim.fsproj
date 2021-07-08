@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <Compile Include="DesignTime\TitleBarSampleData.fs" />
-    <Compile Include="DesignTime\EditorSampleData.fs" />
+    <Compile Include="DesignTime\GridSampleData.fs" />
     <Compile Include="DesignTime\CrashReportSampleData.fs" />
     <Compile Include="DesignTime\MainWindowSampleData.fs" />
     <Compile Include="common.fs" />
@@ -33,9 +33,9 @@
     <Compile Include="daemon.fs" />
     <Compile Include="shell.fs" />
     <Compile Include="states.fs" />
+    <Compile Include="neovim.fs" />
     <Compile Include="ui.fs" />
     <Compile Include="theme.fs" />
-    <Compile Include="neovim.fs" />
     <Compile Include="input.fs" />
     <Compile Include="model.fs" />
     <Compile Include="ViewModels\ViewModelBase.fs" />
@@ -44,14 +44,14 @@
     <Compile Include="ViewModels\CursorViewModel.fs" />
     <Compile Include="ViewModels\CompletionItemViewModel.fs" />
     <Compile Include="ViewModels\PopupMenuViewModel.fs" />
-    <Compile Include="ViewModels\EditorViewModel.fs" />
-    <Compile Include="ViewModels\MainWindowViewModel.fs" />
+    <Compile Include="ViewModels\GridViewModel.fs" />
+    <Compile Include="ViewModels\FrameViewModel.fs" />
     <Compile Include="ViewModels\CrashReportViewModel.fs" />
     <Compile Include="Views\ViewBase.fs" />
-    <Compile Include="Views\MainWindow.xaml.fs" />
+    <Compile Include="Views\Frame.xaml.fs" />
     <Compile Include="Views\CompletionItem.xaml.fs" />
     <Compile Include="Views\PopupMenu.xaml.fs" />
-    <Compile Include="Views\Editor.xaml.fs" />
+    <Compile Include="Views\Grid.xaml.fs" />
     <Compile Include="Views\Cursor.xaml.fs" />
     <Compile Include="Views\CrashReport.xaml.fs" />
     <Compile Include="Views\TitleBar.xaml.fs" />

@@ -13,21 +13,26 @@ open FSharp.Control.Reactive
 
 open System
 open System.Collections.ObjectModel
+open model
 
 #nowarn "0025"
 
-module private EditorViewModelHelper =
+module private GridViewModelHelper =
   let inline trace id fmt =
     FVim.log.trace (sprintf "editorvm #%d" id) fmt
 
-open EditorViewModelHelper
+open GridViewModelHelper
 
 [<Struct>]
 type GridDrawOperation = 
   | Scroll of int * int * int * int * int * int
   | Put of GridRect
 
-type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
+/// <summary>
+/// A Grid is a 2D surface for characters, and central to
+/// the Frame-Grid-Window hierarchy.
+/// </summary>
+type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
                      ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
     inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
 
@@ -86,7 +91,9 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         // do not use the default colors for cursor
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
-        let chksum = m_cursor_vm.VisualChecksum()
+
+        if _gridid = 1 && states.ui_multigrid then () else
+
         m_cursor_vm.typeface       <- theme.guifont
         m_cursor_vm.wtypeface      <- theme.guifontwide
         m_cursor_vm.fontSize       <- m_fontsize
@@ -107,9 +114,8 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         m_cursor_vm.Y              <- origin.Y
         m_cursor_vm.Width          <- width
         m_cursor_vm.Height         <- m_glyphsize.Height
-        if chksum <> m_cursor_vm.VisualChecksum() then
-          m_cursor_vm.RenderTick     <- m_cursor_vm.RenderTick + 1
-          trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+        m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+        trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
@@ -187,11 +193,14 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         putBuffer line
 
     let cursorGoto id row col =
-        m_cursor_vm.ingrid <- (id = _gridid)
         if id = _gridid then
+            m_cursor_vm.focused <- true
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
-        cursorConfig()
+            cursorConfig()
+        elif m_cursor_vm.focused then
+            m_cursor_vm.focused <- false
+            m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
@@ -205,8 +214,6 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         trace _gridid "neovim: busy: %A" v
         m_busy <- v
         setCursorEnabled <| not v
-        //if v then this.Cursor <- Cursor(StandardCursorType.Wait)
-        //else this.Cursor <- Cursor(StandardCursorType.Arrow)
 
     let scrollBuffer (top: int) (bot: int) (left: int) (right: int) (rows: int) (cols: int) =
         //  !NOTE top-bot are the bounds of the SCROLL-REGION, not SRC or DST.
@@ -255,7 +262,9 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             for i = bot + rows - 1 downto top do
                 copy i (i-rows)
 
-        if top <= m_cursor_vm.row 
+        if m_cursor_vm.enabled 
+           && m_cursor_vm.focused
+           && top <= m_cursor_vm.row 
            && m_cursor_vm.row <= bot 
            && left <= m_cursor_vm.col 
            && m_cursor_vm.col <= right
@@ -359,7 +368,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         let s, w, h = MeasureText(Rune.empty, theme.guifont, theme.guifontwide, theme.fontsize, m_gridscale)
         m_glyphsize <- Size(w, h)
         m_fontsize <- s
-        trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
+        //trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
 
         // sync font to cursor vm
         cursorConfig()
@@ -419,15 +428,15 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
             |> Observable.subscribe fontConfig
 
             theme.cursoren_ev.Publish
-            |> Observable.subscribe (fun en ->
-                if m_cursor_vm.ingrid then 
-                    setCursorEnabled en)
+            |> Observable.subscribe setCursorEnabled
 
-            states.register.watch "font" fontConfig
+            rpc.register.watch "font" fontConfig
 
             this.ObservableForProperty(fun x -> x.IsFocused)
             |> Observable.subscribe (fun x ->
-              trace _gridid "focus state changed: %A" x.Value)
+              trace _gridid "focus state changed: %A" x.Value
+              if x.Value then cursorConfig()
+            )
         ] 
 
     interface IGridUI with
@@ -436,12 +445,13 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         member __.GridWidth  = int( this.Width  / m_glyphsize.Width  )
         member __.Resized = m_resize_ev.Publish
         member __.Input = m_input_ev.Publish
+        member __.BackgroundColor with get(): Color = theme.default_bg
         member __.HasChildren = m_child_grids.Count <> 0
         member __.Redraw cmd = redraw cmd
         member __.CreateChild id r c =
             trace _gridid "CreateChild: #%d" id
             let child_size = this.GetPoint r c
-            let child = EditorViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
+            let child = GridViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
             m_child_grids.Add child
             child :> IGridUI
         member __.RemoveChild c =
@@ -461,7 +471,7 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
     member __.GetPoint row col =
         Point(double(col) * m_glyphsize.Width, double(row) * m_glyphsize.Height)
 
-    member this.SetMeasuredSize (v: Size) =
+    member __.SetMeasuredSize (v: Size) =
         trace _gridid "set measured size: %A" v
         let gridui = this :> IGridUI
         let gw, gh = gridui.GridWidth, gridui.GridHeight
@@ -485,7 +495,6 @@ type EditorViewModel(_gridid: int, ?parent: EditorViewModel, ?_gridsize: GridSiz
         with get() : float = m_gridscale
         and set(v) = m_gridscale <- v
     member __.FontAttrs with get() = theme.guifont, theme.guifontwide, m_fontsize
-    member __.BackgroundColor with get(): Color = theme.default_bg
     member __.BufferHeight with get(): float = m_fb_h
     member __.BufferWidth  with get(): float = m_fb_w
     member __.GlyphHeight with get(): float = m_glyphsize.Height

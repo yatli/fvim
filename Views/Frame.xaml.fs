@@ -18,6 +18,7 @@ open Avalonia.Interactivity
 open Avalonia.VisualTree
 
 open Avalonia.Diagnostics
+open model
 
 #nowarn "0025"
 
@@ -25,26 +26,26 @@ open System.Runtime.InteropServices
 open System.Runtime
 open Avalonia.Media
 
-type MainWindow() as this =
-    inherit ReactiveWindow<MainWindowViewModel>()
+type Frame() as this =
+    inherit ReactiveWindow<FrameViewModel>()
 
-    static let XProp = AvaloniaProperty.Register<MainWindow,int>("PosX")
-    static let YProp = AvaloniaProperty.Register<MainWindow,int>("PosY")
+    static let XProp = AvaloniaProperty.Register<Frame,int>("PosX")
+    static let YProp = AvaloniaProperty.Register<Frame,int>("PosY")
 
     let mutable m_bgcolor: Color = Color()
     let mutable m_bgopacity: float = 1.0
-    let mutable m_bgcomp = states.NoComposition
+    let mutable m_bgcomp = NoComposition
 
     let configBackground() =
         m_bgcomp <- states.background_composition
         m_bgopacity <- states.background_opacity
         let comp =
           match m_bgcomp with
-          | states.Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
-          | states.Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
-          | states.Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
+          | Acrylic     -> ui.AdvancedBlur(m_bgopacity, m_bgcolor)
+          | Blur        -> ui.GaussianBlur(m_bgopacity, m_bgcolor)
+          | Transparent -> ui.TransparentBackground(m_bgopacity, m_bgcolor)
           | _                  -> ui.SolidBackground(m_bgopacity, m_bgcolor)
-        trace "mainwindow" "configBackground: %A" comp
+        trace "frame" "configBackground: %A" comp
         ui.SetWindowBackgroundComposition this comp
         
     let mutable m_saved_size          = Size(100.0,100.0)
@@ -54,12 +55,12 @@ type MainWindow() as this =
     let mutable m_right_border:Panel  = null
     let mutable m_bottom_border:Panel = null
 
-    let m_cursor_ns = Cursor(StandardCursorType.SizeNorthSouth)
-    let m_cursor_we = Cursor(StandardCursorType.SizeWestEast)
-    let m_cursor_ne = Cursor(StandardCursorType.TopRightCorner)
-    let m_cursor_nw = Cursor(StandardCursorType.TopLeftCorner)
-    let m_cursor_se = Cursor(StandardCursorType.BottomRightCorner)
-    let m_cursor_sw = Cursor(StandardCursorType.BottomLeftCorner)
+    let m_cursor_ns = new Cursor(StandardCursorType.SizeNorthSouth)
+    let m_cursor_we = new Cursor(StandardCursorType.SizeWestEast)
+    let m_cursor_ne = new Cursor(StandardCursorType.TopRightCorner)
+    let m_cursor_nw = new Cursor(StandardCursorType.TopLeftCorner)
+    let m_cursor_se = new Cursor(StandardCursorType.BottomRightCorner)
+    let m_cursor_sw = new Cursor(StandardCursorType.BottomLeftCorner)
 
     let setCursor c =
         this.Cursor <- c
@@ -121,7 +122,7 @@ type MainWindow() as this =
         configBackground()
 
         let flushop () = 
-            let editor: IControl = this.GetEditor()
+            let editor: IControl = this.FindControl("RootGrid")
             if editor <> null then
               editor.InvalidateVisual()
             else
@@ -135,9 +136,9 @@ type MainWindow() as this =
             this.GotFocus.Subscribe (fun _ -> model.OnFocusGained())
             this.LostFocus.Subscribe (fun _ -> model.OnFocusLost())
 
-            states.register.watch "background.composition" configBackground
-            states.register.watch "background.opacity" configBackground
-            states.register.notify "DrawFPS" (fun [| Bool(v) |] -> 
+            rpc.register.watch "background.composition" configBackground
+            rpc.register.watch "background.opacity" configBackground
+            rpc.register.notify "DrawFPS" (fun [| Bool(v) |] -> 
                 trace "mainwindow" "DrawFPS: %A" v
                 this.Renderer.DrawFps <- v)
 
@@ -154,7 +155,7 @@ type MainWindow() as this =
         this.AddHandler(DragDrop.DragOverEvent, (fun _ (e:DragEventArgs) ->
             e.DragEffects <- DragDropEffects.Move ||| DragDropEffects.Link ||| DragDropEffects.Copy
         ))
-        this.AddHandler(MainWindow.PointerMovedEvent, (fun _ (ev: PointerEventArgs) ->
+        this.AddHandler(Frame.PointerMovedEvent, (fun _ (ev: PointerEventArgs) ->
             match getDragEdge <| ev.GetPosition(this) with
             | Some (WindowEdge.NorthWest) -> setCursor m_cursor_nw
             | Some (WindowEdge.SouthEast) -> setCursor m_cursor_se
@@ -164,7 +165,7 @@ type MainWindow() as this =
             | Some (WindowEdge.East | WindowEdge.West) -> setCursor m_cursor_we
             | _ -> setCursor Cursor.Default)
             , RoutingStrategies.Tunnel)
-        this.AddHandler(MainWindow.PointerPressedEvent, (fun _ (ev: PointerPressedEventArgs) ->
+        this.AddHandler(Frame.PointerPressedEvent, (fun _ (ev: PointerPressedEventArgs) ->
             match getDragEdge <| ev.GetPosition(this) with
             | Some edge ->
                 ev.Handled <- true
@@ -184,11 +185,8 @@ type MainWindow() as this =
         m_right_border  <- this.FindControl<Panel>("RightBorder")
         m_bottom_border <- this.FindControl<Panel>("BottomBorder")
 
-    member this.GetEditor() =
-      this.FindControl("RootEditor")
-
     override this.OnDataContextChanged _ =
-        let ctx = this.DataContext :?> MainWindowViewModel
+        let ctx = this.DataContext :?> FrameViewModel
         let pos = PixelPoint(int ctx.X, int ctx.Y)
         let mutable firstPoschange = true
         let mutable deltaX = 0
@@ -210,7 +208,7 @@ type MainWindow() as this =
                     this.SetValue(XProp, p.Point.X - deltaX) |> ignore
                     this.SetValue(YProp, p.Point.Y - deltaY) |> ignore
                 )
-            ctx.MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
+            (ctx :> IFrame).MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
             |> Observable.subscribe(fun c -> 
                 trace "mainwindow" "update background color: %s" (c.Value.ToString())
                 m_bgcolor <- c.Value

@@ -77,6 +77,9 @@ type GridRect =
 
         x.width - y.width
 
+type ICursor =
+    interface end
+
 /// Represents a grid in neovim
 type IGridUI =
     abstract Id: int
@@ -86,15 +89,22 @@ type IGridUI =
     abstract GridWidth: int
     abstract Resized: IEvent<IGridUI>
     abstract Input: IEvent<int*InputEvent>
+    abstract BackgroundColor: Color
     abstract HasChildren: bool
     abstract Redraw: RedrawCommand -> unit
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
 
-type IWindow =
+and WindowLayout =
+| Window of IGridUI
+| VSplit of WindowLayout list
+| HSplit of WindowLayout list
+
+/// Represents an OS window
+and IFrame =
     abstract Title: string with get, set
-    abstract RootId: int
+    abstract MainGrid: IGridUI
 
 open System.Runtime.InteropServices
 
@@ -123,10 +133,8 @@ let private nerd_typeface =
 let private emoji_typeface = Typeface(DefaultFontEmoji)
 let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, Typeface>()
 
-let private InvalidateFontCache () =
+let InvalidateFontCache () =
   fontcache.Clear()
-
-ignore(states.register.watch "font" InvalidateFontCache)
 
 let GetReverseColor (c: Color) =
     let r = 255uy - c.R
@@ -180,9 +188,9 @@ let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scali
         let w' = bounds.Width
         let h'' = 
             match states.font_lineheight with
-            | states.Absolute lh -> lh
-            | states.Default -> float typeface.LineHeight * u'
-            | states.Add lh -> float typeface.LineHeight * u' + lh
+            | Absolute lh -> lh
+            | Default -> float typeface.LineHeight * u'
+            | Add lh -> float typeface.LineHeight * u' + lh
         let h' = round(h'' * scaling) / scaling
         let h' = max h' 1.0
 

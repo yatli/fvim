@@ -19,27 +19,28 @@ open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
 open Avalonia.Layout
 
-module private EditorHelper =
+module private GridHelper =
   let inline trace vm fmt =
     let nr =
       if vm <> Unchecked.defaultof<_> then (vm :> IGridUI).Id.ToString() else "(no vm attached)"
     FVim.log.trace ("editor #" + nr) fmt
 
-open EditorHelper
+open GridHelper
+open model
 
-type Editor() as this =
+type Grid() as this =
   inherit Canvas()
 
-  static let ViewModelProperty = AvaloniaProperty.Register<Editor, EditorViewModel>("ViewModel")
-  static let GridIdProperty = AvaloniaProperty.Register<Editor, int>("GridId")
-  static let RenderTickProperty = AvaloniaProperty.Register<Editor, int>("RenderTick")
+  static let ViewModelProperty = AvaloniaProperty.Register<Grid, GridViewModel>("ViewModel")
+  static let GridIdProperty = AvaloniaProperty.Register<Grid, int>("GridId")
+  static let RenderTickProperty = AvaloniaProperty.Register<Grid, int>("RenderTick")
 
   let mutable grid_fb: RenderTargetBitmap = null
   let mutable grid_dc: IDrawingContextImpl = null
   (*let mutable grid_fb_scroll: RenderTargetBitmap = null*)
   (*let mutable grid_dc_scroll: IDrawingContextImpl = null*)
   let mutable grid_scale: float = 1.0
-  let mutable grid_vm: EditorViewModel = Unchecked.defaultof<_>
+  let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
   let mutable m_debug = states.ui_multigrid
 
@@ -185,12 +186,12 @@ type Editor() as this =
 
   let doWithDataContext fn =
     match this.DataContext with
-    | :? EditorViewModel as viewModel -> fn viewModel
+    | :? GridViewModel as viewModel -> fn viewModel
     | _ -> Unchecked.defaultof<_>
 
   let findChildEditor(vm: obj) = this.Children |> Seq.tryFind(fun x -> x.DataContext = vm)
 
-  let onViewModelConnected(vm: EditorViewModel) =
+  let onViewModelConnected(vm: GridViewModel) =
     grid_vm <- vm
     trace grid_vm "viewmodel connected"
     resizeFrameBuffer()
@@ -224,18 +225,18 @@ type Editor() as this =
           match changes.Action with
           | NotifyCollectionChangedAction.Add ->
               for e_vm in changes.NewItems do
-                let view = Editor()
+                let view = Grid()
                 view.DataContext <- e_vm
                 view.ZIndex <- 3
                 view.RenderTransformOrigin <- RelativePoint.TopLeft
                 view.VerticalAlignment <- VerticalAlignment.Top
                 view.HorizontalAlignment <- HorizontalAlignment.Left
                 vm.Watch
-                  [ view.Bind(Editor.GetGridIdProp(), Binding("GridId"))
+                  [ view.Bind(Grid.GetGridIdProp(), Binding("GridId"))
                     // important: bind to BufferHeight/BufferWidth, not
                     // Height/Width.
-                    view.Bind(Editor.HeightProperty, Binding("BufferHeight"))
-                    view.Bind(Editor.WidthProperty, Binding("BufferWidth")) ]
+                    view.Bind(Grid.HeightProperty, Binding("BufferHeight"))
+                    view.Bind(Grid.WidthProperty, Binding("BufferWidth")) ]
                 this.Children.Add(view)
           | NotifyCollectionChangedAction.Remove ->
               for e_vm in changes.OldItems do
@@ -330,7 +331,7 @@ type Editor() as this =
 
   do
     this.Watch
-      [ this.GetObservable(Editor.DataContextProperty)
+      [ this.GetObservable(Grid.DataContextProperty)
         |> Observable.ofType
         |> Observable.zip this.AttachedToVisualTree
         |> Observable.map snd
@@ -339,7 +340,7 @@ type Editor() as this =
         this.Bind(Canvas.LeftProperty, Binding("X"))
         this.Bind(Canvas.TopProperty, Binding("Y"))
 
-        states.register.watch "font" (fun () ->
+        rpc.register.watch "font" (fun () ->
           if grid_vm <> Unchecked.defaultof<_> then
             grid_vm.MarkAllDirty()
             this.InvalidateVisual())
@@ -361,7 +362,7 @@ type Editor() as this =
     let timer = System.Diagnostics.Stopwatch.StartNew()
     let drawn = if grid_vm.Dirty then drawDirty()
                 else drawOps(grid_vm.DrawOps)
-    (*if m_debug then drawDebug grid_dc*)
+    if m_debug then drawDebug grid_dc
     grid_dc.PopClip()
 
     grid_vm.MarkClean()
@@ -388,11 +389,11 @@ type Editor() as this =
       vm.SetMeasuredSize sz
       sz)
 
-  interface IViewFor<EditorViewModel> with
+  interface IViewFor<GridViewModel> with
 
     member this.ViewModel
-      with get (): EditorViewModel = this.GetValue(ViewModelProperty)
-      and set (v: EditorViewModel): unit = this.SetValue(ViewModelProperty, v) |> ignore
+      with get (): GridViewModel = this.GetValue(ViewModelProperty)
+      and set (v: GridViewModel): unit = this.SetValue(ViewModelProperty, v) |> ignore
 
     member this.ViewModel
       with get (): obj = this.GetValue(ViewModelProperty) :> obj

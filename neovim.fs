@@ -45,6 +45,8 @@ type Nvim() as nvim =
     let mutable m_disposables = []
     let mutable m_cancelSrc   = Unchecked.defaultof<CancellationTokenSource>
 
+    //  ========================== Init/Deinit ===============================
+
     member __.Id = Guid.NewGuid()
 
     member private __.events =
