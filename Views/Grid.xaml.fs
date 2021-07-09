@@ -27,6 +27,8 @@ module private GridHelper =
 
 open GridHelper
 open model
+open Avalonia.Input.TextInput
+open Avalonia.Input
 
 type Grid() as this =
   inherit Canvas()
@@ -43,6 +45,9 @@ type Grid() as this =
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
   let mutable m_debug = states.ui_multigrid
+
+  let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
+  let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
 
   // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
@@ -329,6 +334,15 @@ type Grid() as this =
     )
     ss.Count <> 0
 
+  let textInputOptionsQueryHandler (e: TextInputOptionsQueryEventArgs) =
+    e.AutoCapitalization <- false
+    e.ContentType <- TextInputContentType.Normal
+    e.IsSensitive <- true
+    e.Lowercase <- false
+    e.Multiline <- true
+    e.Uppercase <- false
+    e.Handled <- true
+
   do
     this.Watch
       [ this.GetObservable(Grid.DataContextProperty)
@@ -351,8 +365,14 @@ type Grid() as this =
         this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this)
         this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
         this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
-        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) ]
+        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
+        this.TextInputOptionsQuery.Subscribe(textInputOptionsQueryHandler)
+        this.TextInputMethodClientRequested.Subscribe(fun e -> 
+            e.Client <- this)]
     AvaloniaXamlLoader.Load(this)
+  static do
+    InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(fun grid e -> 
+        e.Client <- grid) |> ignore
 
   override this.Render ctx =
     if isNull grid_fb then
@@ -398,6 +418,22 @@ type Grid() as this =
     member this.ViewModel
       with get (): obj = this.GetValue(ViewModelProperty) :> obj
       and set (v: obj): unit = this.SetValue(ViewModelProperty, v) |> ignore
+
+  interface ITextInputMethodClient with
+      member _.SupportsPreedit = false
+      member _.SupportsSurroundingText = false
+      member _.SetPreeditText(_) = raise (NotSupportedException())
+      member _.SurroundingText = raise (NotSupportedException())
+      member _.TextAfterCursor: string = raise (NotSupportedException())
+      member _.TextBeforeCursor: string = raise (NotSupportedException())
+      [<CLIEvent>] member _.SurroundingTextChanged: IEvent<EventHandler,EventArgs> = raise (NotSupportedException())
+
+      member _.CursorRectangle: Rect = 
+        Rect()
+      member _.TextViewVisual: IVisual = 
+        this.FindControl<FVim.Cursor>("cursor") :> IVisual
+      [<CLIEvent>] member _.CursorRectangleChanged: IEvent<EventHandler,EventArgs> = ev_cursor_rect_changed.Publish
+      [<CLIEvent>] member _.TextViewVisualChanged: IEvent<EventHandler,EventArgs> = ev_text_view_visual_changed.Publish
 
   member this.GridId
     with get () = this.GetValue(GridIdProperty)
