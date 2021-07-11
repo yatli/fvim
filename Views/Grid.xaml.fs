@@ -334,15 +334,6 @@ type Grid() as this =
     )
     ss.Count <> 0
 
-  let textInputOptionsQueryHandler (e: TextInputOptionsQueryEventArgs) =
-    e.AutoCapitalization <- false
-    e.ContentType <- TextInputContentType.Normal
-    e.IsSensitive <- true
-    e.Lowercase <- false
-    e.Multiline <- true
-    e.Uppercase <- false
-    e.Handled <- true
-
   do
     this.Watch
       [ this.GetObservable(Grid.DataContextProperty)
@@ -366,9 +357,7 @@ type Grid() as this =
         this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
         this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
         this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
-        this.TextInputOptionsQuery.Subscribe(textInputOptionsQueryHandler)
-        this.TextInputMethodClientRequested.Subscribe(fun e -> 
-            e.Client <- this)]
+      ]
     AvaloniaXamlLoader.Load(this)
   static do
     InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(fun grid e -> 
