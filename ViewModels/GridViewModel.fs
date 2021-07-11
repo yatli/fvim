@@ -448,6 +448,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         member __.BackgroundColor with get(): Color = theme.default_bg
         member __.HasChildren = m_child_grids.Count <> 0
         member __.Redraw cmd = redraw cmd
+        member _igrid.RenderScale = this.RenderScale
         member __.CreateChild id r c =
             trace _gridid "CreateChild: #%d" id
             let child_size = this.GetPoint r c

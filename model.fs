@@ -416,6 +416,10 @@ let Start (serveropts, norc, debugMultigrid) =
           ]
 
       let! _ = nvim.set_var "fvim_loaded" 1
+      let! _ = nvim.set_var "fvim_os" <| if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "windows"
+                                         elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "linux"
+                                         elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then "osx"
+                                         else "unknown"
       let! _ = nvim.set_client_info clientName clientVersion clientType clientMethods clientAttributes
       let! channels = nvim.list_chans()
 
@@ -542,6 +546,7 @@ let OnGridReady(gridui: IGridUI) =
         trace "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
         async {
+          let! _ = nvim.set_var "fvim_render_scale" gridui.RenderScale
           let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
           in ()
         } |> runAsync

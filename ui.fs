@@ -91,6 +91,7 @@ type IGridUI =
     abstract Input: IEvent<int*InputEvent>
     abstract BackgroundColor: Color
     abstract HasChildren: bool
+    abstract RenderScale: float
     abstract Redraw: RedrawCommand -> unit
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
     abstract RemoveChild: IGridUI -> unit
