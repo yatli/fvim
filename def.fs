@@ -649,6 +649,12 @@ let parse_win_viewport =
         -> Some(WinViewport(grid, win, topline, botline, curline, curcol))
     | _ -> None
 
+let parse_win_hide = 
+    function
+    | ObjArray [| (Integer32 grid) |] 
+        -> Some(WinHide(grid))
+    | _ -> None
+
 let unwrap_multi xs =
     match xs with
     | [| one |] -> one
@@ -684,7 +690,7 @@ let parse_redrawcmd (x: obj) =
     | C("win_float_pos", PX(parse_win_float_pos)ps)                                        -> unwrap_multi ps
     | C1("win_external_pos", [| 
         (Integer32 grid); (Integer32 win) |])                                              -> WinExternalPos(grid, win)
-    | C1("win_hide", [| (Integer32 grid) |])                                               -> WinHide(grid)
+    | C("win_hide", PX(parse_win_hide)cmds )                                                     -> unwrap_multi cmds
     | C("win_scroll_over_start", _)                                                        -> WinScrollOverStart
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C1("win_close", [| (Integer32 grid) |])                                              -> WinClose(grid)

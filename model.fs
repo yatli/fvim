@@ -102,7 +102,7 @@ module private ModelImpl =
         | PopupMenuShow(_,_,_,_,id)
         | GridCursorGoto(id,_,_) 
         | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _) 
+        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _)  | WinHide(id)
         | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)

@@ -277,6 +277,8 @@ type Grid() as this =
   let _drawnRegions = ResizeArray()
 
   let rec drawOps (vm: GridViewModel) = 
+    if vm.Hidden then false
+    else
     if vm.Dirty then
         trace vm "drawing whole grid"
         for row = 0 to vm.Rows - 1 do

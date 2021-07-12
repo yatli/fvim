@@ -61,6 +61,7 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
     let mutable m_fb_w           = 10.0
     let mutable m_anchor_row     = 0
     let mutable m_anchor_col     = 0
+    let mutable m_hidden         = false
 
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -78,7 +79,8 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
         let mutable target_row = r
         let mutable target_col = c
         for cg in m_child_grids do
-            if cg.AnchorRow <= r && r < cg.AnchorRow + cg.Rows &&
+            if not cg.Hidden &&
+               cg.AnchorRow <= r && r < cg.AnchorRow + cg.Rows &&
                cg.AnchorCol <= c && c < cg.AnchorCol + cg.Cols 
             then
                target_vm <- cg
@@ -303,6 +305,7 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
           | _ -> ()
 
     let setWinPos startrow startcol r c f =
+        m_hidden <- false
         let parent = 
             match parent with
             | Some p -> p
@@ -368,6 +371,7 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
         | Mouse en                                                           -> setMouse en
         | WinClose(_)                                                        -> closeGrid()
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
+        | WinHide(_)                                                         -> m_hidden <- true
         | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 m_gridsize.rows m_gridsize.cols true
         | WinFloatPos (_, _, anchor, anchor_grid, r, c, f)                   -> setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
@@ -387,6 +391,7 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
             | GridClear _
             | WinClose _
             | WinPos _
+            | WinHide _
             | MsgSetPos _
             | WinFloatPos _ ->
                 ValueSome(pid, ChildrenChanged)
@@ -524,6 +529,8 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
     member __.AnchorCol with get() = m_anchor_col
     member __.Dirty with get() = m_griddirty
     member __.DrawOps with get() = m_drawops
+    member __.Hidden with get():bool = m_hidden
+                     and  set(v) = m_hidden <- v
     member __.CursorInfo with get() : CursorViewModel = m_cursor_vm
     member __.PopupMenu with get(): PopupMenuViewModel = m_popupmenu_vm
     member __.RenderScale
@@ -548,19 +555,21 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
-            let vm, r, c = findTargetVm y x
-            m_mouse_pressed_vm <- vm
             let button = updateMouseButton(e.GetCurrentPoint null)
-            raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
+            raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
+            //let vm, r, c = findTargetVm y x
+            //m_mouse_pressed_vm <- vm
+            //raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
-            let r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
-            let r = max 0 (min r (m_mouse_pressed_vm.Rows-1))
-            let c = max 0 (min c (m_mouse_pressed_vm.Cols-1))
             let button = updateMouseButton(e.GetCurrentPoint null)
-            raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
+            raiseInputEvent _gridid <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
+            //let r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
+            //let r = max 0 (min r (m_mouse_pressed_vm.Rows-1))
+            //let c = max 0 (min c (m_mouse_pressed_vm.Cols-1))
+            //raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
@@ -568,7 +577,8 @@ and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
                 trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
-                raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                //raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
