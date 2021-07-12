@@ -387,7 +387,10 @@ type RedrawCommand =
 //| UpdateBg of Color
 //| UpdateSp of Color
 | UnknownCommand of data: obj
+///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
+///  notify the parent that the size, position, precense of a child has changed
+| ChildrenChanged
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -633,6 +636,19 @@ let parse_semantic_hlgroup =
         | _ -> None
     | _ -> None
 
+let parse_grid_resize =
+    function
+    | ObjArray [| (Integer32 grid); (Integer32 w); (Integer32 h)|] -> Some(GridResize(grid,w,h))
+    | _ -> None
+
+let parse_win_viewport = 
+    function
+    | ObjArray [| (Integer32 grid); (Integer32 win); 
+                  (Integer32 topline); (Integer32 botline); 
+                  (Integer32 curline); (Integer32 curcol) |] 
+        -> Some(WinViewport(grid, win, topline, botline, curline, curcol))
+    | _ -> None
+
 let unwrap_multi xs =
     match xs with
     | [| one |] -> one
@@ -655,7 +671,7 @@ let parse_redrawcmd (x: obj) =
     | C("flush", _)                                                                        -> Flush
     | C("hl_attr_define", P(parse_hi_attr) attrs)                                          -> HighlightAttrDefine attrs
     | C1("grid_clear", [| (Integer32 id) |])                                               -> GridClear id
-    | C1("grid_resize", [| (Integer32 id); (Integer32 w); (Integer32 h) |])                -> GridResize(id, w, h)
+    | C("grid_resize", PX(parse_grid_resize) cmds)                                         -> unwrap_multi cmds
     | C1("grid_destroy", [| (Integer32 id) |])                                             -> GridDestroy id
     | C1("grid_cursor_goto", [| (Integer32 grid); (Integer32 row); (Integer32 col) |])     -> GridCursorGoto(grid, row, col)
     | C1("grid_scroll", [| 
@@ -672,10 +688,7 @@ let parse_redrawcmd (x: obj) =
     | C("win_scroll_over_start", _)                                                        -> WinScrollOverStart
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C1("win_close", [| (Integer32 grid) |])                                              -> WinClose(grid)
-    | C1("win_viewport", [| 
-        (Integer32 grid); (Integer32 win); 
-        (Integer32 topline); (Integer32 botline); 
-        (Integer32 curline); (Integer32 curcol) |])                                        -> WinViewport(grid, win, topline, botline, curline, curcol)
+    | C("win_viewport", PX(parse_win_viewport)cmds)                                        -> unwrap_multi cmds
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
         (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)

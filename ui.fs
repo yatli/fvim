@@ -92,7 +92,7 @@ type IGridUI =
     abstract BackgroundColor: Color
     abstract HasChildren: bool
     abstract RenderScale: float
-    abstract Redraw: RedrawCommand -> unit
+    abstract Redraw: RedrawCommand -> (int*RedrawCommand) voption
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit

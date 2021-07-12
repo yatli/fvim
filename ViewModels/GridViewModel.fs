@@ -32,13 +32,12 @@ type GridDrawOperation =
 /// A Grid is a 2D surface for characters, and central to
 /// the Frame-Grid-Window hierarchy.
 /// </summary>
-type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?_measuredsize: Size, ?_gridscale: float,
-                     ?_cursormode: int, ?_anchorX: float, ?_anchorY: float) as this =
-    inherit ViewModelBase(_anchorX, _anchorY, _measuredsize)
+and GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize) as this =
+    inherit ViewModelBase()
 
-    let m_cursor_vm              = new CursorViewModel(_cursormode)
+    let m_cursor_vm              = new CursorViewModel(None)
     let m_popupmenu_vm           = new PopupMenuViewModel()
-    let m_child_grids            = ObservableCollection<IGridUI>()
+    let m_child_grids            = ObservableCollection<GridViewModel>()
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int * InputEvent>()
     let m_drawops                = ResizeArray() // keeps the scroll and putBuffer operations
@@ -46,10 +45,11 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
     let mutable m_busy           = false
     let mutable m_mouse_en       = true
     let mutable m_mouse_pressed  = MouseButton.None
+    let mutable m_mouse_pressed_vm = this
     let mutable m_mouse_pos      = 0,0
 
     let mutable m_gridsize       = _d { rows = 10; cols= 10 } _gridsize
-    let mutable m_gridscale      = _d 1.0 _gridscale
+    let mutable m_gridscale      = 1.0
     let mutable m_gridbuffer     = Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
     let mutable m_griddirty      = false // if true, the whole grid needs to be redrawn.
     let mutable m_fontsize       = theme.fontsize
@@ -59,26 +59,44 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
 
     let mutable m_fb_h           = 10.0
     let mutable m_fb_w           = 10.0
+    let mutable m_anchor_row     = 0
+    let mutable m_anchor_col     = 0
 
 
-    let raiseInputEvent e = m_input_ev.Trigger(_gridid, e)
+    let raiseInputEvent id e = m_input_ev.Trigger(id, e)
 
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
 
     let markAllDirty () =
         m_griddirty <- true
+        for c in m_child_grids do
+            c.MarkAllDirty()
+
+    let findTargetVm r c =
+        let mutable target_vm = this
+        let mutable target_row = r
+        let mutable target_col = c
+        for cg in m_child_grids do
+            if cg.AnchorRow <= r && r < cg.AnchorRow + cg.Rows &&
+               cg.AnchorCol <= c && c < cg.AnchorCol + cg.Cols 
+            then
+               target_vm <- cg
+               target_row <- target_row - cg.AnchorRow
+               target_col <- target_col - cg.AnchorCol
+        target_vm,target_row,target_col
 
     let cursorConfig() =
         if theme.mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
         elif m_gridbuffer.GetLength(0) <= m_cursor_vm.row || m_gridbuffer.GetLength(1) <= m_cursor_vm.col then ()
         else
+        let target_vm,target_row,target_col = findTargetVm m_cursor_vm.row m_cursor_vm.col
         let mode              = theme.mode_defs.[m_cursor_vm.modeidx]
-        let hlid              = m_gridbuffer.[m_cursor_vm.row, m_cursor_vm.col].hlid
+        let hlid              = target_vm.[target_row, target_col].hlid
         let hlid              = Option.defaultValue hlid mode.attr_id
         let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
         let origin : Point    = this.GetPoint m_cursor_vm.row m_cursor_vm.col
-        let text              = m_gridbuffer.[m_cursor_vm.row, m_cursor_vm.col].text
+        let text              = target_vm.[target_row, target_col].text
         let text_type         = wswidth text
         let width             = float(max <| 1 <| CharTypeWidth text_type) * m_glyphsize.Width
 
@@ -91,8 +109,6 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         // do not use the default colors for cursor
         let colorf = if hlid = 0 then GetReverseColor else id
         let fg, bg, sp = colorf fg, colorf bg, colorf sp
-
-        if _gridid = 1 && states.ui_multigrid then () else
 
         m_cursor_vm.typeface       <- theme.guifont
         m_cursor_vm.wtypeface      <- theme.guifontwide
@@ -115,7 +131,7 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         m_cursor_vm.Width          <- width
         m_cursor_vm.Height         <- m_glyphsize.Height
         m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
-        trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+        //trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
@@ -294,11 +310,9 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         let grid = _gridid
         trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
         (* manually resize and position the child grid as per neovim docs *)
-        let origin: Point = parent.GetPoint startrow startcol
-        trace _gridid "setWinPos: update parameters: c = %d r = %d X = %f Y = %f" c r origin.X origin.Y
         initBuffer r c true
-        this.X <- origin.X
-        this.Y <- origin.Y
+        m_anchor_col <- startcol
+        m_anchor_row <- startrow
         this.Focusable <- f
 
     let hidePopupMenu() =
@@ -343,7 +357,6 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         model.SetPopupMenuPos w h r c
 
     let redraw(cmd: RedrawCommand) =
-        //trace "%A" cmd
         match cmd with
         | GridResize(_, c, r)                                                -> initBuffer r c true
         | GridClear _                                                        -> clearBuffer false
@@ -355,12 +368,30 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         | Mouse en                                                           -> setMouse en
         | WinClose(_)                                                        -> closeGrid()
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
-        | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 1 m_gridsize.cols true
+        | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 m_gridsize.rows m_gridsize.cols true
         | WinFloatPos (_, _, anchor, anchor_grid, r, c, f)                   -> setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
+        | ChildrenChanged                                                    -> markAllDirty()
         | x -> trace _gridid "unimplemented command: %A" x
+        match parent with
+        | Some parent ->
+            let pid = parent.GridId
+            match cmd with
+            | GridCursorGoto(_,r,c) -> 
+                ValueSome(pid, GridCursorGoto(parent.GridId,r + m_anchor_row, c + m_anchor_col))
+            | PopupMenuShow(items, selected, r, c, _) ->
+                ValueSome(pid, PopupMenuShow(items, selected, r + m_anchor_row, c + m_anchor_col, pid))
+            | GridResize _
+            | GridClear _
+            | WinClose _
+            | WinPos _
+            | MsgSetPos _
+            | WinFloatPos _ ->
+                ValueSome(pid, ChildrenChanged)
+            | _ -> ValueNone
+        | _ -> ValueNone
 
     let fontConfig() =
         // It turns out the space " " advances farest...
@@ -451,12 +482,11 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
         member _igrid.RenderScale = this.RenderScale
         member __.CreateChild id r c =
             trace _gridid "CreateChild: #%d" id
-            let child_size = this.GetPoint r c
-            let child = GridViewModel(id, this, {rows=r; cols=c}, Size(child_size.X, child_size.Y), m_gridscale, m_cursor_vm.modeidx)
+            let child = GridViewModel(id, this, {rows=r; cols=c})
             m_child_grids.Add child
             child :> IGridUI
         member __.RemoveChild c =
-            ignore <| m_child_grids.Remove c
+            ignore <| m_child_grids.Remove (c:?>GridViewModel)
         member __.Detach() =
           match parent with
           | None -> ()
@@ -465,6 +495,8 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
     member __.MarkClean () = 
       m_griddirty <- false
       m_drawops.Clear()
+      for c in m_child_grids do
+        c.MarkClean()
 
     member __.MarkAllDirty = markAllDirty
 
@@ -488,6 +520,8 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
     member __.Item with get(row, col) = m_gridbuffer.[row, col]
     member __.Cols with get() = m_gridsize.cols
     member __.Rows with get() = m_gridsize.rows
+    member __.AnchorRow with get() = m_anchor_row
+    member __.AnchorCol with get() = m_anchor_col
     member __.Dirty with get() = m_griddirty
     member __.DrawOps with get() = m_drawops
     member __.CursorInfo with get() : CursorViewModel = m_cursor_vm
@@ -509,32 +543,38 @@ type GridViewModel(_gridid: int, ?parent: GridViewModel, ?_gridsize: GridSize, ?
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
-        raiseInputEvent <| InputEvent.Key(e.KeyModifiers, e.Key)
+        raiseInputEvent _gridid <| InputEvent.Key(e.KeyModifiers, e.Key)
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
+            let vm, r, c = findTargetVm y x
+            m_mouse_pressed_vm <- vm
             let button = updateMouseButton(e.GetCurrentPoint null)
-            raiseInputEvent <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
+            raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
+            let r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
+            let r = max 0 (min r (m_mouse_pressed_vm.Rows-1))
+            let c = max 0 (min c (m_mouse_pressed_vm.Cols-1))
             let button = updateMouseButton(e.GetCurrentPoint null)
-            raiseInputEvent <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
+            raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
-                raiseInputEvent <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
+                raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
+            raiseInputEvent _gridid <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
-        raiseInputEvent <| InputEvent.TextInput(e.Text)
+        raiseInputEvent _gridid <| InputEvent.TextInput(e.Text)
