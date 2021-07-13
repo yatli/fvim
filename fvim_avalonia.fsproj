@@ -75,10 +75,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.10.6" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.10.6" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.6" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.6" />
 
     <PackageReference Include="FSharp.Control.Reactive" Version="5.0.2" />
     <PackageReference Include="FSharp.Data" Version="4.1.1" />
@@ -95,8 +91,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Avalonia\packages\Avalonia\Avalonia.csproj" />
+    <ProjectReference Include="..\Avalonia\src\Avalonia.Desktop\Avalonia.Desktop.csproj" />
+    <ProjectReference Include="..\Avalonia\src\Avalonia.Diagnostics\Avalonia.Diagnostics.csproj" />
+    <ProjectReference Include="..\Avalonia\src\Avalonia.ReactiveUI\Avalonia.ReactiveUI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="5.0.2" />
   </ItemGroup>
 
+  <Import Project="..\Avalonia\build\SampleApp.props" />
 
+  <Import Project="..\Avalonia\build\BuildTargets.targets" />
 </Project>

@@ -3,6 +3,7 @@
 open FVim.ui
 open FVim.wcwidth
 open FVim.def
+open FVim.common
 
 open ReactiveUI
 open Avalonia
@@ -27,6 +28,8 @@ module private GridHelper =
 
 open GridHelper
 open model
+open Avalonia.Input.TextInput
+open Avalonia.Input
 
 type Grid() as this =
   inherit Canvas()
@@ -34,6 +37,7 @@ type Grid() as this =
   static let ViewModelProperty = AvaloniaProperty.Register<Grid, GridViewModel>("ViewModel")
   static let GridIdProperty = AvaloniaProperty.Register<Grid, int>("GridId")
   static let RenderTickProperty = AvaloniaProperty.Register<Grid, int>("RenderTick")
+  static let EnableImeProperty = AvaloniaProperty.Register<Grid, bool>("EnableIme")
 
   let mutable grid_fb: RenderTargetBitmap = null
   let mutable grid_dc: IDrawingContextImpl = null
@@ -43,6 +47,11 @@ type Grid() as this =
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
   let mutable m_debug = states.ui_multigrid
+  let mutable m_cursor: FVim.Cursor = Unchecked.defaultof<_>
+
+  let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
+  let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
+  let ev_active_state_changed = Event<EventHandler,EventArgs>()
 
   // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
@@ -212,6 +221,10 @@ type Grid() as this =
           trace grid_vm "render tick %d" id
           this.InvalidateVisual())
 
+        this.GetObservable(EnableImeProperty).Subscribe(fun _ -> 
+            ev_active_state_changed.Trigger(this, EventArgs.Empty)
+        )
+
         vm.ObservableForProperty(fun x -> x.IsFocused)
         |> Observable.subscribe(fun focused -> 
           if focused.Value && not this.IsFocused then 
@@ -345,14 +358,21 @@ type Grid() as this =
             grid_vm.MarkAllDirty()
             this.InvalidateVisual())
 
+        rpc.register.notify "EnableIme" (fun [| Bool(v) |] -> 
+            this.EnableIme <- v)
+
         //  Input handling
         this.TextInput |> subscribeAndHandleInput(fun e vm -> vm.OnTextInput e)
         this.KeyDown |> subscribeAndHandleInput(fun e vm -> vm.OnKey e)
         this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this)
         this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
         this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
-        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) ]
+        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
+      ]
     AvaloniaXamlLoader.Load(this)
+  static do
+    InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(fun grid e -> 
+        e.Client <- grid) |> ignore
 
   override this.Render ctx =
     if isNull grid_fb then
@@ -389,6 +409,14 @@ type Grid() as this =
       vm.SetMeasuredSize sz
       sz)
 
+  override this.OnInitialized() =
+    m_cursor <- this.FindControl<FVim.Cursor>("cursor")
+    this.Watch [
+        m_cursor.ObservableForProperty(fun c -> c.Bounds)
+        |> Observable.subscribe(fun _ -> 
+            ev_cursor_rect_changed.Trigger(this, EventArgs.Empty))
+    ]
+
   interface IViewFor<GridViewModel> with
 
     member this.ViewModel
@@ -399,6 +427,22 @@ type Grid() as this =
       with get (): obj = this.GetValue(ViewModelProperty) :> obj
       and set (v: obj): unit = this.SetValue(ViewModelProperty, v) |> ignore
 
+  interface ITextInputMethodClient with
+      member _.SupportsPreedit = false
+      member _.SupportsSurroundingText = false
+      member _.SetPreeditText(_) = raise (NotSupportedException())
+      member _.SurroundingText = raise (NotSupportedException())
+      member _.TextAfterCursor: string = raise (NotSupportedException())
+      member _.TextBeforeCursor: string = raise (NotSupportedException())
+      [<CLIEvent>] member _.SurroundingTextChanged: IEvent<EventHandler,EventArgs> = raise (NotSupportedException())
+
+      member _.CursorRectangle: Rect = m_cursor.Bounds
+      member _.TextViewVisual: IVisual = this :> IVisual
+      member _.ActiveState = this.EnableIme
+      [<CLIEvent>] member _.CursorRectangleChanged: IEvent<EventHandler,EventArgs> = ev_cursor_rect_changed.Publish
+      [<CLIEvent>] member _.TextViewVisualChanged: IEvent<EventHandler,EventArgs> = ev_text_view_visual_changed.Publish
+      [<CLIEvent>] member _.ActiveStateChanged: IEvent<EventHandler,EventArgs> = ev_active_state_changed.Publish
+
   member this.GridId
     with get () = this.GetValue(GridIdProperty)
     and set (v: int) = this.SetValue(GridIdProperty, v) |> ignore
@@ -406,5 +450,10 @@ type Grid() as this =
   member this.RenderTick
     with get() = this.GetValue(RenderTickProperty)
     and  set(v) = this.SetValue(RenderTickProperty, v) |> ignore
+
+  member this.EnableIme
+    with get() = this.GetValue(EnableImeProperty)
+    and set(v) = 
+        this.SetValue(EnableImeProperty, v) |> ignore
 
   static member GetGridIdProp() = GridIdProperty

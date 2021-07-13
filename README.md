@@ -53,8 +53,13 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
 Try these bindings (note, fvim-specific settings only work in `ginit.vim`, not `init.vim`!):
 ```vimL
 if exists('g:fvim_loaded')
-    " good old 'set guifont' compatibility
-    set guifont=Iosevka\ Slab:h16
+    " good old 'set guifont' compatibility with HiDPI hints...
+    if g:fvim_os == 'windows' || g:fvim_render_scale > 1.0
+      set guifont=Iosevka\ Slab:h14
+    else
+      set guifont=Iosevka\ Slab:h28
+    endif
+      
     " Ctrl-ScrollWheel for zooming in/out
     nnoremap <silent> <C-ScrollWheelUp> :set guifont=+<CR>
     nnoremap <silent> <C-ScrollWheelDown> :set guifont=-<CR>
@@ -139,6 +144,10 @@ FVimUIWildMenu v:false      " external wildmenu -- not implemented
 FVimUIMessages v:false      " external messages -- not implemented
 FVimUITermColors v:false    " not implemented
 FVimUIHlState v:false       " not implemented
+
+" Keyboard mapping options
+FVimKeyDisableShiftSpace v:true " disable unsupported sequence <S-Space>
+FVimKeyAutoIme v:true           " Automatic input method engagement in Insert mode
 
 " Detach from a remote session without killing the server
 " If this command is executed on a standalone instance,

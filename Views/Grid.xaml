@@ -15,6 +15,7 @@
   </Design.DataContext>
 
   <fvim:Cursor
+	x:Name              = "cursor"
     DataContext         = "{Binding CursorInfo}"
     Height              = "{Binding Height, Mode=OneWay}"
     Width               = "{Binding Width, Mode=OneWay}"
