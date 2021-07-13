@@ -153,3 +153,13 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             with get() = this.Title
             and set (v: string): unit = 
                 this.Title <- v
+        member __.Sync(_other: IFrame) =
+            let that = _other :?> FrameViewModel
+            m_customTitleBar <- that.CustomTitleBar
+            m_bgimg_src <- that.BackgroundImage :?> Bitmap
+            m_bgimg_halign <- that.BackgroundImageHAlign
+            m_bgimg_valign <- that.BackgroundImageVAlign
+            m_bgimg_w <- that.BackgroundImageW
+            m_bgimg_h <- that.BackgroundImageH
+            m_bgimg_opacity <- that.BackgroundImageOpacity
+            m_bgimg_stretch <- that.BackgroundImageStretch

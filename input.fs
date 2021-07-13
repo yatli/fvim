@@ -286,8 +286,6 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
             | _ -> true)
         // translate to nvim input sequence
         |> Observable.map(fun (gridid, x) ->
-            trace "grid #%d: OnInput: %A" gridid x
-
             match x with
             | ImeEvent    -> _imeArmed <- true
             | TextInput _ -> ()
@@ -308,9 +306,11 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
     let mouse = inputClassifier |> Observable.choose (function | Choice2Of3 x -> Some x | _ -> None)
     Disposables.compose [
         key |> Observable.subscribe(fun x -> 
+            trace "OnInput: key: %A" x
             nvim.input x |> ignore
         )
-        mouse |> Observable.subscribe(fun (grid, (but, act, r, c, rep), mods) -> 
+        mouse |> Observable.subscribe(fun ((grid, (but, act, r, c, rep), mods) as ev) -> 
+            trace "grid #%d: OnInput: mouse: %A" grid ev
             let mods = match mods with Some mods -> mods | _ -> ""
             for _ in 1..rep do
                 nvim.input_mouse but act mods grid r c |> ignore

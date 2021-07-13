@@ -92,7 +92,7 @@ type IGridUI =
     abstract BackgroundColor: Color
     abstract HasChildren: bool
     abstract RenderScale: float
-    abstract Redraw: RedrawCommand -> unit
+    abstract Redraw: RedrawCommand -> (int*RedrawCommand) voption
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
@@ -106,6 +106,7 @@ and WindowLayout =
 and IFrame =
     abstract Title: string with get, set
     abstract MainGrid: IGridUI
+    abstract Sync: IFrame -> unit
 
 open System.Runtime.InteropServices
 

@@ -53,10 +53,14 @@ module private ModelImpl =
 
     let setTitle id title = frames.[id].Title <- title
 
-    let unicast id cmd = 
+    let rec unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
-        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
+        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd; ValueNone
+        |> 
+        function
+        | ValueSome(pid, cmd) -> unicast pid cmd
+        | ValueNone -> ()
 
     let unicast_create id cmd w h = 
           if not(grids.ContainsKey id) then
@@ -65,7 +69,7 @@ module private ModelImpl =
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
-            grid.Redraw cmd
+            grid.Redraw cmd |> ignore
 
     let bell (visual: bool) =
         // TODO
@@ -90,14 +94,16 @@ module private ModelImpl =
         | SetOption opts                    -> Array.iter theme.setOption opts
         | ModeInfoSet(cs_en, info)          -> theme.setModeInfo cs_en info
         //  Broadcast
-        | PopupMenuShow _         | PopupMenuSelect _             | PopupMenuHide _
-        | Busy _                  | Mouse _
-        | ModeChange _            | Flush 
-        | GridCursorGoto(_,_,_) 
+        | PopupMenuSelect _             | PopupMenuHide _
+        | Busy _                        | Mouse _
+        | ModeChange _
                                             -> broadcast cmd
         //  Unicast
+        | PopupMenuShow(_,_,_,_,id)
+        | GridCursorGoto(id,_,_) 
         | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _) 
+        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _)  | WinHide(id)
+        | WinExternalPos(id,_)
         | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)
@@ -266,12 +272,12 @@ let private UpdateUICapabilities() =
         in ()
     } |> runAsync
 
-let private UpdateUIWindows() =
-    if ui_windows then
-        // TODO maybe also tabline?
-        ui_multigrid <- true
-    else
-        ui_multigrid <- false
+//let private UpdateUIWindows() =
+//    if ui_windows then
+//        // TODO maybe also tabline?
+//        ui_multigrid <- true
+//    else
+//        ui_multigrid <- false
     
 
 /// <summary>
@@ -282,7 +288,7 @@ let Start (serveropts, norc, debugMultigrid) =
     trace "opts = %A" serveropts
     if debugMultigrid then
         states.ui_multigrid <- true
-        states.ui_windows <- true
+        //states.ui_windows <- true
     nvim.start serveropts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
@@ -330,7 +336,7 @@ let Start (serveropts, norc, debugMultigrid) =
         |> Observable.subscribe(UpdateUICapabilities)
         rpc.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
         rpc.register.notify "remote.detach" (fun _ -> Detach())
-        rpc.register.watch "ui.windows" UpdateUIWindows
+        //rpc.register.watch "ui.windows" UpdateUIWindows
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
@@ -518,8 +524,13 @@ let Flush =
     |> flush_throttle
     |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
 
+let mutable CreateFrame: IGridUI -> unit = fun _ -> raise (new NotImplementedException())
+
 let OnFrameReady(win: IFrame) =
+    let id = win.MainGrid.Id
     add_frame win
+    if id <> 1 then
+        win.Sync(frames.[1])
 
 
 // connect the grid redraw commands and events
@@ -538,6 +549,9 @@ let OnGridReady(gridui: IGridUI) =
     gridui.Input 
     |> input.onInput nvim
     |> nvim.pushSubscription
+
+    nvim.grid_resize gridui.Id 0 0
+    |> runAsync
 
     if gridui.Id = 1 then
         // Grid #1 is the main grid.

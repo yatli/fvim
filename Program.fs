@@ -69,6 +69,12 @@ let startMainWindow app serveropts =
     >>= fun comp -> states.background_composition <- comp; None
     |> ignore
 
+    model.CreateFrame <- fun _gridui ->
+        let gridui = _gridui :?> GridViewModel
+        let framevm = new FrameViewModel(workspace, gridui)
+        let frame = new Frame(DataContext=framevm)
+        frame.Show()
+
     let mainwinVM = new FrameViewModel(workspace)
     let mainwin = Frame(DataContext = mainwinVM)
     // sometimes the metrics will just go off...
