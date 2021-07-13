@@ -96,7 +96,7 @@ type Grid() as this =
 
     if col = colend then () else
 
-    let font, fontwide, fontsize = vm.FontAttrs
+    let font, fontwide, fontsize = grid_vm.FontAttrs
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
     let typeface = GetTypeface(vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
@@ -218,11 +218,11 @@ type Grid() as this =
           trace grid_vm "render tick %d" id
           this.InvalidateVisual())
 
-        vm.ObservableForProperty(fun x -> x.IsFocused)
-        |> Observable.subscribe(fun focused -> 
-          if focused.Value && not this.IsFocused then 
-            trace grid_vm "viewmodel ask to focus"
-            this.Focus())
+        //vm.ObservableForProperty(fun x -> x.IsFocused)
+        //|> Observable.subscribe(fun focused -> 
+        //  if focused.Value && not this.IsFocused then 
+        //    trace grid_vm "viewmodel ask to focus"
+        //    this.Focus())
 
         this.GotFocus.Subscribe(fun _ -> vm.IsFocused <- true)
         this.LostFocus.Subscribe(fun _ -> vm.IsFocused <- false)
@@ -254,8 +254,7 @@ type Grid() as this =
 
   let subscribeAndHandleInput fn (ob: IObservable<#Avalonia.Interactivity.RoutedEventArgs>) =
     ob.Subscribe(fun e ->
-      // only root handles events
-      if not e.Handled && this.GridId = 1 then
+      if not e.Handled then
         e.Handled <- true
         doWithDataContext(fn e))
 
@@ -278,8 +277,7 @@ type Grid() as this =
 
   let rec drawOps (vm: GridViewModel) = 
     if vm.Hidden then false
-    else
-    if vm.Dirty then
+    elif vm.Dirty then
         trace vm "drawing whole grid"
         for row = 0 to vm.Rows - 1 do
             drawBufferLine vm grid_dc row 0 vm.Cols

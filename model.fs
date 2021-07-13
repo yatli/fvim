@@ -103,6 +103,7 @@ module private ModelImpl =
         | GridCursorGoto(id,_,_) 
         | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
         | WinClose id             | WinFloatPos(id, _, _, _, _, _, _)  | WinHide(id)
+        | WinExternalPos(id,_)
         | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)
@@ -523,8 +524,13 @@ let Flush =
     |> flush_throttle
     |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
 
+let mutable CreateFrame: IGridUI -> unit = fun _ -> raise (new NotImplementedException())
+
 let OnFrameReady(win: IFrame) =
+    let id = win.MainGrid.Id
     add_frame win
+    if id <> 1 then
+        win.Sync(frames.[1])
 
 
 // connect the grid redraw commands and events

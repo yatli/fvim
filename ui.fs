@@ -106,6 +106,7 @@ and WindowLayout =
 and IFrame =
     abstract Title: string with get, set
     abstract MainGrid: IGridUI
+    abstract Sync: IFrame -> unit
 
 open System.Runtime.InteropServices
 
