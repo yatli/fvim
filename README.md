@@ -145,6 +145,10 @@ FVimUIMessages v:false      " external messages -- not implemented
 FVimUITermColors v:false    " not implemented
 FVimUIHlState v:false       " not implemented
 
+" Keyboard mapping options
+FVimKeyDisableShiftSpace v:true " disable unsupported sequence <S-Space>
+FVimKeyAutoIme v:true           " Automatic input method engagement in Insert mode
+
 " Detach from a remote session without killing the server
 " If this command is executed on a standalone instance,
 " the embedded process will be terminated anyway.

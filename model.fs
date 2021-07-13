@@ -304,6 +304,7 @@ let Start (serveropts, norc, debugMultigrid) =
     rpc.register.bool "cursor.smoothblink"
     rpc.register.bool "cursor.smoothmove"
     rpc.register.bool "key.disableShiftSpace"
+    rpc.register.bool "key.autoIme"
     //rpc.register.bool "ui.multigrid"
     rpc.register.bool "ui.popupmenu"
     //rpc.register.bool "ui.tabline"
@@ -481,6 +482,7 @@ let Start (serveropts, norc, debugMultigrid) =
       let! _ = nvim.``command!`` "-complete=expression FVimFontBoldWeight" 1 "call rpcnotify(g:fvim_channel, 'font.weight.bold', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimFontNoBuiltinSymbols" 1 "call rpcnotify(g:fvim_channel, 'font.nonerd', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimKeyDisableShiftSpace" 1 "call rpcnotify(g:fvim_channel, 'key.disableShiftSpace', <args>)"
+      let! _ = nvim.``command!`` "-complete=expression FVimKeyAutoIme" 1 "call rpcnotify(g:fvim_channel, 'key.autoIme', <args>)"
 
       //let! _ = nvim.``command!`` "-complete=expression FVimUIMultiGrid" 1 "call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)"
       let! _ = nvim.``command!`` "-complete=expression FVimUIPopupMenu" 1 "call rpcnotify(g:fvim_channel, 'ui.popupmenu', <args>)"
@@ -548,6 +550,9 @@ let OnGridReady(gridui: IGridUI) =
         async {
           let! _ = nvim.set_var "fvim_render_scale" gridui.RenderScale
           let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
+          let! _ = nvim.command "execute \"autocmd InsertEnter * call rpcnotify(g:fvim_channel, 'EnableIme', v:true)\""
+          let! _ = nvim.command "execute \"autocmd InsertLeave * call rpcnotify(g:fvim_channel, 'EnableIme', v:false)\""
+
           in ()
         } |> runAsync
 
