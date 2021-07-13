@@ -45,6 +45,7 @@ type Grid() as this =
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
   let mutable m_debug = states.ui_multigrid
+  let mutable m_cursor: FVim.Cursor = Unchecked.defaultof<_>
 
   let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
   let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
@@ -398,6 +399,14 @@ type Grid() as this =
       vm.SetMeasuredSize sz
       sz)
 
+  override this.OnInitialized() =
+    m_cursor <- this.FindControl<FVim.Cursor>("cursor")
+    this.Watch [
+        m_cursor.ObservableForProperty(fun c -> c.Bounds)
+        |> Observable.subscribe(fun _ -> 
+            ev_cursor_rect_changed.Trigger(this, EventArgs.Empty))
+    ]
+
   interface IViewFor<GridViewModel> with
 
     member this.ViewModel
@@ -417,10 +426,8 @@ type Grid() as this =
       member _.TextBeforeCursor: string = raise (NotSupportedException())
       [<CLIEvent>] member _.SurroundingTextChanged: IEvent<EventHandler,EventArgs> = raise (NotSupportedException())
 
-      member _.CursorRectangle: Rect = 
-        Rect()
-      member _.TextViewVisual: IVisual = 
-        this.FindControl<FVim.Cursor>("cursor") :> IVisual
+      member _.CursorRectangle: Rect = m_cursor.Bounds
+      member _.TextViewVisual: IVisual = this :> IVisual
       [<CLIEvent>] member _.CursorRectangleChanged: IEvent<EventHandler,EventArgs> = ev_cursor_rect_changed.Publish
       [<CLIEvent>] member _.TextViewVisualChanged: IEvent<EventHandler,EventArgs> = ev_text_view_visual_changed.Publish
 
