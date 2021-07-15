@@ -209,7 +209,7 @@ FVim-args:
     =========================== Terminal emulator ================================
 
     --terminal                  Start as a terminal emulator.
-    --termcmd                   Command to run instead of the default shell.
+    --terminal-cmd              Command to run instead of the default shell.
 
 
 The FVim arguments will be consumed and filtered before the rest are passed to NeoVim.
