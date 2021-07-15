@@ -40,6 +40,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let m_child_grids            = ObservableCollection<GridViewModel>()
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int * InputEvent>()
+    let m_ext_winclose_ev        = Event<unit>()
     let m_drawops                = ResizeArray() // keeps the scroll and putBuffer operations
 
     let mutable m_parent           = _parent
@@ -64,6 +65,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_anchor_col     = 0
     let mutable m_hidden         = false
     let mutable m_external       = false
+    let mutable m_winid          = 0 // for single-purpose windows e.g. floats and exts
 
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -298,6 +300,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let closeGrid() =
         trace _gridid "closeGrid"
+        if m_external then
+            m_ext_winclose_ev.Trigger()
         if this.IsFocused then
           this.IsFocused <- false
           match m_parent with
@@ -375,7 +379,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
         | WinHide(_)                                                         -> m_hidden <- true
         | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 m_gridsize.rows m_gridsize.cols true
-        | WinFloatPos (_, _, anchor, anchor_grid, r, c, f)                   -> setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
+        | WinFloatPos (_, win, anchor, anchor_grid, r, c, f) -> 
+            m_winid <- win
+            setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
         | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
@@ -385,6 +391,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 m_external <- true
                 (this:>IGridUI).Detach()
                 CreateFrame this
+            m_winid <- win
         | x -> trace _gridid "unimplemented command: %A" x
         match m_parent with
         | Some parent ->
@@ -556,6 +563,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ChildGrids = m_child_grids
     member __.IsFocused with get() = m_gridfocused and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocused, v)
     member __.Focusable with get() = m_gridfocusable and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocusable, v)
+    member __.ExtWinId = m_winid
+    member __.ExtWinClosed = m_ext_winclose_ev.Publish
 
     (*******************   Events   ***********************)
 
@@ -566,33 +575,33 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
-            //raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
-            let vm, r, c = findTargetVm y x
-            m_mouse_pressed_vm <- vm
-            raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
+            raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
+            //let vm, r, c = findTargetVm y x
+            //m_mouse_pressed_vm <- vm
+            //raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
-            //raiseInputEvent _gridid <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
-            let r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
-            let r = max 0 (min r (m_mouse_pressed_vm.Rows-1))
-            let c = max 0 (min c (m_mouse_pressed_vm.Cols-1))
-            raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
+            raiseInputEvent _gridid <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
+            //let r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
+            //let r = max 0 (min r (m_mouse_pressed_vm.Rows-1))
+            //let c = max 0 (min c (m_mouse_pressed_vm.Cols-1))
+            //raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
-                //trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
-                //raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
-                let mutable r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
-                if r >= m_mouse_pressed_vm.Rows then r <- 999
-                let y,x = (r+m_mouse_pressed_vm.AnchorRow),(c+m_mouse_pressed_vm.AnchorCol)
                 trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
-                raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                //let mutable r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
+                //if r >= m_mouse_pressed_vm.Rows then r <- 999
+                //let y,x = (r+m_mouse_pressed_vm.AnchorRow),(c+m_mouse_pressed_vm.AnchorCol)
+                //trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
+                //raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then

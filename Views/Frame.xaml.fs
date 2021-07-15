@@ -111,7 +111,6 @@ type Frame() as this =
             | _                     -> None
         else None
 
-
     do
         #if DEBUG
         this.Renderer.DrawFps <- true
@@ -212,6 +211,15 @@ type Frame() as this =
         else
             m_bgcolor <- theme.default_bg
             configBackground()
+            let grid_vm = ctx.MainGrid:?>GridViewModel
+            ctx.Width <- grid_vm.BufferWidth
+            // XXX bad hack we don't know title bar height atm
+            ctx.Height <- grid_vm.BufferHeight + if ctx.CustomTitleBar then 40.0 else 0.0
+
+            this.Watch [
+                grid_vm.ExtWinClosed.Subscribe(this.Close)
+                this.Closed.Subscribe (fun _ -> model.OnExtClosed grid_vm.ExtWinId)
+            ]
         this.Watch [
             (ctx :> IFrame).MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
             |> Observable.subscribe(fun c -> 

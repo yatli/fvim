@@ -29,7 +29,7 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="{Binding BorderSize}"/>
     </Grid.RowDefinitions>
-    <fvim:TitleBar Grid.Row="0" Grid.Column="1" IsActive="{Binding $parent[Window].IsActive, Mode=OneWay}" IsVisible="{Binding CustomTitleBar}" HorizontalAlignment="Stretch" Title="{Binding Title}"/>
+    <fvim:TitleBar Name="TitleBar" Grid.Row="0" Grid.Column="1" IsActive="{Binding $parent[Window].IsActive, Mode=OneWay}" IsVisible="{Binding CustomTitleBar}" HorizontalAlignment="Stretch" Title="{Binding Title}"/>
 
     <Image Grid.Row="1" Grid.Column="1"
       Source              = "{Binding BackgroundImage}"

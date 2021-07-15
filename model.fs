@@ -550,9 +550,6 @@ let OnGridReady(gridui: IGridUI) =
     |> input.onInput nvim
     |> nvim.pushSubscription
 
-    nvim.grid_resize gridui.Id 0 0
-    |> runAsync
-
     if gridui.Id = 1 then
         // Grid #1 is the main grid.
         // When ready, the UI should be ready for events now. 
@@ -595,6 +592,10 @@ let OnTerminating(args: CancelEventArgs) =
     trace "window is closing"
     if nvim.isRemote then Detach()
     else nvim.quitall() |> runAsync
+
+let OnExtClosed(win: int) =
+    nvim.call {method = "nvim_win_close"; parameters = mkparams2 win true} 
+    |> runAsync
 
 let EditFiles (files: string seq) =
     async {
