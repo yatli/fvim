@@ -35,6 +35,7 @@ type Cursor() as this =
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_s = 1.0
+    let mutable cursor_chksum = -1
 
     let ensure_fb() =
         let s = this.GetVisualRoot().RenderScaling
@@ -107,7 +108,7 @@ type Cursor() as this =
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
-            // this.InvalidateVisual()
+            this.InvalidateVisual()
 
     let setCursorAnimation() =
         let transitions = Transitions()
