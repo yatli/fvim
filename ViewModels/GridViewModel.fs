@@ -73,11 +73,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
 
-    let markAllDirty () =
-        m_griddirty <- true
-        for c in m_child_grids do
-            c.MarkAllDirty()
-
     let findTargetVm r c =
         let mutable target_vm = this
         let mutable target_row = r
@@ -139,6 +134,55 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
         //trace _gridid "set cursor info, color = %A %A %A" fg bg sp
 
+    let markAllDirty () =
+        m_griddirty <- true
+        for c in m_child_grids do
+            c.MarkAllDirty()
+
+    let rec markDirty ({ row = row; col = col; height = h; width = w } as dirty) =
+        if h > 1 then
+            for i = 0 to h-1 do
+                markDirty {row=row+i;col=col;height=1;width=w}
+        else
+
+        // if the buffer under cursor is updated, also notify the cursor view model
+        if row = m_cursor_vm.row && col <= m_cursor_vm.col && m_cursor_vm.col < col + w
+        then cursorConfig()
+
+        // the workarounds below will extend the dirty region -- if we are drawing
+        // a base grid displaying the grid boundaries, do not apply them.
+        if states.ui_multigrid && this.GridId = 1 then
+            m_drawops.Add(Put dirty)
+        else
+
+        // trace _gridid "markDirty: writing to %A" dirty
+        // italic font artifacts I: remainders after scrolling and redrawing the dirty part
+        // workaround: extend the dirty region one cell further towards the end
+
+        // italic font artifacts II: when inserting on an italic line, later glyphs cover earlier with the background.
+        // workaround: if italic, extend the dirty region towards the beginning, until not italic
+
+        // italic font artifacts III: block cursor may not have italic style. 
+        // how to fix this? curious about how the original GVim handles this situation.
+
+        // ligature artifacts I: ligatures do not build as characters are laid down.
+        // workaround: like italic, case II.
+
+        // apply workaround I:
+        let dirty = {dirty with width = min (dirty.width + 1) m_gridsize.cols }
+        // apply workaround II:
+        let mutable col = dirty.col - 1
+        let mutable italic = true
+        let mutable ligature = true
+        let mutable hlid = 0
+        while col > 0 && (italic || ligature) do
+            hlid <- m_gridbuffer.[row, col].hlid
+            col <- col - 1
+            ligature <- isProgrammingSymbol m_gridbuffer.[row, col].text
+            italic <- theme.hi_defs.[hlid].rgb_attr.italic 
+        let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
+        m_drawops.Add(Put dirty)
+
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
         m_gridbuffer <- Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
@@ -167,7 +211,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
           trace _gridid "buffer resize = %A" m_gridsize
           clearBuffer preserveContent
 
-    let putBuffer (line: GridLine) =
+    let putBuffer (M: ReadOnlyMemory<_>) =
+      //if _gridid = 1 then
+      //    trace _gridid "putBuffer"
+      for line in M.Span do
         let         row  = line.row
         let mutable col  = line.col_start
         let mutable hlid = 0
@@ -179,50 +226,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 m_gridbuffer.[row, col].hlid <- hlid
                 m_gridbuffer.[row, col].text <- cell.text
                 col <- col + 1
-        let dirty = { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
-        // if the buffer under cursor is updated, also notify the cursor view model
-        if row = m_cursor_vm.row && line.col_start <= m_cursor_vm.col && m_cursor_vm.col < col
-        then cursorConfig()
-        // trace _gridid "putBuffer: writing to %A" dirty
-        // italic font artifacts I: remainders after scrolling and redrawing the dirty part
-        // workaround: extend the dirty region one cell further towards the end
-
-        // italic font artifacts II: when inserting on an italic line, later glyphs cover earlier with the background.
-        // workaround: if italic, extend the dirty region towards the beginning, until not italic
-
-        // italic font artifacts III: block cursor may not have italic style. 
-        // how to fix this? curious about how the original GVim handles this situation.
-
-        // ligature artifacts I: ligatures do not build as characters are laid down.
-        // workaround: like italic, case II.
-
-        // apply workaround I:
-        let dirty = {dirty with width = min (dirty.width + 1) m_gridsize.cols }
-        // apply workaround II:
-        col  <- dirty.col - 1
-        let mutable italic = true
-        let mutable ligature = true
-        while col > 0 && (italic || ligature) do
-            hlid <- m_gridbuffer.[row, col].hlid
-            col <- col - 1
-            ligature <- isProgrammingSymbol m_gridbuffer.[row, col].text
-            italic <- theme.hi_defs.[hlid].rgb_attr.italic 
-        let dirty = {dirty with width = dirty.width + (dirty.col - col); col = col }
-        m_drawops.Add(Put dirty)
-
-    let putBufferM (M: ReadOnlyMemory<_>) =
-      for line in M.Span do
-        putBuffer line
-
-    let cursorGoto id row col =
-        if id = _gridid then
-            m_cursor_vm.focused <- true
-            m_cursor_vm.row <- row
-            m_cursor_vm.col <- col
-            cursorConfig()
-        elif m_cursor_vm.focused then
-            m_cursor_vm.focused <- false
-            m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+        markDirty { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
@@ -302,15 +306,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         trace _gridid "closeGrid"
         if m_external then
             m_ext_winclose_ev.Trigger()
-        if this.IsFocused then
-          this.IsFocused <- false
-          match m_parent with
-          | Some p -> 
-            trace _gridid "try focus parent, id = %d" p.GridId
-            if p.Focusable then p.IsFocused <- true
-          | _ -> ()
 
     let setWinPos startrow startcol r c f =
+        let oldRegion = { row = m_anchor_row; col = m_anchor_col; height = m_gridsize.rows; width = m_gridsize.cols}
+        let newRegion = { row = startrow; col = startcol; height = r; width = c}
         m_hidden <- false
         let parent = 
             match m_parent with
@@ -323,6 +322,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_anchor_col <- startcol
         m_anchor_row <- startrow
         this.Focusable <- f
+        parent.OnChildChanged oldRegion newRegion
 
     let hidePopupMenu() =
         m_popupmenu_vm.Show <- false
@@ -336,41 +336,12 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let commitPopupMenu i =
         model.SelectPopupMenuItem i true true
 
-    let showPopupMenu grid (items: CompleteItem[]) selected row col =
-        if grid <> _gridid then
-            hidePopupMenu()
-        else
-        let startPos  = this.GetPoint row col
-        let cursorPos = this.GetPoint (m_cursor_vm.row + 1) m_cursor_vm.col
-
-        trace _gridid "show popup menu at [%O, %O]" startPos cursorPos
-
-        //  Decide the maximum size of the popup menu based on grid dimensions
-        let menuLines = min items.Length 15
-        let menuCols = 
-            items
-            |> Array.map CompleteItem.GetLength
-            |> Array.max
-
-        let bounds = this.GetPoint menuLines menuCols
-        let editorSize = this.GetPoint m_gridsize.rows m_gridsize.cols
-
-        m_popupmenu_vm.Selection <- selected
-        m_popupmenu_vm.SetItems(items, startPos, cursorPos, m_glyphsize.Height, bounds, editorSize)
-        m_popupmenu_vm.Show <- true
-
-        let w = m_popupmenu_vm.Width / m_glyphsize.Width
-        let h = m_popupmenu_vm.Height / m_glyphsize.Height
-        let r = m_popupmenu_vm.Y / m_glyphsize.Height
-        let c = m_popupmenu_vm.X / m_glyphsize.Width
-        model.SetPopupMenuPos w h r c
-
     let redraw(cmd: RedrawCommand) =
         match cmd with
         | GridResize(_, c, r)                                                -> initBuffer r c true
         | GridClear _                                                        -> clearBuffer false
-        | GridLine lines                                                     -> putBufferM lines
-        | GridCursorGoto(id, row, col)                                       -> cursorGoto id row col
+        | GridLine lines                                                     -> putBuffer lines
+        | GridCursorGoto(id, row, col)                                       -> this.CursorGoto id row col
         | GridScroll(_, top,bot,left,right,rows,cols)                        -> scrollBuffer top bot left right rows cols
         | ModeChange(name, index)                                            -> changeMode name index
         | Busy is_busy                                                       -> setBusy is_busy
@@ -382,10 +353,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinFloatPos (_, win, anchor, anchor_grid, r, c, f) -> 
             m_winid <- win
             setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
-        | PopupMenuShow(items, selected, row, col, grid)                     -> showPopupMenu grid items selected row col
+        | PopupMenuShow(items, selected, row, col, grid)                     -> this.ShowPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
-        | ChildrenChanged                                                    -> markAllDirty()
         | WinExternalPos(_,win) ->
             if not m_external then
                 m_external <- true
@@ -393,24 +363,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 CreateFrame this
             m_winid <- win
         | x -> trace _gridid "unimplemented command: %A" x
-        match m_parent with
-        | Some parent ->
-            let pid = parent.GridId
-            match cmd with
-            | GridCursorGoto(_,r,c) -> 
-                ValueSome(pid, GridCursorGoto(parent.GridId,r + m_anchor_row, c + m_anchor_col))
-            | PopupMenuShow(items, selected, r, c, _) ->
-                ValueSome(pid, PopupMenuShow(items, selected, r + m_anchor_row, c + m_anchor_col, pid))
-            | GridResize _
-            | GridClear _
-            | WinClose _
-            | WinPos _
-            | WinHide _
-            | MsgSetPos _
-            | WinFloatPos _ ->
-                ValueSome(pid, ChildrenChanged)
-            | _ -> ValueNone
-        | _ -> ValueNone
 
     let fontConfig() =
         // It turns out the space " " advances farest...
@@ -485,7 +437,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             this.ObservableForProperty(fun x -> x.IsFocused)
             |> Observable.subscribe (fun x ->
               trace _gridid "focus state changed: %A" x.Value
-              if x.Value then cursorConfig()
+              cursorConfig()
             )
         ] 
 
@@ -514,6 +466,51 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             (p:>IGridUI).RemoveChild this
             m_parent <- None
 
+    member __.CursorGoto id row col =
+        if m_parent.IsSome && id = _gridid then
+            m_parent.Value.CursorGoto m_parent.Value.GridId (row + m_anchor_row) (col + m_anchor_col)
+        elif id = _gridid then
+            m_cursor_vm.focused <- true
+            m_cursor_vm.row <- row
+            m_cursor_vm.col <- col
+            cursorConfig()
+        elif m_cursor_vm.focused then
+            m_cursor_vm.focused <- false
+            m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+
+    member __.ShowPopupMenu grid (items: CompleteItem[]) selected row col =
+        if m_parent.IsSome && grid = _gridid then
+            m_parent.Value.ShowPopupMenu m_parent.Value.GridId items selected (row + m_anchor_row) (col + m_anchor_col)
+        elif grid <> _gridid then
+            hidePopupMenu()
+        else
+        let startPos  = this.GetPoint row col
+        let cursorPos = this.GetPoint (m_cursor_vm.row + 1) m_cursor_vm.col
+
+        trace _gridid "show popup menu at [%O, %O]" startPos cursorPos
+
+        //  Decide the maximum size of the popup menu based on grid dimensions
+        let menuLines = min items.Length 15
+        let menuCols = 
+            items
+            |> Array.map CompleteItem.GetLength
+            |> Array.max
+
+        let bounds = this.GetPoint menuLines menuCols
+        let editorSize = this.GetPoint m_gridsize.rows m_gridsize.cols
+
+        m_popupmenu_vm.Selection <- selected
+        m_popupmenu_vm.SetItems(items, startPos, cursorPos, m_glyphsize.Height, bounds, editorSize)
+        m_popupmenu_vm.Show <- true
+
+        let w = m_popupmenu_vm.Width / m_glyphsize.Width
+        let h = m_popupmenu_vm.Height / m_glyphsize.Height
+        let r = m_popupmenu_vm.Y / m_glyphsize.Height
+        let c = m_popupmenu_vm.X / m_glyphsize.Width
+        model.SetPopupMenuPos w h r c
+
+
+
     member __.MarkClean () = 
       m_griddirty <- false
       m_drawops.Clear()
@@ -536,6 +533,39 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if gw <> gw' || gh <> gh' then 
             if this.IsTopLevel then
                 m_resize_ev.Trigger(this)
+
+    /// The reason that some grid boundary updates are missing is that, NeoVim uses lazy base grid update.
+    /// When the grid boundary is already drawn in the base grid previously and now we are going back to it,
+    /// NeoVim will not send the update command.
+    /// So on child region change, we need to compute the regions that were previously covered by the child,
+    /// but now "revealed" so that the base grid must draw over it. Naturally, this implies that the content
+    /// of the base grid should never be overwritten by child grids because it may be re-used later.
+    member __.OnChildChanged oldRegion newRegion =
+        if newRegion.Contains oldRegion then 
+            // child is growing, so do nothing.
+            ()
+        elif oldRegion.Contains newRegion then
+            // child is shrinking, find out which way.
+            // top
+            if oldRegion.row < newRegion.row then
+                markDirty {oldRegion with height = newRegion.row - oldRegion.row}
+            // bottom
+            if oldRegion.row_end > newRegion.row_end then
+                markDirty {oldRegion with row = newRegion.row_end; height = oldRegion.row_end - newRegion.row_end }
+            // left
+            if oldRegion.col < newRegion.col then
+                markDirty {oldRegion with width = newRegion.col - oldRegion.col}
+            // right
+            if oldRegion.col_end > newRegion.col_end then
+                markDirty {oldRegion with col = newRegion.col_end; width = oldRegion.col_end - newRegion.col_end}
+        elif oldRegion.Disjoint newRegion then
+            // child completely changed geometry. oldRegion completely "revealed"
+            markDirty oldRegion
+        else
+            // child intersects with old
+            // TODO mark more precisely?
+            markDirty oldRegion
+
 
     (*******************   Exposed properties   ***********************)
 

@@ -218,39 +218,10 @@ type Grid() as this =
           trace grid_vm "render tick %d" id
           this.InvalidateVisual())
 
-        //vm.ObservableForProperty(fun x -> x.IsFocused)
-        //|> Observable.subscribe(fun focused -> 
-        //  if focused.Value && not this.IsFocused then 
-        //    trace grid_vm "viewmodel ask to focus"
-        //    this.Focus())
-
         this.GotFocus.Subscribe(fun _ -> vm.IsFocused <- true)
         this.LostFocus.Subscribe(fun _ -> vm.IsFocused <- false)
 
-        //vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
-        //  match changes.Action with
-        //  | NotifyCollectionChangedAction.Add ->
-        //      for e_vm in changes.NewItems do
-        //        let view = Grid()
-        //        view.DataContext <- e_vm
-        //        view.ZIndex <- 3
-        //        view.RenderTransformOrigin <- RelativePoint.TopLeft
-        //        view.VerticalAlignment <- VerticalAlignment.Top
-        //        view.HorizontalAlignment <- HorizontalAlignment.Left
-        //        vm.Watch
-        //          [ view.Bind(Grid.GetGridIdProp(), Binding("GridId"))
-        //            // important: bind to BufferHeight/BufferWidth, not
-        //            // Height/Width.
-        //            view.Bind(Grid.HeightProperty, Binding("BufferHeight"))
-        //            view.Bind(Grid.WidthProperty, Binding("BufferWidth")) ]
-        //        this.Children.Add(view)
-        //  | NotifyCollectionChangedAction.Remove ->
-        //      for e_vm in changes.OldItems do
-        //        match findChildEditor e_vm with
-        //        | Some view -> ignore(this.Children.Remove view)
-        //        | _ -> ()
-        //  | _ -> failwith "not supported") 
-          ]
+      ]
 
   let subscribeAndHandleInput fn (ob: IObservable<#Avalonia.Interactivity.RoutedEventArgs>) =
     ob.Subscribe(fun e ->
@@ -292,7 +263,8 @@ type Grid() as this =
         drawBufferLine vm grid_dc row col colend
         _drawnRegions.Add(row + vm.AnchorRow, col + vm.AnchorCol, colend + vm.AnchorCol)
       else
-        trace vm "region %d %d %d waived" row col colend
+        ()
+        //trace vm "region %d %d %d waived" row col colend
 
     vm.DrawOps |> Seq.iter (
       function 
@@ -336,6 +308,9 @@ type Grid() as this =
           draw row r.col r.col_end
     )
     let mutable drawn = vm.DrawOps.Count <> 0
+    // for the base grid, do not block drawing of children
+    if vm.GridId = grid_vm.GridId then
+        _drawnRegions.Clear()
     for c in vm.ChildGrids do
         let child_drawn = drawOps c
         drawn <- drawn || child_drawn

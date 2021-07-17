@@ -389,8 +389,6 @@ type RedrawCommand =
 | UnknownCommand of data: obj
 ///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
-///  notify the parent that the size, position, precense of a child has changed
-| ChildrenChanged
 
 type EventParseException(data: obj) =
     inherit exn()

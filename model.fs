@@ -53,14 +53,10 @@ module private ModelImpl =
 
     let setTitle id title = frames.[id].Title <- title
 
-    let rec unicast id cmd = 
+    let unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
-        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd; ValueNone
-        |> 
-        function
-        | ValueSome(pid, cmd) -> unicast pid cmd
-        | ValueNone -> ()
+        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
 
     let unicast_create id cmd w h = 
           if not(grids.ContainsKey id) then
@@ -69,7 +65,7 @@ module private ModelImpl =
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
-            grid.Redraw cmd |> ignore
+            grid.Redraw cmd
 
     let bell (visual: bool) =
         // TODO
@@ -94,13 +90,13 @@ module private ModelImpl =
         | SetOption opts                    -> Array.iter theme.setOption opts
         | ModeInfoSet(cs_en, info)          -> theme.setModeInfo cs_en info
         //  Broadcast
+        | PopupMenuShow _
         | PopupMenuSelect _             | PopupMenuHide _
         | Busy _                        | Mouse _
         | ModeChange _
+        | GridCursorGoto _
                                             -> broadcast cmd
         //  Unicast
-        | PopupMenuShow(_,_,_,_,id)
-        | GridCursorGoto(id,_,_) 
         | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
         | WinClose id             | WinFloatPos(id, _, _, _, _, _, _)  | WinHide(id)
         | WinExternalPos(id,_)
