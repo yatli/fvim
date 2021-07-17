@@ -21,6 +21,10 @@
       "executablePath": "F:\\git\\neovim\\build\\bin\\nvim.exe",
       "commandLineArgs": "-u NONE -i NONE",
       "nativeDebugging": true
+    },
+    "fvim-terminal": {
+      "commandName": "Project",
+      "commandLineArgs": "--terminal --terminal-cmd powershell"
     }
   }
 }
