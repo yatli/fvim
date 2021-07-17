@@ -329,7 +329,7 @@ type RedrawCommand =
 ///  displayed above another grid `anchor_grid` at the specified position
 ///  `anchor_row` and `anchor_col`. For the meaning of `anchor` and more
 ///  details of positioning, see |nvim_open_win()|.
-| WinFloatPos of grid: int * win: int * anchor: Anchor * anchor_grid: int * anchor_row: float * anchor_col: float * focusable: bool
+| WinFloatPos of grid: int * win: int * anchor: Anchor * anchor_grid: int * anchor_row: float * anchor_col: float * focusable: bool * z_index: int
 ///  Display or reconfigure external window `win`. The window should be
 ///  displayed as a separate top-level window in the desktop environment,
 ///  or something similar.
@@ -609,7 +609,9 @@ let (|Anchor|_|) =
 let parse_win_float_pos (x: obj) =
     match x with
     | ObjArray [| (Integer32 grid); (Integer32 win); (Anchor anchor); (Integer32 anchor_grid); (Float anchor_row); (Float anchor_col); (Bool focusable) |] 
-        -> Some <| WinFloatPos(grid, win, anchor, anchor_grid, anchor_row, anchor_col, focusable)
+        -> Some <| WinFloatPos(grid, win, anchor, anchor_grid, anchor_row, anchor_col, focusable, 50)
+    | ObjArray [| (Integer32 grid); (Integer32 win); (Anchor anchor); (Integer32 anchor_grid); (Float anchor_row); (Float anchor_col); (Bool focusable); (Integer32 z) |] 
+        -> Some <| WinFloatPos(grid, win, anchor, anchor_grid, anchor_row, anchor_col, focusable, z)
     | _ -> None
 
 let parse_complete_item =

@@ -350,7 +350,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
         | WinHide(_)                                                         -> m_hidden <- true
         | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 m_gridsize.rows m_gridsize.cols true
-        | WinFloatPos (_, win, anchor, anchor_grid, r, c, f) -> 
+        | WinFloatPos (_, win, anchor, anchor_grid, r, c, f, z) -> 
             m_winid <- win
             setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
         | PopupMenuShow(items, selected, row, col, grid)                     -> this.ShowPopupMenu grid items selected row col

@@ -98,7 +98,7 @@ module private ModelImpl =
                                             -> broadcast cmd
         //  Unicast
         | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _)  | WinHide(id)
+        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _, _)  | WinHide(id)
         | WinExternalPos(id,_)
         | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
