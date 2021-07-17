@@ -474,7 +474,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
             cursorConfig()
-        elif m_cursor_vm.focused then
+        elif m_cursor_vm.focused && not(states.ui_multigrid && _gridid = 1) then
             m_cursor_vm.focused <- false
             m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 

@@ -308,8 +308,16 @@ type Grid() as this =
           draw row r.col r.col_end
     )
     let mutable drawn = vm.DrawOps.Count <> 0
-    // for the base grid, do not block drawing of children
+    // for the base grid, do not block drawing of children, and
+    // mark child grid dirty if base updates overlapped it
     if vm.GridId = grid_vm.GridId then
+        for cgrid in vm.ChildGrids do
+            let touched = _drawnRegions 
+                          |> Seq.exists(fun(r,c,ce) -> 
+                          cgrid.AnchorRow <= r &&
+                          r < cgrid.AnchorRow + cgrid.Rows &&
+                          not( cgrid.AnchorCol >= ce || c >= cgrid.AnchorCol + cgrid.Cols ))
+            if touched then cgrid.MarkAllDirty()
         _drawnRegions.Clear()
     for c in vm.ChildGrids do
         let child_drawn = drawOps c
