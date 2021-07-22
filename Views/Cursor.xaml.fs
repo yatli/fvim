@@ -107,7 +107,7 @@ type Cursor() as this =
             (* reconfigure the cursor *)
             showCursor true
             cursorTimerRun blinkon this.ViewModel.blinkwait
-            // this.InvalidateVisual()
+            this.InvalidateVisual()
 
     let setCursorAnimation() =
         let transitions = Transitions()

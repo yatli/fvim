@@ -370,9 +370,11 @@ type Grid() as this =
         this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
       ]
     AvaloniaXamlLoader.Load(this)
+#if HAS_IME_SUPPORT
   static do
     InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(fun grid e -> 
         e.Client <- grid) |> ignore
+#endif
 
   override this.Render ctx =
     if isNull grid_fb then
@@ -427,6 +429,7 @@ type Grid() as this =
       with get (): obj = this.GetValue(ViewModelProperty) :> obj
       and set (v: obj): unit = this.SetValue(ViewModelProperty, v) |> ignore
 
+#if HAS_IME_SUPPORT
   interface ITextInputMethodClient with
       member _.SupportsPreedit = false
       member _.SupportsSurroundingText = false
@@ -442,6 +445,7 @@ type Grid() as this =
       [<CLIEvent>] member _.CursorRectangleChanged: IEvent<EventHandler,EventArgs> = ev_cursor_rect_changed.Publish
       [<CLIEvent>] member _.TextViewVisualChanged: IEvent<EventHandler,EventArgs> = ev_text_view_visual_changed.Publish
       [<CLIEvent>] member _.ActiveStateChanged: IEvent<EventHandler,EventArgs> = ev_active_state_changed.Publish
+#endif
 
   member this.GridId
     with get () = this.GetValue(GridIdProperty)
