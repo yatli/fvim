@@ -29,7 +29,7 @@ jobs:
       publishLocation: 'Container'
 
 
-- job: Linux_builds
+- job: Linux_x64_builds
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
@@ -53,8 +53,36 @@ jobs:
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'publish'
-      ArtifactName: 'drop-linux'
+      ArtifactName: 'drop-linux-x64'
       publishLocation: 'Container'
+
+- job: Linux_arm64_builds
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: false
+      version: 3.1.x
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        sudo apt-get install ruby ruby-dev rubygems build-essential rpm
+        sudo gem install --no-document fpm
+  - task: Bash@3
+    inputs:
+      filePath: 'pack.sh'
+      arguments: 'linux-arm'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-linux-arm64'
+      publishLocation: 'Container'
+
 
 - job: OSX_builds
   pool:

@@ -2,6 +2,8 @@
 # usage:
 #     pack.sh linux-x64
 #     pack.sh osx-x64
+#     pack.sh linux-arm
+#     pack.sh osx-arm
 
 mkdir -p publish
 rm -rf bin
@@ -34,6 +36,31 @@ function pack-linux-x64()
     chmod +x $PKG_ROOT/usr/bin/fvim
     fpm -s dir -t deb -n fvim -v $VERSION -C $PKG_ROOT
     fpm -s dir -t rpm -n fvim -v $VERSION -C $PKG_ROOT
+
+    mv {*.deb,*.rpm} publish/
+}
+
+function pack-linux-arm()
+{
+    rm -f ./{*.deb,*.rpm}
+
+    pushd $PKG_ROOT
+    cd ..
+    mv publish fvim
+    mkdir -p publish/usr/share
+    mkdir -p publish/usr/share/applications
+    mkdir -p publish/usr/share/icons/hicolor/48x48/apps/
+    mkdir -p publish/usr/bin
+    mv fvim publish/usr/share/
+    popd
+    cp lib/fvim-linux-launcher $PKG_ROOT/usr/bin/fvim
+    cp Assets/fvim.png $PKG_ROOT/usr/share/icons/hicolor/48x48/apps/fvim.png
+    cp lib/fvim.desktop $PKG_ROOT/usr/share/applications/fvim.desktop
+
+    chmod +x $PKG_ROOT/usr/share/fvim/FVim
+    chmod +x $PKG_ROOT/usr/bin/fvim
+    fpm -a arm64 -s dir -t deb -n fvim -v $VERSION -C $PKG_ROOT
+    fpm -a arm64 -s dir -t rpm -n fvim -v $VERSION -C $PKG_ROOT
 
     mv {*.deb,*.rpm} publish/
 }
