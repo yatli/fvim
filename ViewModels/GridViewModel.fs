@@ -64,7 +64,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_anchor_row     = 0
     let mutable m_anchor_col     = 0
     let mutable m_hidden         = false
-    let mutable m_external       = false
+    let mutable m_is_external    = false
     let mutable m_winid          = 0 // for single-purpose windows e.g. floats and exts
 
 
@@ -304,7 +304,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let closeGrid() =
         trace _gridid "closeGrid"
-        if m_external then
+        if m_is_external then
             m_ext_winclose_ev.Trigger()
 
     let setWinPos startrow startcol r c f =
@@ -357,8 +357,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win) ->
-            if not m_external then
-                m_external <- true
+            if not m_is_external then
+                m_is_external <- true
                 (this:>IGridUI).Detach()
                 CreateFrame this
             m_winid <- win
