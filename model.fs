@@ -53,15 +53,34 @@ module private ModelImpl =
 
     let setTitle id title = frames.[id].Title <- title
 
+    let _unicast_fail id cmd =
+        trace "unicast into non-existing grid #%d: %A" id cmd
+
     let unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
         | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
 
+    let unicast_detach id cmd =
+        match grids.TryGetValue id with
+        | true, grid -> 
+            grid.Detach()
+            grid.Redraw cmd
+        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
+
+    let unicast_change_parent id pid cmd =
+        match (grids.TryGetValue id),(grids.TryGetValue pid) with
+        | (true, grid),(true, parent) -> 
+            grid.Detach()
+            parent.AddChild(grid)
+            grid.Redraw cmd
+        | _ -> trace "unicast into non-existing grid #%d or parent #%d: %A" id pid cmd
+
+
     let unicast_create id cmd w h = 
-          if not(grids.ContainsKey id) then
-            add_grid <| grids.[1].CreateChild id h w
-          unicast id cmd
+        if not(grids.ContainsKey id) then
+          add_grid <| grids.[1].CreateChild id h w
+        unicast id cmd
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
@@ -97,10 +116,12 @@ module private ModelImpl =
         | GridCursorGoto _
                                             -> broadcast cmd
         //  Unicast
-        | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _, _)  | WinHide(id)
-        | WinExternalPos(id,_)
+        | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
+        | WinClose id                   | WinHide(id)
         | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
+        | WinExternalPos(id,_)              -> unicast_detach id cmd
+        | WinFloatPos(id, _, _, pid, _, _, _, _)  
+                                            -> unicast_change_parent id pid cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)
         | GridResize(id, w, h)              -> unicast_create id cmd w h

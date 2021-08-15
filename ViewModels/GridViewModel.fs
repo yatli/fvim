@@ -12,8 +12,8 @@ open Avalonia.Media
 open FSharp.Control.Reactive
 
 open System
-open System.Collections.ObjectModel
 open model
+open System.Collections.Generic
 
 #nowarn "0025"
 
@@ -37,7 +37,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let m_cursor_vm              = new CursorViewModel(None)
     let m_popupmenu_vm           = new PopupMenuViewModel()
-    let m_child_grids            = ObservableCollection<GridViewModel>()
+    let m_child_grids            = ResizeArray<GridViewModel>()
     let m_resize_ev              = Event<IGridUI>()
     let m_input_ev               = Event<int * InputEvent>()
     let m_ext_winclose_ev        = Event<unit>()
@@ -65,8 +65,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_anchor_col     = 0
     let mutable m_hidden         = false
     let mutable m_is_external    = false
+    let mutable m_is_float       = false
+    let mutable m_z              = -100
     let mutable m_winid          = 0 // for single-purpose windows e.g. floats and exts
-
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
 
@@ -137,7 +138,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let markAllDirty () =
         m_griddirty <- true
         for c in m_child_grids do
-            c.MarkAllDirty()
+            c.MarkDirty()
 
     let rec markDirty ({ row = row; col = col; height = h; width = w } as dirty) =
         if h > 1 then
@@ -302,10 +303,21 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let setMouse (en:bool) =
         m_mouse_en <- en
 
+    let getRootGrid() =
+        let mutable p = m_parent
+        let mutable q = this
+        while p.IsSome do
+            q <- p.Value
+            p <- p.Value.Parent
+        q
+
     let closeGrid() =
         trace _gridid "closeGrid"
         if m_is_external then
             m_ext_winclose_ev.Trigger()
+        elif m_is_float then
+            m_hidden <- true
+            getRootGrid().MarkDirty()
 
     let setWinPos startrow startcol r c f =
         let oldRegion = { row = m_anchor_row; col = m_anchor_col; height = m_gridsize.rows; width = m_gridsize.cols}
@@ -323,6 +335,13 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_anchor_row <- startrow
         this.Focusable <- f
         parent.OnChildChanged oldRegion newRegion
+
+    let setWinFloatPos win anchor anchor_grid r c f z =
+        m_winid <- win
+        m_is_float <- true
+        m_z <- z
+        trace _gridid "setWinFloatPos: z = %d" z
+        setWinPos (int r) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume assume NW
 
     let hidePopupMenu() =
         m_popupmenu_vm.Show <- false
@@ -350,9 +369,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
         | WinHide(_)                                                         -> m_hidden <- true
         | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 m_gridsize.rows m_gridsize.cols true
-        | WinFloatPos (_, win, anchor, anchor_grid, r, c, f, z) -> 
-            m_winid <- win
-            setWinPos (int r + 1) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume attaching to grid #1, assume NW
+        | WinFloatPos (_, win, anchor, anchor_grid, r, c, f, z)              -> setWinFloatPos win anchor anchor_grid r c f z
         | PopupMenuShow(items, selected, row, col, grid)                     -> this.ShowPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
@@ -456,8 +473,16 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         member __.CreateChild id r c =
             trace _gridid "CreateChild: #%d" id
             let child = GridViewModel(id, this, {rows=r; cols=c})
-            m_child_grids.Add child
+            m_child_grids.Add child |> ignore
+            child.ZIndex <- this.ZIndex + 1
             child :> IGridUI
+        member __.AddChild c =
+            let c = c :?> GridViewModel
+            trace _gridid "AddChild: #%d" c.GridId
+            m_child_grids.Add c |> ignore
+            c.Parent <- (Some this)
+            c.ZIndex <- this.ZIndex + 1
+            markAllDirty()
         member __.RemoveChild c =
             ignore <| m_child_grids.Remove (c:?>GridViewModel)
             markAllDirty()
@@ -467,6 +492,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
           | Some p -> 
             (p:>IGridUI).RemoveChild this
             m_parent <- None
+            m_z <- -100
+          markAllDirty()
 
     member __.CursorGoto id row col =
         if m_parent.IsSome && id = _gridid then
@@ -519,7 +546,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
       for c in m_child_grids do
         c.MarkClean()
 
-    member __.MarkAllDirty = markAllDirty
+    member __.MarkDirty = markAllDirty
 
     //  converts grid position to UI Point
     member __.GetPoint row col =
@@ -576,6 +603,12 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.Rows with get() = m_gridsize.rows
     member __.AnchorRow with get() = m_anchor_row
     member __.AnchorCol with get() = m_anchor_col
+    member __.AbsAnchor with get() =
+        match m_parent with
+        | Some p ->
+            let pr,pc = p.AbsAnchor
+            pr + m_anchor_row, pc + m_anchor_col
+        | _ -> m_anchor_row, m_anchor_col
     member __.Dirty with get() = m_griddirty
     member __.DrawOps with get() = m_drawops
     member __.Hidden with get():bool = m_hidden
@@ -597,6 +630,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.Focusable with get() = m_gridfocusable and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocusable, v)
     member __.ExtWinId = m_winid
     member __.ExtWinClosed = m_ext_winclose_ev.Publish
+    member __.Parent with get() = m_parent and set(v) = m_parent <- v
+    member __.ZIndex with get() = m_z and set(v) = m_z <- v
+
 
     (*******************   Events   ***********************)
 

@@ -13,7 +13,6 @@ open Avalonia.Platform
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
 open System
-open System.Collections.Specialized
 open FSharp.Control.Reactive
 open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
@@ -29,6 +28,7 @@ open GridHelper
 open model
 open Avalonia.Input.TextInput
 open Avalonia.Input
+open System.Collections.Generic
 
 type Grid() as this =
   inherit Canvas()
@@ -113,7 +113,8 @@ type Grid() as this =
       | CharType.Emoji -> true
       | _ -> issym
 
-    let topLeft = grid_vm.GetPoint (row + vm.AnchorRow) (col + vm.AnchorCol)
+    let abs_r,abs_c = vm.AbsAnchor
+    let topLeft = grid_vm.GetPoint (row + abs_r) (col + abs_c)
     let bottomRight = topLeft + grid_vm.GetPoint 1 nr_col
     let bg_region = Rect(topLeft, bottomRight)
 
@@ -245,26 +246,42 @@ type Grid() as this =
 
   // prevent repetitive drawings
   let _drawnRegions = ResizeArray()
+  let _drawVMs = ResizeArray()
 
-  let rec drawOps (vm: GridViewModel) = 
+  let rec scanDrawVMs (vm: GridViewModel) =
+    if vm.Hidden then ()
+    else
+    _drawVMs.Add(vm)
+    vm.ChildGrids |> Seq.iter scanDrawVMs
+
+  let drawOps (vm: GridViewModel) = 
+    let abs_r,abs_c = vm.AbsAnchor
+    // if other grids tainted the region, mark it dirty
+    let touched = _drawnRegions 
+                  |> Seq.exists(fun(r,c,ce) -> 
+                  abs_r <= r &&
+                  r < abs_r + vm.Rows &&
+                  not( abs_c >= ce || c >= abs_c + vm.Cols ))
+    if touched then vm.MarkDirty()
+
+    trace vm "drawOps: z=%d" vm.ZIndex
+
     if vm.Hidden then false
     elif vm.Dirty then
         trace vm "drawing whole grid"
         for row = 0 to vm.Rows - 1 do
             drawBufferLine vm grid_dc row 0 vm.Cols
-        for c in vm.ChildGrids do
-            c.MarkAllDirty()
-            drawOps c |> ignore
+            _drawnRegions.Add(row + abs_r, abs_c, vm.Cols + abs_c)
         true
     else
+    // not tainted. can draw with my draw ops.
     let draw row col colend = 
-      let covered = _drawnRegions |> Seq.exists(fun (r, c, ce) -> r = row + vm.AnchorRow && c <= col + vm.AnchorCol && ce >= colend + vm.AnchorCol)
+      let covered = _drawnRegions |> Seq.exists(fun (r, c, ce) -> r = row + abs_r && c <= col + abs_c && ce >= colend + abs_c)
       if not covered then
         drawBufferLine vm grid_dc row col colend
-        _drawnRegions.Add(row + vm.AnchorRow, col + vm.AnchorCol, colend + vm.AnchorCol)
+        _drawnRegions.Add(row + abs_r, col + abs_c, colend + abs_c)
       else
         ()
-        //trace vm "region %d %d %d waived" row col colend
 
     vm.DrawOps |> Seq.iter (
       function 
@@ -274,55 +291,19 @@ type Grid() as this =
           else (top - row, left, bot, right)
         for row = t to b - 1 do
           draw row l r
-
-        (*Note: the captured bitmap still misaligns with the rendered text*)
-        (*Until this is fixed, we have to draw the scrolled region line by line...*)
-
-        (*let s_topLeft = grid_vm.GetPoint top left*)
-        (*let s_bottomRight = grid_vm.GetPoint (bot) (right)*)
-        (*let vec = grid_vm.GetPoint row 0*)
-        (*let src, dst = *)
-          (*if row > 0 then*)
-            (*Rect(s_topLeft + vec, s_bottomRight),*)
-            (*Rect(s_topLeft, s_bottomRight - vec)*)
-          (*else*)
-            (*Rect(s_topLeft, s_bottomRight + vec),*)
-            (*Rect(s_topLeft - vec, s_bottomRight)*)
-
-        (*grid_dc_scroll.PushClip(dst)*)
-        (*grid_dc_scroll.Clear(Avalonia.Media.Colors.Transparent)*)
-        (*grid_dc_scroll.PopClip()*)
-
-        (*use r1 = grid_fb.PlatformImpl.CloneAs<_>()*)
-        (*grid_dc_scroll.DrawBitmap(r1, 1.0, src, dst)*)
-
-        (*grid_dc.PushClip(dst)*)
-        (*grid_dc.Clear(Avalonia.Media.Colors.Transparent)*)
-        (*grid_dc.PopClip()*)
-
-        (*use r2 = grid_fb_scroll.PlatformImpl.CloneAs<_>()*)
-        (*grid_dc.DrawBitmap(r2, 1.0, dst, dst)*)
-
       | Put r -> 
         for row = r.row to r.row_end - 1 do
           draw row r.col r.col_end
     )
-    let mutable drawn = vm.DrawOps.Count <> 0
-    // for the base grid, do not block drawing of children, and
-    // mark child grid dirty if base updates overlapped it
-    if vm.GridId = grid_vm.GridId then
-        for cgrid in vm.ChildGrids do
-            let touched = _drawnRegions 
-                          |> Seq.exists(fun(r,c,ce) -> 
-                          cgrid.AnchorRow <= r &&
-                          r < cgrid.AnchorRow + cgrid.Rows &&
-                          not( cgrid.AnchorCol >= ce || c >= cgrid.AnchorCol + cgrid.Cols ))
-            if touched then cgrid.MarkAllDirty()
-        _drawnRegions.Clear()
-    for c in vm.ChildGrids do
-        let child_drawn = drawOps c
-        drawn <- drawn || child_drawn
-    drawn
+    vm.DrawOps.Count <> 0
+
+  let m_gridComparer =
+    let makeGridComparer() =
+      { new IComparer<GridViewModel> with
+            member __.Compare(x: GridViewModel, y: GridViewModel): int = 
+              x.ZIndex - y.ZIndex
+      }
+    makeGridComparer()
 
   do
     this.Watch
@@ -337,7 +318,7 @@ type Grid() as this =
 
         rpc.register.watch "font" (fun () ->
           if grid_vm <> Unchecked.defaultof<_> then
-            grid_vm.MarkAllDirty()
+            grid_vm.MarkDirty()
             this.InvalidateVisual())
 
         //  Input handling
@@ -360,7 +341,13 @@ type Grid() as this =
     grid_dc.PushClip(Rect this.Bounds.Size)
     let timer = System.Diagnostics.Stopwatch.StartNew()
     _drawnRegions.Clear()
-    let drawn = drawOps grid_vm
+    _drawVMs.Clear()
+    scanDrawVMs grid_vm
+    _drawVMs.Sort(m_gridComparer)
+    let mutable drawn = false
+    for vm in _drawVMs do
+        let drawn' = drawOps vm
+        drawn <- drawn || drawn'
     if m_debug then drawDebug grid_dc
     grid_dc.PopClip()
 
@@ -372,6 +359,7 @@ type Grid() as this =
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
     timer.Stop()
     if drawn then trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
+    else trace grid_vm "drawing end, nothing drawn."
 
   override this.MeasureOverride(size) =
     trace grid_vm "MeasureOverride: %A" size

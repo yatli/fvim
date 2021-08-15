@@ -99,6 +99,7 @@ type IGridUI =
     abstract RenderScale: float
     abstract Redraw: RedrawCommand -> unit
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
+    abstract AddChild: IGridUI -> unit
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
 
