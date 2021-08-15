@@ -649,10 +649,10 @@ let parse_win_viewport =
         -> Some(WinViewport(grid, win, topline, botline, curline, curcol))
     | _ -> None
 
-let parse_win_hide = 
+let parse_int_singleton = 
     function
-    | ObjArray [| (Integer32 grid) |] 
-        -> Some(WinHide(grid))
+    | ObjArray [| (Integer32 i) |] 
+        -> Some(i)
     | _ -> None
 
 let unwrap_multi xs =
@@ -678,7 +678,7 @@ let parse_redrawcmd (x: obj) =
     | C("hl_attr_define", P(parse_hi_attr) attrs)                                          -> HighlightAttrDefine attrs
     | C1("grid_clear", [| (Integer32 id) |])                                               -> GridClear id
     | C("grid_resize", PX(parse_grid_resize) cmds)                                         -> unwrap_multi cmds
-    | C1("grid_destroy", [| (Integer32 id) |])                                             -> GridDestroy id
+    | C("grid_destroy", PX(parse_int_singleton) ids)                                       -> ids |> Array.map(GridDestroy) |> unwrap_multi
     | C1("grid_cursor_goto", [| (Integer32 grid); (Integer32 row); (Integer32 col) |])     -> GridCursorGoto(grid, row, col)
     | C1("grid_scroll", [| 
         (Integer32 grid)
@@ -690,10 +690,10 @@ let parse_redrawcmd (x: obj) =
     | C("win_float_pos", PX(parse_win_float_pos)ps)                                        -> unwrap_multi ps
     | C1("win_external_pos", [| 
         (Integer32 grid); (Integer32 win) |])                                              -> WinExternalPos(grid, win)
-    | C("win_hide", PX(parse_win_hide)cmds )                                                     -> unwrap_multi cmds
+    | C("win_hide", PX(parse_int_singleton)ids )                                           -> ids |> Array.map(WinHide) |> unwrap_multi
     | C("win_scroll_over_start", _)                                                        -> WinScrollOverStart
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
-    | C1("win_close", [| (Integer32 grid) |])                                              -> WinClose(grid)
+    | C("win_close", PX(parse_int_singleton)ids)                                           -> ids |> Array.map(WinClose) |> unwrap_multi
     | C("win_viewport", PX(parse_win_viewport)cmds)                                        -> unwrap_multi cmds
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
