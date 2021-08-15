@@ -79,7 +79,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if theme.mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
         elif m_gridbuffer.GetLength(0) <= m_cursor_vm.row || m_gridbuffer.GetLength(1) <= m_cursor_vm.col then ()
         else
-        let target_vm,target_row,target_col,_ : GridViewModel*int*int*int = this.FindTargetVm m_cursor_vm.row m_cursor_vm.col
+        let _,_,target_vm,target_row,target_col,_ : int*int*GridViewModel*int*int*int = this.FindTargetVm m_cursor_vm.row m_cursor_vm.col
         let mode              = theme.mode_defs.[m_cursor_vm.modeidx]
         let hlid              = target_vm.[target_row, target_col].hlid
         let hlid              = Option.defaultValue hlid mode.attr_id
@@ -629,18 +629,23 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         let mutable target_row = r
         let mutable target_col = c
         let mutable target_z = m_z
+        let mutable target_ar = this.AnchorRow
+        let mutable target_ac = this.AnchorCol
         for cg in m_child_grids do
-            if not cg.Hidden &&
-                cg.AnchorRow <= r && r < cg.AnchorRow + cg.Rows &&
-                cg.AnchorCol <= c && c < cg.AnchorCol + cg.Cols &&
-                cg.ZIndex >= target_z
+            if cg.Hidden then ()
+            else
+            let ar,ac,vm,row,col,z = cg.FindTargetVm (r-cg.AnchorRow) (c-cg.AnchorCol)
+            if ar <= r && r < ar + vm.Rows &&
+               ac <= c && c < ac + vm.Cols &&
+               z >= target_z
             then
-                let vm,row,col,z = cg.FindTargetVm (r-cg.AnchorRow) (c-cg.AnchorCol)
                 target_vm <- vm
                 target_row <- row
                 target_col <- col
                 target_z <- z
-        target_vm,target_row,target_col,target_z
+                target_ar <- ar + this.AnchorRow
+                target_ac <- ac + this.AnchorCol
+        target_ar,target_ac,target_vm,target_row,target_col,target_z
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
