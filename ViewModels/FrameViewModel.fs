@@ -81,8 +81,8 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, null, "BackgroundImage")
 
     do
-        match cfg with
-        | Some cfg ->
+        match cfg,_maingrid with
+        | Some cfg, None ->
             this.Width  <- float cfg.Mainwin.W
             this.Height <- float cfg.Mainwin.H
             this.X      <- float cfg.Mainwin.X
@@ -93,7 +93,17 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             match cfg.Mainwin.CustomTitleBar with
             | Some true -> m_customTitleBar <- true
             | _ -> ()
-        | None -> ()
+        | _, Some grid ->
+            this.Height <- grid.BufferHeight
+            this.Width <- grid.BufferWidth
+            this.WindowState <- WindowState.Normal
+            match cfg with
+            | Some cfg ->
+                match cfg.Mainwin.CustomTitleBar with
+                | Some true -> m_customTitleBar <- true
+                | _ -> ()
+            | _ -> ()
+        | _ -> ()
         this.Watch [
             rpc.register.notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
             rpc.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
