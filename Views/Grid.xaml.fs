@@ -16,7 +16,6 @@ open System
 open FSharp.Control.Reactive
 open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
-open Avalonia.Layout
 
 module private GridHelper =
   let inline trace vm fmt =
@@ -28,7 +27,6 @@ open GridHelper
 open model
 open Avalonia.Input.TextInput
 open Avalonia.Input
-open System.Collections.Generic
 
 type Grid() as this =
   inherit Canvas()
@@ -297,13 +295,7 @@ type Grid() as this =
     )
     vm.DrawOps.Count <> 0
 
-  let m_gridComparer =
-    let makeGridComparer() =
-      { new IComparer<GridViewModel> with
-            member __.Compare(x: GridViewModel, y: GridViewModel): int = 
-              x.ZIndex - y.ZIndex
-      }
-    makeGridComparer()
+  let m_gridComparer = GridViewModel.MakeGridComparer()
 
   do
     this.Watch

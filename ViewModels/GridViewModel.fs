@@ -68,31 +68,18 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_is_float       = false
     let mutable m_z              = -100
     let mutable m_winid          = 0 // for single-purpose windows e.g. floats and exts
+    let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
 
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
 
-    let findTargetVm r c =
-        let mutable target_vm = this
-        let mutable target_row = r
-        let mutable target_col = c
-        for cg in m_child_grids do
-            if not cg.Hidden &&
-               cg.AnchorRow <= r && r < cg.AnchorRow + cg.Rows &&
-               cg.AnchorCol <= c && c < cg.AnchorCol + cg.Cols 
-            then
-               target_vm <- cg
-               target_row <- target_row - cg.AnchorRow
-               target_col <- target_col - cg.AnchorCol
-        target_vm,target_row,target_col
-
     let cursorConfig() =
         if theme.mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
         elif m_gridbuffer.GetLength(0) <= m_cursor_vm.row || m_gridbuffer.GetLength(1) <= m_cursor_vm.col then ()
         else
-        let target_vm,target_row,target_col = findTargetVm m_cursor_vm.row m_cursor_vm.col
+        let target_vm,target_row,target_col,_ : GridViewModel*int*int*int = this.FindTargetVm m_cursor_vm.row m_cursor_vm.col
         let mode              = theme.mode_defs.[m_cursor_vm.modeidx]
         let hlid              = target_vm.[target_row, target_col].hlid
         let hlid              = Option.defaultValue hlid mode.attr_id
@@ -342,6 +329,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_z <- z
         trace _gridid "setWinFloatPos: z = %d" z
         setWinPos (int r) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume assume NW
+        m_parent.Value.SortChildren()
 
     let hidePopupMenu() =
         m_popupmenu_vm.Show <- false
@@ -475,6 +463,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             let child = GridViewModel(id, this, {rows=r; cols=c})
             m_child_grids.Add child |> ignore
             child.ZIndex <- this.ZIndex + 1
+            this.SortChildren()
             child :> IGridUI
         member __.AddChild c =
             let c = c :?> GridViewModel
@@ -482,6 +471,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             m_child_grids.Add c |> ignore
             c.Parent <- (Some this)
             c.ZIndex <- this.ZIndex + 1
+            this.SortChildren()
             markAllDirty()
         member __.RemoveChild c =
             ignore <| m_child_grids.Remove (c:?>GridViewModel)
@@ -632,6 +622,31 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ExtWinClosed = m_ext_winclose_ev.Publish
     member __.Parent with get() = m_parent and set(v) = m_parent <- v
     member __.ZIndex with get() = m_z and set(v) = m_z <- v
+    member __.SortChildren() =
+        m_child_grids.Sort(m_gridComparer)
+    member __.FindTargetVm r c =
+        let mutable target_vm = this
+        let mutable target_row = r
+        let mutable target_col = c
+        let mutable target_z = m_z
+        for cg in m_child_grids do
+            if not cg.Hidden &&
+                cg.AnchorRow <= r && r < cg.AnchorRow + cg.Rows &&
+                cg.AnchorCol <= c && c < cg.AnchorCol + cg.Cols &&
+                cg.ZIndex >= target_z
+            then
+                let vm,row,col,z = cg.FindTargetVm (r-cg.AnchorRow) (c-cg.AnchorCol)
+                target_vm <- vm
+                target_row <- row
+                target_col <- col
+                target_z <- z
+        target_vm,target_row,target_col,target_z
+
+    static member MakeGridComparer() =
+          { new IComparer<GridViewModel> with
+                member __.Compare(x: GridViewModel, y: GridViewModel): int = 
+                  x.ZIndex - y.ZIndex
+          }
 
 
     (*******************   Events   ***********************)
