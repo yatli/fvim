@@ -4,10 +4,10 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
-    <ApplicationIcon>fvim.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\fvim.ico</ApplicationIcon>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <OutputType>WinExe</OutputType>
     <PublishTrimmed>true</PublishTrimmed>
