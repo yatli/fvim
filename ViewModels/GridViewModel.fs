@@ -359,6 +359,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinExternalPos(_,win) ->
             if not m_is_external then
                 m_is_external <- true
+                m_anchor_col <- 0
+                m_anchor_row <- 0
                 (this:>IGridUI).Detach()
                 CreateFrame this
             m_winid <- win
