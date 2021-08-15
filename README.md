@@ -42,6 +42,7 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
   - HiDPI support -- try dragging it across two screens with different DPIs ;)
   - High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
   - GPU acceleration
+  - Multi-grid support -- try `Ctrl-w ge` to detach a window into a separate OS window!
 - Remoting
   - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
   - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
@@ -75,6 +76,10 @@ if exists('g:fvim_loaded')
 endif
 ```
 ![fluent_cursor](https://raw.githubusercontent.com/yatli/fvim/master/images/fluent_cursor.gif)
+
+Detaching a window into an external OS window with `Ctrl-w ge`:
+![ext_win](https://raw.githubusercontent.com/yatli/fvim/master/images/ext_win.gif)
+Detach as many and span them over your monitors!
 
 ### Building from source
 We're now targeting `netcoreapp3.1` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.1).
@@ -136,14 +141,8 @@ FVimFontBoldWeight 700
 FVimFontDrawBounds v:true
 
 " UI options (all default to v:false)
-FVimUIMultiGrid v:false     " per-window grid system -- work in progress
 FVimUIPopupMenu v:true      " external popup menu
-FVimUITabLine v:false       " external tabline -- not implemented
-FVimUICmdLine v:false       " external cmdline -- not implemented
-FVimUIWildMenu v:false      " external wildmenu -- not implemented
-FVimUIMessages v:false      " external messages -- not implemented
-FVimUITermColors v:false    " not implemented
-FVimUIHlState v:false       " not implemented
+FVimUIWildMenu v:false      " external wildmenu -- work in progress
 
 " Keyboard mapping options
 FVimKeyDisableShiftSpace v:true " disable unsupported sequence <S-Space>
@@ -153,6 +152,15 @@ FVimKeyAutoIme v:true           " Automatic input method engagement in Insert mo
 " If this command is executed on a standalone instance,
 " the embedded process will be terminated anyway.
 FVimDetach
+
+" =========== BREAKING CHANGES -- the following commands are disabled ============
+" FVimUIMultiGrid v:true     -- per-window grid system -- done and enabled by default
+" FVimUITabLine v:false      -- external tabline -- not implemented
+" FVimUICmdLine v:false      -- external cmdline -- not implemented
+" FVimUIMessages v:false     -- external messages -- not implemented
+" FVimUITermColors v:false   -- not implemented
+" FVimUIHlState v:false      -- not implemented
+
 ```
 
 ### Startup options
