@@ -10,6 +10,21 @@
     "norc": {
       "commandName": "Project",
       "commandLineArgs": "-u NORC"
+    },
+    "built_nvim": {
+      "commandName": "Project",
+      "commandLineArgs": "--nvim \"F:\\git\\neovim\\build\\bin\\nvim.exe\"",
+      "nativeDebugging": true
+    },
+    "just_nvim_headless": {
+      "commandName": "Executable",
+      "executablePath": "F:\\git\\neovim\\build\\bin\\nvim.exe",
+      "commandLineArgs": "-u NONE -i NONE",
+      "nativeDebugging": true
+    },
+    "fvim-terminal": {
+      "commandName": "Project",
+      "commandLineArgs": "--terminal --terminal-cmd powershell"
     }
   }
 }

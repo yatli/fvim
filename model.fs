@@ -53,15 +53,34 @@ module private ModelImpl =
 
     let setTitle id title = frames.[id].Title <- title
 
+    let _unicast_fail id cmd =
+        trace "unicast into non-existing grid #%d: %A" id cmd
+
     let unicast id cmd = 
         match grids.TryGetValue id with
         | true, grid -> grid.Redraw cmd
         | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
 
+    let unicast_detach id cmd =
+        match grids.TryGetValue id with
+        | true, grid -> 
+            grid.Detach()
+            grid.Redraw cmd
+        | _ -> trace "unicast into non-existing grid #%d: %A" id cmd
+
+    let unicast_change_parent id pid cmd =
+        match (grids.TryGetValue id),(grids.TryGetValue pid) with
+        | (true, grid),(true, parent) -> 
+            grid.Detach()
+            parent.AddChild(grid)
+            grid.Redraw cmd
+        | _ -> trace "unicast into non-existing grid #%d or parent #%d: %A" id pid cmd
+
+
     let unicast_create id cmd w h = 
-          if not(grids.ContainsKey id) then
-            add_grid <| grids.[1].CreateChild id h w
-          unicast id cmd
+        if not(grids.ContainsKey id) then
+          add_grid <| grids.[1].CreateChild id h w
+        unicast id cmd
 
     let broadcast cmd =
         for KeyValue(_,grid) in grids do
@@ -90,15 +109,19 @@ module private ModelImpl =
         | SetOption opts                    -> Array.iter theme.setOption opts
         | ModeInfoSet(cs_en, info)          -> theme.setModeInfo cs_en info
         //  Broadcast
-        | PopupMenuShow _         | PopupMenuSelect _             | PopupMenuHide _
-        | Busy _                  | Mouse _
-        | ModeChange _            | Flush 
-        | GridCursorGoto(_,_,_) 
+        | PopupMenuShow _
+        | PopupMenuSelect _             | PopupMenuHide _
+        | Busy _                        | Mouse _
+        | ModeChange _
+        | GridCursorGoto _
                                             -> broadcast cmd
         //  Unicast
-        | GridClear id            | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id             | WinFloatPos(id, _, _, _, _, _, _) 
+        | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
+        | WinClose id                   | WinHide(id)
         | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
+        | WinExternalPos(id,_)              -> unicast_detach id cmd
+        | WinFloatPos(id, _, _, pid, _, _, _, _)  
+                                            -> unicast_change_parent id pid cmd
         | MsgSetPos(id, _, _, _)            -> unicast_create id cmd grids.[1].GridWidth 1
         | WinPos(id, _, _, _, w, h)
         | GridResize(id, w, h)              -> unicast_create id cmd w h
@@ -266,12 +289,12 @@ let private UpdateUICapabilities() =
         in ()
     } |> runAsync
 
-let private UpdateUIWindows() =
-    if ui_windows then
-        // TODO maybe also tabline?
-        ui_multigrid <- true
-    else
-        ui_multigrid <- false
+//let private UpdateUIWindows() =
+//    if ui_windows then
+//        // TODO maybe also tabline?
+//        ui_multigrid <- true
+//    else
+//        ui_multigrid <- false
     
 
 /// <summary>
@@ -282,7 +305,7 @@ let Start (serveropts, norc, debugMultigrid) =
     trace "opts = %A" serveropts
     if debugMultigrid then
         states.ui_multigrid <- true
-        states.ui_windows <- true
+        //states.ui_windows <- true
     nvim.start serveropts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
@@ -331,7 +354,7 @@ let Start (serveropts, norc, debugMultigrid) =
         |> Observable.subscribe(UpdateUICapabilities)
         rpc.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
         rpc.register.notify "remote.detach" (fun _ -> Detach())
-        rpc.register.watch "ui.windows" UpdateUIWindows
+        //rpc.register.watch "ui.windows" UpdateUIWindows
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
@@ -520,8 +543,13 @@ let Flush =
     |> flush_throttle
     |> Observable.observeOn Avalonia.Threading.AvaloniaScheduler.Instance
 
+let mutable CreateFrame: IGridUI -> unit = fun _ -> raise (new NotImplementedException())
+
 let OnFrameReady(win: IFrame) =
+    let id = win.MainGrid.Id
     add_frame win
+    if id <> 1 then
+        win.Sync(frames.[1])
 
 
 // connect the grid redraw commands and events
@@ -586,6 +614,10 @@ let OnTerminating(args: CancelEventArgs) =
     trace "window is closing"
     if nvim.isRemote then Detach()
     else nvim.quitall() |> runAsync
+
+let OnExtClosed(win: int) =
+    nvim.call {method = "nvim_win_close"; parameters = mkparams2 win true} 
+    |> runAsync
 
 let EditFiles (files: string seq) =
     async {

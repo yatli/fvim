@@ -14,11 +14,9 @@ open Avalonia.Platform
 open Avalonia.Media.Imaging
 open Avalonia.VisualTree
 open System
-open System.Collections.Specialized
 open FSharp.Control.Reactive
 open Avalonia.Data
 open Avalonia.Visuals.Media.Imaging
-open Avalonia.Layout
 
 module private GridHelper =
   let inline trace vm fmt =
@@ -46,8 +44,8 @@ type Grid() as this =
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
-  let mutable m_debug = states.ui_multigrid
   let mutable m_cursor: FVim.Cursor = Unchecked.defaultof<_>
+  let mutable m_debug = false
 
   let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
   let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
@@ -95,15 +93,15 @@ type Grid() as this =
   let mutable _render_glyph_buf: uint[] = [||]
   let mutable _render_char_buf: char[] = [||]
 
-  let drawBuffer (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
+  let drawBuffer (vm: GridViewModel) (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
 
     if col = colend then () else
 
     let font, fontwide, fontsize = grid_vm.FontAttrs
     let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
-    let typeface = GetTypeface(grid_vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
+    let typeface = GetTypeface(vm.[row, col].text, attrs.italic, attrs.bold, font, fontwide)
 
-    let glyph_type = wswidth grid_vm.[row, colend - 1].text
+    let glyph_type = wswidth vm.[row, colend - 1].text
     let nr_col =
       match glyph_type with
       | CharType.Wide
@@ -116,7 +114,8 @@ type Grid() as this =
       | CharType.Emoji -> true
       | _ -> issym
 
-    let topLeft = grid_vm.GetPoint row col
+    let abs_r,abs_c = vm.AbsAnchor
+    let topLeft = grid_vm.GetPoint (row + abs_r) (col + abs_c)
     let bottomRight = topLeft + grid_vm.GetPoint 1 nr_col
     let bg_region = Rect(topLeft, bottomRight)
 
@@ -126,30 +125,30 @@ type Grid() as this =
           _render_char_buf <- Array.zeroCreate ((colend - col) * 2)
         let mutable _len = 0
         for i = col to colend - 1 do
-          Rune.feed(grid_vm.[row, i].text, _render_char_buf, &_len)
+          Rune.feed(vm.[row, i].text, _render_char_buf, &_len)
         Shaped <| ReadOnlyMemory(_render_char_buf, 0, _len)
       else
         if _render_glyph_buf.Length < (colend - col) * 2 then
           _render_glyph_buf <- Array.zeroCreate ((colend - col)*2)
         let mutable _len = 0
         for i = col to colend - 1 do
-          Rune.feed(grid_vm.[row, i].text, _render_glyph_buf, &_len)
+          Rune.feed(vm.[row, i].text, _render_glyph_buf, &_len)
 
         Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, _len)
 
     try
         RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize, clip)
-    with ex -> trace grid_vm "drawBuffer: %s" (ex.ToString())
+    with ex -> trace vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.
-  let drawBufferLine (ctx: IDrawingContextImpl) y x0 xN =
-    let xN = min xN grid_vm.Cols
+  let drawBufferLine (vm: GridViewModel) (ctx: IDrawingContextImpl) y x0 xN =
+    let xN = min xN vm.Cols
     let x0 = max x0 0
-    let y = Math.Clamp(y, 0, (grid_vm.Rows - 1))
+    let y = Math.Clamp(y, 0, (vm.Rows - 1))
     let mutable x': int = xN - 1
-    let mutable wc: CharType = wswidth grid_vm.[y, x'].text
-    let mutable sym: bool = isProgrammingSymbol grid_vm.[y, x'].text
-    let mutable prev_hlid = grid_vm.[y, x'].hlid
+    let mutable wc: CharType = wswidth vm.[y, x'].text
+    let mutable sym: bool = isProgrammingSymbol vm.[y, x'].text
+    let mutable prev_hlid = vm.[y, x'].hlid
     let mutable nr_symbols = if sym then 1 else 0
 
     let mutable bold =
@@ -158,7 +157,7 @@ type Grid() as this =
     //  in each line we do backward rendering.
     //  the benefit is that the italic fonts won't be covered by later drawings
     for x = xN - 2 downto x0 do
-      let current = grid_vm.[y, x]
+      let current = vm.[y, x]
       let mytext = current.text
       //  !NOTE text shaping is slow. We only use shaping for
       //  a symbol-only span (for ligature drawing) with width > 1,
@@ -182,7 +181,7 @@ type Grid() as this =
         let prev_span = if mysym && not sym && mywc = wc && not bold && not hlidchange 
                         then x + 2 
                         else x + 1
-        drawBuffer ctx y prev_span (x' + 1) prev_hlid sym
+        drawBuffer vm ctx y prev_span (x' + 1) prev_hlid sym
         x' <- prev_span - 1
         wc <- mywc
         sym <- mysym
@@ -191,14 +190,14 @@ type Grid() as this =
           bold <-
             let _, _, _, hl_attrs = theme.GetDrawAttrs prev_hlid
             hl_attrs.bold
-    drawBuffer ctx y x0 (x' + 1) prev_hlid sym
+    drawBuffer vm ctx y x0 (x' + 1) prev_hlid sym
 
   let doWithDataContext fn =
     match this.DataContext with
     | :? GridViewModel as viewModel -> fn viewModel
     | _ -> Unchecked.defaultof<_>
 
-  let findChildEditor(vm: obj) = this.Children |> Seq.tryFind(fun x -> x.DataContext = vm)
+  //let findChildEditor(vm: obj) = this.Children |> Seq.tryFind(fun x -> x.DataContext = vm)
 
   let onViewModelConnected(vm: GridViewModel) =
     grid_vm <- vm
@@ -225,43 +224,14 @@ type Grid() as this =
             ev_active_state_changed.Trigger(this, EventArgs.Empty)
         )
 
-        vm.ObservableForProperty(fun x -> x.IsFocused)
-        |> Observable.subscribe(fun focused -> 
-          if focused.Value && not this.IsFocused then 
-            trace grid_vm "viewmodel ask to focus"
-            this.Focus())
-
         this.GotFocus.Subscribe(fun _ -> vm.IsFocused <- true)
         this.LostFocus.Subscribe(fun _ -> vm.IsFocused <- false)
 
-        vm.ChildGrids.CollectionChanged.Subscribe(fun changes ->
-          match changes.Action with
-          | NotifyCollectionChangedAction.Add ->
-              for e_vm in changes.NewItems do
-                let view = Grid()
-                view.DataContext <- e_vm
-                view.ZIndex <- 3
-                view.RenderTransformOrigin <- RelativePoint.TopLeft
-                view.VerticalAlignment <- VerticalAlignment.Top
-                view.HorizontalAlignment <- HorizontalAlignment.Left
-                vm.Watch
-                  [ view.Bind(Grid.GetGridIdProp(), Binding("GridId"))
-                    // important: bind to BufferHeight/BufferWidth, not
-                    // Height/Width.
-                    view.Bind(Grid.HeightProperty, Binding("BufferHeight"))
-                    view.Bind(Grid.WidthProperty, Binding("BufferWidth")) ]
-                this.Children.Add(view)
-          | NotifyCollectionChangedAction.Remove ->
-              for e_vm in changes.OldItems do
-                match findChildEditor e_vm with
-                | Some view -> ignore(this.Children.Remove view)
-                | _ -> ()
-          | _ -> failwith "not supported") ]
+      ]
 
   let subscribeAndHandleInput fn (ob: IObservable<#Avalonia.Interactivity.RoutedEventArgs>) =
     ob.Subscribe(fun e ->
-      // only root handles events
-      if not e.Handled && this.GridId = 1 then
+      if not e.Handled then
         e.Handled <- true
         doWithDataContext(fn e))
 
@@ -279,27 +249,46 @@ type Grid() as this =
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(this.Bounds.Width, this.Bounds.Height))
     dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
 
-  let drawDirty () = 
-    trace grid_vm "drawing whole grid"
-    for row = 0 to grid_vm.Rows - 1 do
-        drawBufferLine grid_dc row 0 grid_vm.Cols
-    true
-
   // prevent repetitive drawings
   let _drawnRegions = ResizeArray()
+  let _drawVMs = ResizeArray()
 
-  let drawOps (ss: ResizeArray<_>) = 
+  let rec scanDrawVMs (vm: GridViewModel) =
+    if vm.Hidden then ()
+    else
+    _drawVMs.Add(vm)
+    vm.ChildGrids |> Seq.iter scanDrawVMs
 
-    _drawnRegions.Clear()
+  let drawOps (vm: GridViewModel) = 
+    let abs_r,abs_c = vm.AbsAnchor
+    // if other grids tainted the region, mark it dirty
+    let touched = _drawnRegions 
+                  |> Seq.exists(fun(r,c,ce) -> 
+                  abs_r <= r &&
+                  r < abs_r + vm.Rows &&
+                  not( abs_c >= ce || c >= abs_c + vm.Cols ))
+    if touched then vm.MarkDirty()
+
+    trace vm "drawOps: z=%d" vm.ZIndex
+
+    if vm.Hidden then false
+    elif vm.Dirty then
+        trace vm "drawing whole grid"
+        for row = 0 to vm.Rows - 1 do
+            drawBufferLine vm grid_dc row 0 vm.Cols
+            _drawnRegions.Add(row + abs_r, abs_c, vm.Cols + abs_c)
+        true
+    else
+    // not tainted. can draw with my draw ops.
     let draw row col colend = 
-      let covered = _drawnRegions |> Seq.exists(fun (r, c, ce) -> r = row && c <= col && ce >= colend)
+      let covered = _drawnRegions |> Seq.exists(fun (r, c, ce) -> r = row + abs_r && c <= col + abs_c && ce >= colend + abs_c)
       if not covered then
-        drawBufferLine grid_dc row col colend
-        _drawnRegions.Add(row, col, colend)
+        drawBufferLine vm grid_dc row col colend
+        _drawnRegions.Add(row + abs_r, col + abs_c, colend + abs_c)
       else
-        trace grid_vm "region %d %d %d waived" row col colend
+        ()
 
-    ss |> Seq.iter (
+    vm.DrawOps |> Seq.iter (
       function 
       | Scroll (top, bot, left, right, row, _col) ->
         let (t, l, b, r) = 
@@ -307,40 +296,13 @@ type Grid() as this =
           else (top - row, left, bot, right)
         for row = t to b - 1 do
           draw row l r
-
-        (*Note: the captured bitmap still misaligns with the rendered text*)
-        (*Until this is fixed, we have to draw the scrolled region line by line...*)
-
-        (*let s_topLeft = grid_vm.GetPoint top left*)
-        (*let s_bottomRight = grid_vm.GetPoint (bot) (right)*)
-        (*let vec = grid_vm.GetPoint row 0*)
-        (*let src, dst = *)
-          (*if row > 0 then*)
-            (*Rect(s_topLeft + vec, s_bottomRight),*)
-            (*Rect(s_topLeft, s_bottomRight - vec)*)
-          (*else*)
-            (*Rect(s_topLeft, s_bottomRight + vec),*)
-            (*Rect(s_topLeft - vec, s_bottomRight)*)
-
-        (*grid_dc_scroll.PushClip(dst)*)
-        (*grid_dc_scroll.Clear(Avalonia.Media.Colors.Transparent)*)
-        (*grid_dc_scroll.PopClip()*)
-
-        (*use r1 = grid_fb.PlatformImpl.CloneAs<_>()*)
-        (*grid_dc_scroll.DrawBitmap(r1, 1.0, src, dst)*)
-
-        (*grid_dc.PushClip(dst)*)
-        (*grid_dc.Clear(Avalonia.Media.Colors.Transparent)*)
-        (*grid_dc.PopClip()*)
-
-        (*use r2 = grid_fb_scroll.PlatformImpl.CloneAs<_>()*)
-        (*grid_dc.DrawBitmap(r2, 1.0, dst, dst)*)
-
       | Put r -> 
         for row = r.row to r.row_end - 1 do
           draw row r.col r.col_end
     )
-    ss.Count <> 0
+    vm.DrawOps.Count <> 0
+
+  let m_gridComparer = GridViewModel.MakeGridComparer()
 
   do
     this.Watch
@@ -355,7 +317,7 @@ type Grid() as this =
 
         rpc.register.watch "font" (fun () ->
           if grid_vm <> Unchecked.defaultof<_> then
-            grid_vm.MarkAllDirty()
+            grid_vm.MarkDirty()
             this.InvalidateVisual())
 
         rpc.register.notify "EnableIme" (fun [| Bool(v) |] -> 
@@ -382,8 +344,14 @@ type Grid() as this =
     else
     grid_dc.PushClip(Rect this.Bounds.Size)
     let timer = System.Diagnostics.Stopwatch.StartNew()
-    let drawn = if grid_vm.Dirty then drawDirty()
-                else drawOps(grid_vm.DrawOps)
+    _drawnRegions.Clear()
+    _drawVMs.Clear()
+    scanDrawVMs grid_vm
+    _drawVMs.Sort(m_gridComparer)
+    let mutable drawn = false
+    for vm in _drawVMs do
+        let drawn' = drawOps vm
+        drawn <- drawn || drawn'
     if m_debug then drawDebug grid_dc
     grid_dc.PopClip()
 
@@ -395,6 +363,7 @@ type Grid() as this =
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
     timer.Stop()
     if drawn then trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
+    else trace grid_vm "drawing end, nothing drawn."
 
   override this.MeasureOverride(size) =
     trace grid_vm "MeasureOverride: %A" size

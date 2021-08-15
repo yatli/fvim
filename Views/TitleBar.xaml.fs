@@ -12,7 +12,7 @@ type TitleBar() as this =
     static let TitleProperty = AvaloniaProperty.Register<TitleBar, string>("Title")
     static let IsActiveProperty = AvaloniaProperty.Register<TitleBar, bool>("IsActive")
 
-    let root() = (this:>IVisual).VisualRoot :?> Frame
+    let root() = (this:>IVisual).VisualRoot :?> Window
 
     let toggleMaximize() =
         let win = root()

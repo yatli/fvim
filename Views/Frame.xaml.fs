@@ -111,7 +111,6 @@ type Frame() as this =
             | _                     -> None
         else None
 
-
     do
         #if DEBUG
         this.Renderer.DrawFps <- true
@@ -129,13 +128,6 @@ type Frame() as this =
               this.InvalidateVisual()
 
         this.Watch [
-            this.Closing.Subscribe (fun e -> model.OnTerminating e)
-            this.Closed.Subscribe  (fun _ -> model.OnTerminated())
-            this.Bind(XProp, Binding("X", BindingMode.TwoWay))
-            this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
-            this.GotFocus.Subscribe (fun _ -> model.OnFocusGained())
-            this.LostFocus.Subscribe (fun _ -> model.OnFocusLost())
-
             rpc.register.watch "background.composition" configBackground
             rpc.register.watch "background.opacity" configBackground
             rpc.register.notify "DrawFPS" (fun [| Bool(v) |] -> 
@@ -187,27 +179,48 @@ type Frame() as this =
 
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> FrameViewModel
-        let pos = PixelPoint(int ctx.X, int ctx.Y)
-        let mutable firstPoschange = true
-        let mutable deltaX = 0
-        let mutable deltaY = 0
         this.ViewModel <- ctx
         toggleTitleBar ctx.CustomTitleBar
 
-        trace "mainwindow" "set position: %d, %d" pos.X pos.Y
-        this.Position <- pos
-        this.WindowState <- ctx.WindowState
+        if ctx.MainGrid.Id = 1 then
+            let pos = PixelPoint(int ctx.X, int ctx.Y)
+            let mutable firstPoschange = true
+            let mutable deltaX = 0
+            let mutable deltaY = 0
+            trace "mainwindow" "set position: %d, %d" pos.X pos.Y
+            this.Position <- pos
+            this.WindowState <- ctx.WindowState
+            this.Watch [
+                this.Closing.Subscribe (fun e -> model.OnTerminating e)
+                this.Closed.Subscribe  (fun _ -> model.OnTerminated())
+                this.Bind(XProp, Binding("X", BindingMode.TwoWay))
+                this.Bind(YProp, Binding("Y", BindingMode.TwoWay))
+                this.GotFocus.Subscribe (fun _ -> model.OnFocusGained())
+                this.LostFocus.Subscribe (fun _ -> model.OnFocusLost())
+                this.PositionChanged.Subscribe (fun p ->
+                    if firstPoschange then
+                        firstPoschange <- false
+                        deltaX <- p.Point.X - pos.X
+                        deltaY <- p.Point.Y - pos.Y
+                        trace "mainwindow" "first PositionChanged event: %d, %d (delta=%d, %d)" p.Point.X p.Point.Y deltaX deltaY
+                    else
+                        this.SetValue(XProp, p.Point.X - deltaX) |> ignore
+                        this.SetValue(YProp, p.Point.Y - deltaY) |> ignore
+                    )
+            ]
+        else
+            m_bgcolor <- theme.default_bg
+            configBackground()
+            let grid_vm = ctx.MainGrid:?>GridViewModel
+            ctx.Width <- grid_vm.BufferWidth
+            // XXX bad hack we don't know title bar height atm
+            ctx.Height <- grid_vm.BufferHeight + if ctx.CustomTitleBar then 40.0 else 0.0
+
+            this.Watch [
+                grid_vm.ExtWinClosed.Subscribe(this.Close)
+                this.Closed.Subscribe (fun _ -> model.OnExtClosed grid_vm.ExtWinId)
+            ]
         this.Watch [
-            this.PositionChanged.Subscribe (fun p ->
-                if firstPoschange then
-                    firstPoschange <- false
-                    deltaX <- p.Point.X - pos.X
-                    deltaY <- p.Point.Y - pos.Y
-                    trace "mainwindow" "first PositionChanged event: %d, %d (delta=%d, %d)" p.Point.X p.Point.Y deltaX deltaY
-                else
-                    this.SetValue(XProp, p.Point.X - deltaX) |> ignore
-                    this.SetValue(YProp, p.Point.Y - deltaY) |> ignore
-                )
             (ctx :> IFrame).MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 
             |> Observable.subscribe(fun c -> 
                 trace "mainwindow" "update background color: %s" (c.Value.ToString())

@@ -89,7 +89,7 @@ let parseOptions (args: string[]) =
 
     if terminal then
         let set x = "+\"set " + x + "\""
-        // fvim --wsl -u NORC +terminal +"set noshowmode" +"set laststatus=0" +"set noruler" +"set noshowcmd"
+        // fvim --wsl -u NORC +"set noshowmode" +"set laststatus=0" +"set noruler" +"set noshowcmd" +"set mouse=a" +terminal 
         args.AddRange([
             "-u"; "NORC"
             set "noshowmode"

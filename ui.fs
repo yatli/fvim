@@ -60,6 +60,11 @@ type GridRect =
         y.col     |> (x.col <<-> x.col_end) &&
         y.row_end |> (x.row <->> x.row_end) &&
         y.col_end |> (x.col <->> x.col_end)
+    member x.Disjoint (y: GridRect) =
+        y.row >= x.row_end ||
+        x.row >= y.row_end ||
+        y.col >= x.col_end ||
+        x.col >= y.col_end
 
 
     static member Compare (x: GridRect) (y: GridRect) =
@@ -94,6 +99,7 @@ type IGridUI =
     abstract RenderScale: float
     abstract Redraw: RedrawCommand -> unit
     abstract CreateChild: id:int -> rows:int -> cols:int -> IGridUI
+    abstract AddChild: IGridUI -> unit
     abstract RemoveChild: IGridUI -> unit
     abstract Detach: unit -> unit
 
@@ -106,6 +112,7 @@ and WindowLayout =
 and IFrame =
     abstract Title: string with get, set
     abstract MainGrid: IGridUI
+    abstract Sync: IFrame -> unit
 
 open System.Runtime.InteropServices
 
