@@ -46,6 +46,7 @@ type Grid() as this =
 
   let mutable m_cursor: FVim.Cursor = Unchecked.defaultof<_>
   let mutable m_debug = false
+  let mutable m_me_focus = false
 
   let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
   let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
@@ -224,9 +225,25 @@ type Grid() as this =
             ev_active_state_changed.Trigger(this, EventArgs.Empty)
         )
 
-        this.GotFocus.Subscribe(fun _ -> vm.IsFocused <- true)
-        this.LostFocus.Subscribe(fun _ -> vm.IsFocused <- false)
+        this.GotFocus.Subscribe(fun _ -> 
+            m_me_focus <- true
+            vm.IsFocused <- true
+            m_me_focus <- false
+        )
+        this.LostFocus.Subscribe(fun _ -> 
+            m_me_focus <- true
+            vm.IsFocused <- false
+            m_me_focus <- false
+        )
 
+        vm.ObservableForProperty(fun x -> x.IsFocused)
+        |> Observable.subscribe(fun focused ->
+          if focused.Value && not this.IsFocused && not m_me_focus then
+            trace grid_vm "viewmodel ask to focus"
+            let win = this.GetVisualRoot() :?> Window
+            win.Activate()
+            this.Focus()
+          )
       ]
 
   let subscribeAndHandleInput fn (ob: IObservable<#Avalonia.Interactivity.RoutedEventArgs>) =
@@ -330,18 +347,18 @@ type Grid() as this =
         this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
       ]
     AvaloniaXamlLoader.Load(this)
-#if HAS_IME_SUPPORT
   static do
     InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(fun grid e -> 
         e.Client <- grid) |> ignore
-#endif
 
   override this.Render ctx =
     if isNull grid_fb then
       trace grid_vm "grid_fb is null"
     else
     grid_dc.PushClip(Rect this.Bounds.Size)
+#if DEBUG
     let timer = System.Diagnostics.Stopwatch.StartNew()
+#endif
     _drawnRegions.Clear()
     _drawVMs.Clear()
     scanDrawVMs grid_vm
@@ -359,9 +376,11 @@ type Grid() as this =
     let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
+#if DEBUG
     timer.Stop()
     if drawn then trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds
     else trace grid_vm "drawing end, nothing drawn."
+#endif
 
   override this.MeasureOverride(size) =
     trace grid_vm "MeasureOverride: %A" size
@@ -396,7 +415,6 @@ type Grid() as this =
       with get (): obj = this.GetValue(ViewModelProperty) :> obj
       and set (v: obj): unit = this.SetValue(ViewModelProperty, v) |> ignore
 
-#if HAS_IME_SUPPORT
   interface ITextInputMethodClient with
       member _.SupportsPreedit = false
       member _.SupportsSurroundingText = false
@@ -408,9 +426,10 @@ type Grid() as this =
 
       member _.CursorRectangle: Rect = m_cursor.Bounds
       member _.TextViewVisual: IVisual = this :> IVisual
-      member _.ActiveState = this.EnableIme
       [<CLIEvent>] member _.CursorRectangleChanged: IEvent<EventHandler,EventArgs> = ev_cursor_rect_changed.Publish
       [<CLIEvent>] member _.TextViewVisualChanged: IEvent<EventHandler,EventArgs> = ev_text_view_visual_changed.Publish
+#if HAS_IME_SUPPORT
+      member _.ActiveState = this.EnableIme
       [<CLIEvent>] member _.ActiveStateChanged: IEvent<EventHandler,EventArgs> = ev_active_state_changed.Publish
 #endif
 

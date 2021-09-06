@@ -92,7 +92,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Avalonia\packages\Avalonia\Avalonia.csproj" />
-    <ProjectReference Include="..\Avalonia\src\Avalonia.Desktop\Avalonia.Desktop.csproj" />
     <ProjectReference Include="..\Avalonia\src\Avalonia.Diagnostics\Avalonia.Diagnostics.csproj" />
     <ProjectReference Include="..\Avalonia\src\Avalonia.ReactiveUI\Avalonia.ReactiveUI.csproj" />
   </ItemGroup>

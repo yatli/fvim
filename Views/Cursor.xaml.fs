@@ -34,6 +34,7 @@ type Cursor() as this =
 
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
+    let mutable cursor_fb_active = false
     let mutable cursor_fb_s = 1.0
     let mutable cursor_chksum = -1
 
@@ -45,8 +46,9 @@ type Cursor() as this =
             cursor_fb.Dispose()
             cursor_fb <- AllocateFramebuffer (cursor_fb_vm.Width + 50.0) (cursor_fb_vm.Height + 50.0) s
             true
-        elif cursor_fb_vm.text <> this.ViewModel.text then
+        elif cursor_fb_vm.text <> this.ViewModel.text || cursor_fb_active <> this.IsActive then
             cursor_fb_vm.text <- this.ViewModel.text
+            cursor_fb_active <- this.IsActive
             true
         else false
 
@@ -74,6 +76,7 @@ type Cursor() as this =
             cursor_timer.Start()
         elif (not timer_active) && prev_timer_active then
             trace "cursor" "timer stop"
+            cursor_timer.IsEnabled <- false
             cursor_timer.Stop()
         prev_timer_active <- timer_active
         timer_cnt <- 0
@@ -107,7 +110,7 @@ type Cursor() as this =
             sp <- this.ViewModel.sp
             (* reconfigure the cursor *)
             showCursor true
-            cursorTimerRun blinkon this.ViewModel.blinkwait
+            cursorTimerRun blinkoff this.ViewModel.blinkwait
             this.InvalidateVisual()
 
     let setCursorAnimation() =
@@ -137,9 +140,10 @@ type Cursor() as this =
         this.Watch [
             this.OnRenderTick cursorConfig
             this.GetObservable(IsActiveProperty) 
-            |> Observable.subscribe(fun _ -> 
+            |> Observable.subscribe(fun active -> 
               setCursorAnimation()
-              this.InvalidateVisual())
+              this.InvalidateVisual()
+                )
             rpc.register.watch "cursor" setCursorAnimation
         ] 
         cursor_timer.Start()
@@ -150,8 +154,6 @@ type Cursor() as this =
       and set(v) = this.SetValue(IsActiveProperty, v) |> ignore
 
     override this.Render(ctx) =
-        (*trace "cursor" "Render text: %s" this.ViewModel.text*)
-
         let cellw p = min (double(p) / 100.0 * this.Width) 1.0
         let cellh p = min (double(p) / 100.0 * this.Height) 5.0
         let scale = this.GetVisualRoot().RenderScaling
@@ -164,7 +166,7 @@ type Cursor() as this =
             let typeface = GetTypeface(this.ViewModel.text, this.ViewModel.italic, this.ViewModel.bold, this.ViewModel.typeface, this.ViewModel.wtypeface)
             let bounds = Rect(this.Bounds.Size)
             let render_block (ctx: 'a) =
-                if this.IsActive then
+                if cursor_fb_active then
                     let mutable _len = 0
                     Rune.feed(this.ViewModel.text, _buffer_glyph, &_len)
                     let span = Unshaped <| ReadOnlyMemory(_buffer_glyph, 0, _len)
@@ -187,6 +189,9 @@ type Cursor() as this =
                     if redraw then
                         use cursor_dc = cursor_fb.CreateDrawingContext(null)
                         cursor_dc.PushClip(bounds)
+                        if not cursor_fb_active then
+                            // clear the stale content, or the DrawRectangle won't be obvious..
+                            cursor_dc.Clear(Colors.Transparent);
                         render_block cursor_dc
                         cursor_dc.PopClip()
                         cursor_dc.Dispose()

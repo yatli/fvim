@@ -486,14 +486,24 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
           markAllDirty()
 
     member __.CursorGoto id row col =
+        // translation back to parent
         if m_parent.IsSome && id = _gridid then
+            trace _gridid "CursorGoto parent"
             m_parent.Value.CursorGoto m_parent.Value.GridId (row + m_anchor_row) (col + m_anchor_col)
+        // goto me
         elif id = _gridid then
+            trace _gridid "CursorGoto me"
             m_cursor_vm.focused <- true
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
+            this.IsFocused <- true
             cursorConfig()
-        elif m_cursor_vm.focused && not(states.ui_multigrid && _gridid = 1) then
+        // goto my child
+        elif m_child_grids.FindIndex(fun x -> x.GridId = id) > -1 then
+            ()
+        // was me, but not anymore
+        elif m_cursor_vm.focused then
+            trace _gridid "CursorGoto notme"
             m_cursor_vm.focused <- false
             m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
