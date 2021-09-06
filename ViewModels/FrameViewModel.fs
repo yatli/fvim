@@ -54,8 +54,8 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
     let mutable m_bgimg_halign      = HorizontalAlignment.Left
     let mutable m_bgimg_valign      = VerticalAlignment.Top
 
-    let toggleFullScreen(gridid: int) =
-        if gridid = mainGrid.GridId then
+    let toggleFullScreen() =
+        if mainGrid.IsFocused then
             this.Fullscreen <- not this.Fullscreen
             trace (sprintf "FrameVM #%d" mainGrid.GridId) "ToggleFullScreen %A" this.Fullscreen
 
@@ -105,7 +105,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             | _ -> ()
         | _ -> ()
         this.Watch [
-            rpc.register.notify "ToggleFullScreen" (fun [| Integer32(gridid) |] -> toggleFullScreen gridid )
+            rpc.register.notify "ToggleFullScreen" (fun _ -> toggleFullScreen())
             rpc.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
             rpc.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]

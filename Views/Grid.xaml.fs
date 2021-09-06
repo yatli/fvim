@@ -269,8 +269,6 @@ type Grid() as this =
                   not( abs_c >= ce || c >= abs_c + vm.Cols ))
     if touched then vm.MarkDirty()
 
-    trace vm "drawOps: z=%d" vm.ZIndex
-
     if vm.Hidden then false
     elif vm.Dirty then
         trace vm "drawing whole grid"
