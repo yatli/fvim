@@ -109,6 +109,12 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             rpc.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
             rpc.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
+        match _maingrid with
+        | Some grid -> Async.StartWithContinuations(
+                           model.GetBufferPath grid.ExtWinId, 
+                           (fun p -> this.Title <- $"[#] {p}"), 
+                           ignore, ignore)
+        | _ -> ()
         model.OnFrameReady this
 
     member __.MainGrid = mainGrid :> IGridUI

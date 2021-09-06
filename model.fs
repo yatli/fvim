@@ -642,3 +642,15 @@ let InsertText text =
     if not <| String.IsNullOrEmpty text then
         let text = sb.ToString()
         nvim.command text |> runAsync
+
+let GetBufferPath (win: int) =
+    async {
+        let! rsp = nvim.call { method = "nvim_win_get_buf"; parameters = mkparams1 win }
+        match rsp.result with
+        | Ok(Integer32 bufnr) -> 
+            let! rsp = nvim.call { method = "nvim_buf_get_name"; parameters = mkparams1 bufnr }
+            match rsp.result with
+            | Ok(String path) -> return path
+            | _ -> return ""
+        | _ -> return ""
+    }

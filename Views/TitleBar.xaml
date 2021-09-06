@@ -26,9 +26,6 @@
       <ColumnDefinition Width="32" />
     </Grid.ColumnDefinitions>
     <Grid.Styles>
-      <Style Selector="Button.inactive">
-        <Setter Property="Foreground" Value="{Binding InactiveForeground}" />
-      </Style>
       <Style Selector="Button">
         <Setter Property="Background" Value="{Binding NormalBackground}" />
         <Setter Property="Foreground" Value="{Binding NormalForeground}" />

@@ -362,13 +362,13 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win) ->
+            m_winid <- win
             if not m_is_external then
                 m_is_external <- true
                 m_anchor_col <- 0
                 m_anchor_row <- 0
                 (this:>IGridUI).Detach()
                 CreateFrame this
-            m_winid <- win
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =

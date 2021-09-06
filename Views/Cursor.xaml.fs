@@ -72,10 +72,10 @@ type Cursor() as this =
     let cursorTimerRun action time =
         let timer_active = this.ViewModel.enabled && this.ViewModel.focused
         if timer_active && (not prev_timer_active) then
-            trace "cursor" "timer start"
+            //trace "cursor" "timer start"
             cursor_timer.Start()
         elif (not timer_active) && prev_timer_active then
-            trace "cursor" "timer stop"
+            //trace "cursor" "timer stop"
             cursor_timer.IsEnabled <- false
             cursor_timer.Stop()
         prev_timer_active <- timer_active
@@ -90,17 +90,20 @@ type Cursor() as this =
                ) && this.ViewModel.focused
             then 1.0
             else 0.0
+        //trace "cursor" $"showCursor: v={v} en={this.ViewModel.enabled} active={this.IsActive} focused={this.ViewModel.focused} {this.Opacity} -> {opacity}"
         this.Opacity <- opacity
         
     let rec blinkon() =
+        //trace "cursor" "blink on"
         showCursor true
         cursorTimerRun blinkoff this.ViewModel.blinkon
     and blinkoff() = 
+        //trace "cursor" "blink off"
         showCursor false
         cursorTimerRun blinkon this.ViewModel.blinkoff
 
     let cursorConfig id =
-        trace "cursor" "render tick %A" id
+        //trace "cursor" "render tick %A" id
         if Object.ReferenceEquals(this.ViewModel, null) 
         then ()
         else
@@ -132,7 +135,7 @@ type Cursor() as this =
             y_transition.Easing   <- Easings.CubicEaseOut()
             transitions.Add(x_transition)
             transitions.Add(y_transition)
-        trace "cursor" "setCursorAnimation: blink=%b, move=%b" states.cursor_smoothblink states.cursor_smoothmove
+        //trace "cursor" "setCursorAnimation: blink=%b, move=%b" states.cursor_smoothblink states.cursor_smoothmove
         this.Transitions <- transitions
         ()
 
