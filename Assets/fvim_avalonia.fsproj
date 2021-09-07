@@ -1,0 +1,106 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>FVim</AssemblyName>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationIcon>fvim.ico</ApplicationIcon>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputType>WinExe</OutputType>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <TrimMode>link</TrimMode>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\DesignTime\TitleBarSampleData.fs" />
+    <Compile Include="..\DesignTime\GridSampleData.fs" />
+    <Compile Include="..\DesignTime\CrashReportSampleData.fs" />
+    <Compile Include="..\DesignTime\MainWindowSampleData.fs" />
+    <Compile Include="..\common.fs" />
+    <Compile Include="..\config.fs" />
+    <Compile Include="..\getopt.fs" />
+    <Compile Include="..\log.fs" />
+    <Compile Include="..\def.fs" />
+    <Compile Include="..\wcwidth.fs" />
+    <Compile Include="..\daemon.fs" />
+    <Compile Include="..\shell.fs" />
+    <Compile Include="..\states.fs" />
+    <Compile Include="..\neovim.fs" />
+    <Compile Include="..\ui.fs" />
+    <Compile Include="..\theme.fs" />
+    <Compile Include="..\input.fs" />
+    <Compile Include="..\model.fs" />
+    <Compile Include="..\ViewModels\ViewModelBase.fs" />
+    <Compile Include="..\ViewModels\ThemableViewModelBase.fs" />
+    <Compile Include="..\ViewModels\TitleBarViewModel.fs" />
+    <Compile Include="..\ViewModels\CursorViewModel.fs" />
+    <Compile Include="..\ViewModels\CompletionItemViewModel.fs" />
+    <Compile Include="..\ViewModels\PopupMenuViewModel.fs" />
+    <Compile Include="..\ViewModels\GridViewModel.fs" />
+    <Compile Include="..\ViewModels\FrameViewModel.fs" />
+    <Compile Include="..\ViewModels\CrashReportViewModel.fs" />
+    <Compile Include="..\Views\ViewBase.fs" />
+    <Compile Include="..\Views\Cursor.xaml.fs" />
+    <Compile Include="..\Views\Frame.xaml.fs" />
+    <Compile Include="..\Views\CompletionItem.xaml.fs" />
+    <Compile Include="..\Views\PopupMenu.xaml.fs" />
+    <Compile Include="..\Views\Grid.xaml.fs" />
+    <Compile Include="..\Views\CrashReport.xaml.fs" />
+    <Compile Include="..\Views\TitleBar.xaml.fs" />
+    <Compile Include="..\App.xaml.fs" />
+    <Compile Include="..\Program.fs" />
+    <ApplicationDefinition Include="..\fvim.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="..\**\*.xaml.fs">
+      <DependentUpon>%(Filename)</DependentUpon>
+    </Compile>
+    <AvaloniaResource Include="..\Assets\**\*" />
+    <Content Include="..\**\*.xaml" />
+    <AvaloniaResource Include="..\**\*.xaml">
+      <SubType>Designer</SubType>
+    </AvaloniaResource>
+    <EmbeddedResource Include="..\Fonts\nerd.ttf" />
+    <Content Include="..\Assets\*" />
+    <None Include="..\icons\*.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <PackageReference Include="FSharp.Control.Reactive" Version="5.0.2" />
+    <PackageReference Include="FSharp.Data" Version="4.1.1" />
+    <PackageReference Include="FSharp.Span.Utils" Version="1.1.3353.13900" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="0.17.4" />
+    <PackageReference Include="MessagePack" Version="1.9.11" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+    <PackageReference Include="NSubsys" Version="1.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
+    <PackageReference Include="UACHelper" Version="1.3.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Avalonia\packages\Avalonia\Avalonia.csproj" />
+    <ProjectReference Include="..\..\Avalonia\src\Avalonia.Diagnostics\Avalonia.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\Avalonia\src\Avalonia.ReactiveUI\Avalonia.ReactiveUI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="5.0.2" />
+  </ItemGroup>
+
+  <Import Project="..\..\Avalonia\build\SampleApp.props" />
+
+  <Import Project="..\..\Avalonia\build\BuildTargets.targets" />
+</Project>
