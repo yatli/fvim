@@ -28,6 +28,7 @@ open GridHelper
 open model
 open Avalonia.Input.TextInput
 open Avalonia.Input
+open Avalonia.Media
 
 type Grid() as this =
   inherit Canvas()
@@ -315,6 +316,16 @@ type Grid() as this =
         for row = r.row to r.row_end - 1 do
           draw row r.col r.col_end
     )
+    if vm.DrawMsgSeparator then
+        let pen = 
+            theme.semhl.TryFind SemanticHighlightGroup.MsgSeparator
+            >>= (fun i -> 
+                let fg, _, _, _ = theme.GetDrawAttrs i
+                Some fg)
+            |> Option.defaultValue Colors.Gray
+            |> (fun c -> Pen(c.ToUint32(), thickness = 1.0))
+        let y = float abs_r * grid_vm.GlyphHeight + 0.5
+        grid_dc.DrawLine(pen, Point(0.0,y), Point(grid_fb.Size.Width, y))
     vm.DrawOps.Count <> 0
 
   let m_gridComparer = GridViewModel.MakeGridComparer()
@@ -376,6 +387,7 @@ type Grid() as this =
     let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
+
 #if DEBUG
     timer.Stop()
     if drawn then trace grid_vm "drawing end, time = %dms." timer.ElapsedMilliseconds

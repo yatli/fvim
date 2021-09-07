@@ -218,7 +218,7 @@ type Frame() as this =
 
             this.Watch [
                 grid_vm.ExtWinClosed.Subscribe(this.Close)
-                this.Closed.Subscribe (fun _ -> model.OnExtClosed grid_vm.ExtWinId)
+                this.Closed.Subscribe (fun _ -> model.OnExtClosed grid_vm.WindowHandle)
             ]
         this.Watch [
             (ctx :> IFrame).MainGrid.ObservableForProperty(fun x -> x.BackgroundColor) 

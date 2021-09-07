@@ -111,7 +111,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
         ]
         match _maingrid with
         | Some grid -> Async.StartWithContinuations(
-                           model.GetBufferPath grid.ExtWinId, 
+                           model.GetBufferPath grid.WindowHandle, 
                            (fun p -> this.Title <- $"[#] {p}"), 
                            ignore, ignore)
         | _ -> ()

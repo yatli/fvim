@@ -63,11 +63,14 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_fb_w           = 10.0
     let mutable m_anchor_row     = 0
     let mutable m_anchor_col     = 0
-    let mutable m_hidden         = false
+    let mutable m_is_hidden      = false
     let mutable m_is_external    = false
     let mutable m_is_float       = false
+    let mutable m_is_msg         = false
+    let mutable m_msg_scrolled   = false
+    let mutable m_msg_sepchar    = ""
     let mutable m_z              = -100
-    let mutable m_winid          = 0 // for single-purpose windows e.g. floats and exts
+    let mutable m_winhnd         = 0 // for single-purpose windows e.g. floats and exts
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -303,13 +306,13 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if m_is_external then
             m_ext_winclose_ev.Trigger()
         elif m_is_float then
-            m_hidden <- true
+            m_is_hidden <- true
             getRootGrid().MarkDirty()
 
     let setWinPos startrow startcol r c f =
         let oldRegion = { row = m_anchor_row; col = m_anchor_col; height = m_gridsize.rows; width = m_gridsize.cols}
         let newRegion = { row = startrow; col = startcol; height = r; width = c}
-        m_hidden <- false
+        m_is_hidden <- false
         let parent = 
             match m_parent with
             | Some p -> p
@@ -323,8 +326,15 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         this.Focusable <- f
         parent.OnChildChanged oldRegion newRegion
 
+    let setMsgWinPos startrow scrolled sep_char =
+        setWinPos startrow 0 m_gridsize.rows m_gridsize.cols true
+        m_is_msg <- true
+        m_msg_scrolled <- scrolled
+        m_msg_sepchar <- sep_char
+        m_z <- 9999 // always put msg window on the top
+
     let setWinFloatPos win anchor anchor_grid r c f z =
-        m_winid <- win
+        m_winhnd <- win
         m_is_float <- true
         m_z <- z
         trace _gridid "setWinFloatPos: z = %d" z
@@ -355,14 +365,14 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | Mouse en                                                           -> setMouse en
         | WinClose(_)                                                        -> closeGrid()
         | WinPos(_, _, startrow, startcol, c, r)                             -> setWinPos startrow startcol r c true
-        | WinHide(_)                                                         -> m_hidden <- true
-        | MsgSetPos(_, row, scrolled, sep_char)                              -> setWinPos row 0 m_gridsize.rows m_gridsize.cols true
+        | WinHide(_)                                                         -> m_is_hidden <- true
+        | MsgSetPos(_, row, scrolled, sep_char)                              -> setMsgWinPos row scrolled sep_char
         | WinFloatPos (_, win, anchor, anchor_grid, r, c, f, z)              -> setWinFloatPos win anchor anchor_grid r c f z
         | PopupMenuShow(items, selected, row, col, grid)                     -> this.ShowPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win) ->
-            m_winid <- win
+            m_winhnd <- win
             if not m_is_external then
                 m_is_external <- true
                 m_anchor_col <- 0
@@ -611,8 +621,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | _ -> m_anchor_row, m_anchor_col
     member __.Dirty with get() = m_griddirty
     member __.DrawOps with get() = m_drawops
-    member __.Hidden with get():bool = m_hidden
-                     and  set(v) = m_hidden <- v
+    member __.Hidden with get():bool = m_is_hidden
+                     and  set(v) = m_is_hidden <- v
     member __.CursorInfo with get() : CursorViewModel = m_cursor_vm
     member __.PopupMenu with get(): PopupMenuViewModel = m_popupmenu_vm
     member __.RenderScale
@@ -628,7 +638,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ChildGrids = m_child_grids
     member __.IsFocused with get() = m_gridfocused and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocused, v)
     member __.Focusable with get() = m_gridfocusable and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_gridfocusable, v)
-    member __.ExtWinId = m_winid
+    member __.WindowHandle = m_winhnd
     member __.ExtWinClosed = m_ext_winclose_ev.Publish
     member __.Parent with get() = m_parent and set(v) = m_parent <- v
     member __.ZIndex with get() = m_z and set(v) = m_z <- v
@@ -656,6 +666,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 target_ar <- ar + this.AnchorRow
                 target_ac <- ac + this.AnchorCol
         target_ar,target_ac,target_vm,target_row,target_col,target_z
+    member __.DrawMsgSeparator = m_msg_scrolled
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
