@@ -339,17 +339,38 @@ type Grid() as this =
   /// no need to worry about the grid content being overwritten here
   /// because we are working with the drawing context directly, not 
   /// the grid framebuffer.
-  let drawGadgets (vm: GridViewModel) (ctx: DrawingContext) =
+  let drawGadgets (vm: GridViewModel) (ctx: IDrawingContextImpl) gw gh =
     let vm_x, vm_y, vm_w, vm_h = 
         let y1,x1 = vm.AbsAnchor
         let w,h = vm.Cols,vm.Rows
-        let gw,gh = vm.GlyphWidth,vm.GlyphHeight
         float x1 * gw, float y1 * gh, float w * gw, float h * gh
     // scrollbar
     // todo mouse over opacity adjustment
-    m_gadget_brush.Color <- m_scrollbar_bg
+    let top,bot,row,lc = 
+        let top,bot,row,_,lc = vm.ScrollbarData
+        printfn "%d" row
+        float top, float bot, float row, float lc
+    let bar_w = 8.0
+    let slide_w = 7.0
+    let bar_x = vm_x + vm_w - bar_w
+    let c = m_scrollbar_bg.ToUint32() ||| 0xff000000u
+    m_gadget_brush.Color <- Color.FromUInt32(c)
     m_gadget_brush.Opacity <- 1.0
-    ctx.FillRectangle(m_gadget_brush, Rect(vm_x + vm_w - 4.0, vm_y, 4.0, vm_y + vm_h))
+    ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y, bar_w, vm_h)))
+    if bot <= top || lc <= 0.0 then ()
+    else
+    let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
+    let slide_p1, slide_p2 = top / lc, bot / lc
+    let slide_h = (slide_p2 - slide_p1) * vm_h
+    let slide_y = slide_p1 * vm_h
+    m_gadget_brush.Color <- m_scrollbar_fg
+    m_gadget_brush.Opacity <- 1.0
+    ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(slide_x, vm_y + slide_y, slide_w, slide_h)))
+    let cur_y = row / lc * vm_h
+    let cur_h = 2.0
+    m_gadget_brush.Color <- vm.CursorInfo.bg
+    m_gadget_brush.Opacity <- 1.0
+    ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y + cur_y, bar_w, cur_h)))
     ()
 
   do
@@ -414,9 +435,16 @@ type Grid() as this =
     let src_rect = Rect(0.0, 0.0, float grid_fb.PixelSize.Width, float grid_fb.PixelSize.Height)
     let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
-    ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
+    ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.LowQuality)
+    // let's assume grid_fb is aligned with root vm row x col.
+    // vm.GlyphHeight/vm.GlyphWidth don't work well here because it's for Skia/Harfbuzz.
+    // calculate the proper values now:
+    let gx,gy = grid_fb.Size.Width/float grid_vm.Cols,grid_fb.Size.Height/float grid_vm.Rows
+    let dc = ctx.PlatformImpl
     for vm in _drawVMs do
-        drawGadgets vm ctx
+        // do not draw gadgets for the root grid / floating windows (borders only)
+        if vm.GridId <> 1 && not vm.IsFloat then 
+            drawGadgets vm dc gx gy
 
 #if DEBUG
     timer.Stop()

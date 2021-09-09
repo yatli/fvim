@@ -76,6 +76,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_bot  = 0
     let mutable m_scrollbar_row  = 0
     let mutable m_scrollbar_col  = 0
+    let mutable m_scrollbar_linecount = 0
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -346,6 +347,23 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         setWinPos (int r) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume assume NW
         m_parent.Value.SortChildren()
 
+    let setWinExternalPos win =
+        m_winhnd <- win
+        if not m_is_external then
+            m_is_external <- true
+            m_anchor_col <- 0
+            m_anchor_row <- 0
+            (this:>IGridUI).Detach()
+            CreateFrame this
+
+    let setWinViewport win top bot row col lc tick =
+        m_winhnd <- win
+        m_scrollbar_top <- top
+        m_scrollbar_bot <- bot
+        m_scrollbar_row <- row
+        m_scrollbar_col <- col
+        m_scrollbar_linecount <- lc
+
     let hidePopupMenu() =
         m_popupmenu_vm.Show <- false
 
@@ -376,14 +394,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuShow(items, selected, row, col, grid)                     -> this.ShowPopupMenu grid items selected row col
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
-        | WinExternalPos(_,win) ->
-            m_winhnd <- win
-            if not m_is_external then
-                m_is_external <- true
-                m_anchor_col <- 0
-                m_anchor_row <- 0
-                (this:>IGridUI).Detach()
-                CreateFrame this
+        | WinExternalPos(_,win)                                              -> setWinExternalPos win
+        | WinViewport(id, win, top, bot, row, col, lc, tick)                 -> setWinViewport win top bot row col lc tick
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
@@ -672,6 +684,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 target_ac <- ac + this.AnchorCol
         target_ar,target_ac,target_vm,target_row,target_col,target_z
     member __.DrawMsgSeparator = m_msg_scrolled
+    member __.ScrollbarData = m_scrollbar_top,m_scrollbar_bot,m_scrollbar_row,m_scrollbar_col,m_scrollbar_linecount
+    member __.IsFloat = m_is_float
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with

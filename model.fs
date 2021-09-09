@@ -95,17 +95,6 @@ module private ModelImpl =
         if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
         else Observable.throttle(TimeSpan.FromMilliseconds 10.0)
 
-    let update_scrollbar id win top bot row col = 
-        async {
-            match! nvim.call { method = "nvim_win_get_buf"; parameters = mkparams1 win } with
-            | Error(_) -> ()
-            | Ok(Integer32(buf)) ->
-            match! nvim.call { method = "nvim_buf_line_count"; parameters = mkparams1 buf} with
-            | Error(_) -> ()
-            | Ok(Integer32(cnt)) ->
-            unicast id (ScrollbarUpdate(id,win,cnt,top,bot,row,col))
-        } |> Async.Start
-
     let rec redraw cmd = 
         match cmd with
         //  Global
@@ -129,8 +118,8 @@ module private ModelImpl =
                                             -> broadcast cmd
         //  Unicast
         | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id                   | WinHide(id) -> unicast id cmd
-        | WinViewport(id, win, top, bot, row, col )   -> unicast id cmd // TODO update_scrollbar id win top bot row col
+        | WinClose id                   | WinHide(id) 
+        | WinViewport(id,_,_,_,_,_,_,_)     -> unicast id cmd
         | WinExternalPos(id,_)              -> unicast_detach id cmd
         | WinFloatPos(id, _, _, pid, _, _, _, _)  
                                             -> unicast_change_parent id pid cmd
