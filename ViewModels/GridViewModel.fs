@@ -356,7 +356,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             (this:>IGridUI).Detach()
             CreateFrame this
 
-    let setWinViewport win top bot row col lc tick =
+    let setWinViewport win top bot row col lc =
         m_winhnd <- win
         m_scrollbar_top <- top
         m_scrollbar_bot <- bot
@@ -395,7 +395,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuSelect(selected)                                          -> selectPopupMenuPassive selected
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
-        | WinViewport(id, win, top, bot, row, col, lc, tick)                 -> setWinViewport win top bot row col lc tick
+        | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =

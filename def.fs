@@ -346,7 +346,7 @@ type RedrawCommand =
 ///  as the cursor position in the buffer. All positions are zero-based.
 ///  `botline` is set to one more than the line count of the buffer, if
 ///  there are filler lines past the end.
-| WinViewport of grid:int * win: int * topline: int * botline: int * curline: int * curcol: int * linecount: int * changedtick: int
+| WinViewport of grid:int * win: int * topline: int * botline: int * curline: int * curcol: int * linecount: int
 ///  Display messages on `grid`.  The grid will be displayed at `row` on the
 ///  default grid (grid=1), covering the full column width. `scrolled`
 ///  indicates whether the message area has been scrolled to cover other
@@ -641,8 +641,8 @@ let parse_win_viewport =
     function
     | ObjArray [| (Integer32 grid); (Integer32 win); 
                   (Integer32 topline); (Integer32 botline); 
-                  (Integer32 curline); (Integer32 curcol); (Integer32 linecount); (Integer32 changedtick) |] 
-        -> Some(WinViewport(grid, win, topline, botline, curline, curcol, linecount, changedtick))
+                  (Integer32 curline); (Integer32 curcol); (Integer32 linecount) |] 
+        -> Some(WinViewport(grid, win, topline, botline, curline, curcol, linecount))
     | _ -> None
 
 let parse_int_singleton = 

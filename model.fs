@@ -119,7 +119,7 @@ module private ModelImpl =
         //  Unicast
         | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
         | WinClose id                   | WinHide(id) 
-        | WinViewport(id,_,_,_,_,_,_,_)     -> unicast id cmd
+        | WinViewport(id,_,_,_,_,_,_)       -> unicast id cmd
         | WinExternalPos(id,_)              -> unicast_detach id cmd
         | WinFloatPos(id, _, _, pid, _, _, _, _)  
                                             -> unicast_change_parent id pid cmd
