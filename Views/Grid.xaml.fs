@@ -48,6 +48,10 @@ type Grid() as this =
   let mutable m_cursor: FVim.Cursor = Unchecked.defaultof<_>
   let mutable m_debug = false
   let mutable m_me_focus = false
+  let mutable m_scrollbar_fg, m_scrollbar_bg, _, _ = theme.getSemanticHighlightGroup SemanticHighlightGroup.PmenuSbar
+  let mutable m_gadget_pen = Pen()
+  let mutable m_gadget_brush = SolidColorBrush()
+  let m_gridComparer = GridViewModel.MakeGridComparer()
 
   let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
   let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
@@ -328,7 +332,25 @@ type Grid() as this =
         grid_dc.DrawLine(pen, Point(0.0,y), Point(grid_fb.Size.Width, y))
     vm.DrawOps.Count <> 0
 
-  let m_gridComparer = GridViewModel.MakeGridComparer()
+  /// draw add-ons attached to the grids. for example:
+  /// - a scrollbar
+  /// - graphical overlays
+  /// - ...
+  /// no need to worry about the grid content being overwritten here
+  /// because we are working with the drawing context directly, not 
+  /// the grid framebuffer.
+  let drawGadgets (vm: GridViewModel) (ctx: DrawingContext) =
+    let vm_x, vm_y, vm_w, vm_h = 
+        let y1,x1 = vm.AbsAnchor
+        let w,h = vm.Cols,vm.Rows
+        let gw,gh = vm.GlyphWidth,vm.GlyphHeight
+        float x1 * gw, float y1 * gh, float w * gw, float h * gh
+    // scrollbar
+    // todo mouse over opacity adjustment
+    m_gadget_brush.Color <- m_scrollbar_bg
+    m_gadget_brush.Opacity <- 1.0
+    ctx.FillRectangle(m_gadget_brush, Rect(vm_x + vm_w - 4.0, vm_y, 4.0, vm_y + vm_h))
+    ()
 
   do
     this.Watch
@@ -356,6 +378,12 @@ type Grid() as this =
         this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
         this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
         this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
+
+        //  Theming
+        theme.themeconfig_ev.Publish 
+        |> Observable.subscribe (fun (_,_,_,_,f,b,_,_) -> 
+            m_scrollbar_bg <- b
+            m_scrollbar_fg <- f)
       ]
     AvaloniaXamlLoader.Load(this)
   static do
@@ -387,6 +415,8 @@ type Grid() as this =
     let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.Default)
+    for vm in _drawVMs do
+        drawGadgets vm ctx
 
 #if DEBUG
     timer.Stop()
@@ -399,11 +429,11 @@ type Grid() as this =
     doWithDataContext(fun vm ->
       vm.RenderScale <- (this :> IVisual).GetVisualRoot().RenderScaling
       let sz =
-        if vm.IsTopLevel then
-          size
         // multigrid: size is top-down managed, which means that
         // the measurement of the view should be consistent with
         // the buffer size calculated from the viewmodel.
+        if vm.IsTopLevel && states.ui_multigrid then
+          size
         else
           Size(vm.BufferWidth, vm.BufferHeight)
       vm.SetMeasuredSize sz

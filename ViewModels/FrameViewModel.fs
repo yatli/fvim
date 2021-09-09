@@ -20,7 +20,8 @@ open Avalonia.Layout
 /// A Frame is a top-level OS Window, and contains one or more nvim windows.
 /// 
 /// It also contains one (or more, TBD) cursor widget that can jump around in 
-/// the frame, between multiple nvim windows.
+/// the frame, between multiple nvim windows. (Currently, this is implemented
+/// by displaying the cursor from the top-level grid)
 ///
 /// It also contains a completion popup window that can be anchored to a grid 
 /// position.

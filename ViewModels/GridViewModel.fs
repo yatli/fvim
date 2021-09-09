@@ -71,6 +71,11 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_msg_sepchar    = ""
     let mutable m_z              = -100
     let mutable m_winhnd         = 0 // for single-purpose windows e.g. floats and exts
+    let mutable m_scrollbar_show = false
+    let mutable m_scrollbar_top  = 0
+    let mutable m_scrollbar_bot  = 0
+    let mutable m_scrollbar_row  = 0
+    let mutable m_scrollbar_col  = 0
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
