@@ -443,7 +443,7 @@ type Grid() as this =
     let dc = ctx.PlatformImpl
     for vm in _drawVMs do
         // do not draw gadgets for the root grid / floating windows (borders only)
-        if vm.GridId <> 1 && not vm.IsFloat then 
+        if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg then 
             drawGadgets vm dc gx gy
 
 #if DEBUG

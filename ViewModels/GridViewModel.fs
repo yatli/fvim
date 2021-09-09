@@ -686,6 +686,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.DrawMsgSeparator = m_msg_scrolled
     member __.ScrollbarData = m_scrollbar_top,m_scrollbar_bot,m_scrollbar_row,m_scrollbar_col,m_scrollbar_linecount
     member __.IsFloat = m_is_float
+    member __.IsMsg = m_is_msg
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
