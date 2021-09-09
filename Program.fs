@@ -28,7 +28,7 @@ let buildAvaloniaApp() =
     .Configure<App>()
     .UsePlatformDetect()
     .UseReactiveUI()
-    //.With(new Win32PlatformOptions(UseDeferredRendering=false, UseWgl=true))
+    //.With(new Win32PlatformOptions(UseDeferredRendering=true, UseWgl=true))
     //.With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false))
     //.With(new X11PlatformOptions(UseDeferredRendering=false))
     //.With(new MacOSPlatformOptions(ShowInDock=true))
@@ -161,6 +161,6 @@ let main(args: string[]) =
     | Setup -> setup()
     | Uninstall -> uninstall()
     | Daemon(pipe, nvim, enc) -> daemon pipe nvim enc
-    | Start(a,b,c) -> startMainWindow app (a,b,c) 
+    | Start(a,b) -> startMainWindow app (a,b) 
   with 
     | ex -> startCrashReportWindow app ex

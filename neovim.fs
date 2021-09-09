@@ -26,7 +26,7 @@ let private default_notify (e: Request) =
   task { return () }
 
 let private default_call (e: Request) =
-  task { return {result=Result.Error(box "not connected")} }
+  task { return Result.Error(box "not connected") }
 
 type NvimIO =
     | Disconnected
@@ -122,7 +122,7 @@ type Nvim() as nvim =
                 let stdin  = proc.StandardInput.BaseStream
                 let stderr = 
                     proc.ErrorDataReceived 
-                    |> Observable.map (fun data -> Error data.Data )
+                    |> Observable.map (fun data -> StdError data.Data )
                 proc.BeginErrorReadLine()
                 stdin, stdout, stderr
             | RemoteSession stream ->
@@ -167,9 +167,9 @@ type Nvim() as nvim =
 
         let reply (id: int) (rsp: Response) = task {
             let result, error = 
-                match rsp.result with
+                match rsp with
                 | Ok r -> null, r
-                | Result.Error e -> e, null
+                | Error e -> e, null
             do! MessagePackSerializer.SerializeAsync(stdin, mkparams4 1 id result error)
             do! stdin.FlushAsync()
         }
@@ -181,10 +181,10 @@ type Nvim() as nvim =
               match data with
               // request
               | [| (Integer32 0); (Integer32 msg_id) ; (String method); :? (obj[]) as parameters |] 
-                  -> Request(msg_id, { method = method; parameters = parameters }, reply)
+                  -> RpcRequest(msg_id, { method = method; parameters = parameters }, reply)
               // response
               | [| (Integer32 1); (Integer32 msg_id) ; err; result |]
-                  -> Response(msg_id, { result = if err = null then Ok result else Result.Error err })
+                  -> RpcResponse(msg_id, if err = null then Ok result else Error err)
               // notification
               | [| (Integer32 2); (String method); :? (obj[]) as parameters |]
                   -> Notification { method = method; parameters = parameters }
@@ -196,10 +196,10 @@ type Nvim() as nvim =
 
         let intercept (ev: Event) =
             match ev with
-            | Response(msgid, rsp) ->
+            | RpcResponse(msgid, rsp) ->
                 // intercept response message, if it can be completed successfully
-                match rsp.result with
-                | Result.Error err -> trace "call %d: error response %A" msgid err
+                match rsp with
+                | Error err -> trace "call %d: error response %A" msgid err
                 | _ -> ()
 
                 match pending.TryRemove msgid with
@@ -332,7 +332,7 @@ type Nvim() as nvim =
             let! response = nvim.call { method = "nvim_call_function"; parameters = mkparams2 "exists" (mkparams1 var) }
             //return response
             trace "exists: response = %A" response
-            match response.result with
+            match response with
             | Ok(Integer32 1) -> return true
             | _ -> return false
         }
@@ -368,9 +368,7 @@ type Nvim() as nvim =
 
     member __.list_chans() =
         async {
-            let! rsp = nvim.call { method = "nvim_list_chans"; parameters = [||] }
-
-            match rsp.result with
+            match! nvim.call { method = "nvim_list_chans"; parameters = [||] } with
             | Ok(ObjArray arr) -> return arr
             | _ -> return [||]
         }

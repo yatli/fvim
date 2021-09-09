@@ -306,11 +306,15 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
     let mouse = inputClassifier |> Observable.choose (function | Choice2Of3 x -> Some x | _ -> None)
     Disposables.compose [
         key |> Observable.subscribe(fun x -> 
+        #if DEBUG
             trace "OnInput: key: %A" x
+        #endif
             nvim.input x |> ignore
         )
         mouse |> Observable.subscribe(fun ((grid, (but, act, r, c, rep), mods) as ev) -> 
+        #if DEBUG
             trace "grid #%d: OnInput: mouse: %A" grid ev
+        #endif
             let mods = match mods with Some mods -> mods | _ -> ""
             for _ in 1..rep do
                 nvim.input_mouse but act mods grid r c |> ignore

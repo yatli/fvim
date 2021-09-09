@@ -18,18 +18,14 @@ type Request =
         parameters: obj[]
     }
 
-[<Struct>]
-type Response = 
-    {
-        result: Result<obj, obj>
-    }
+type Response = Result<obj, obj>
 
 [<Struct>]
 type Event =
-| Request      of reqId: int32 * req: Request * handler: (int32 -> Response -> unit Task)
-| Response     of rspId: int32 * rsp: Response
+| RpcRequest   of reqId: int32 * req: Request * handler: (int32 -> Response -> unit Task)
+| RpcResponse  of rspId: int32 * rsp: Response
 | Notification of nreq: Request
-| Error        of emsg: string
+| StdError     of emsg: string
 | Crash        of ccode: int32
 | ByteMessage  of bmsg: byte
 | UnhandledException of ex: exn
@@ -389,6 +385,7 @@ type RedrawCommand =
 | UnknownCommand of data: obj
 ///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
+| ScrollbarUpdate of grid:int * win: int * totalline: int * topline: int * botline: int * curline: int * curcol: int
 
 type EventParseException(data: obj) =
     inherit exn()

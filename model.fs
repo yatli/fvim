@@ -18,6 +18,7 @@ open Avalonia.Layout
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2
 open System.Reflection
+open System.Collections.Concurrent
 
 #nowarn "0025"
 
@@ -94,6 +95,17 @@ module private ModelImpl =
         if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then id
         else Observable.throttle(TimeSpan.FromMilliseconds 10.0)
 
+    let update_scrollbar id win top bot row col = 
+        async {
+            match! nvim.call { method = "nvim_win_get_buf"; parameters = mkparams1 win } with
+            | Error(_) -> ()
+            | Ok(Integer32(buf)) ->
+            match! nvim.call { method = "nvim_buf_line_count"; parameters = mkparams1 buf} with
+            | Error(_) -> ()
+            | Ok(Integer32(cnt)) ->
+            unicast id (ScrollbarUpdate(id,win,cnt,top,bot,row,col))
+        } |> Async.Start
+
     let rec redraw cmd = 
         match cmd with
         //  Global
@@ -117,8 +129,8 @@ module private ModelImpl =
                                             -> broadcast cmd
         //  Unicast
         | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
-        | WinClose id                   | WinHide(id)
-        | WinViewport(id, _, _, _, _, _ )   -> unicast id cmd
+        | WinClose id                   | WinHide(id) -> unicast id cmd
+        | WinViewport(id, win, top, bot, row, col )   -> unicast id cmd // TODO update_scrollbar id win top bot row col
         | WinExternalPos(id,_)              -> unicast_detach id cmd
         | WinFloatPos(id, _, _, pid, _, _, _, _)  
                                             -> unicast_change_parent id pid cmd
@@ -169,7 +181,7 @@ module rpc =
 
     let msg_dispatch =
         function
-        | Request(id, req, reply) -> 
+        | RpcRequest(id, req, reply) -> 
             match requestHandlers.TryGetValue req.method with
             | true, method ->
                 task { 
@@ -180,12 +192,11 @@ module rpc =
                     | Failure msg -> error "rpc" "request %d(%s) failed: %s" id req.method msg
                 } |> run
             | _ -> error "rpc" "request handler [%s] not found" req.method
-
         | Notification(req) ->
             let event = getNotificationEvent req.method
             try event.Trigger req.parameters
             with | Failure msg -> error "rpc" "notification trigger [%s] failed: %s" req.method msg
-        | Error err -> 
+        | StdError err -> 
           error "rpc" "neovim: %s" err
           _errormsgs.Add err
         | ByteMessage bmsg -> 
@@ -228,7 +239,7 @@ module rpc =
                 try fn objs
                 with x -> 
                     error "Request" "exception thrown: %O" x
-                    Task.FromResult {  result = Result.Error(box x) })
+                    Task.FromResult(Error(box x)))
 
         /// Register an event handler.
         let notify name (fn: obj[] -> unit) = 
@@ -257,11 +268,9 @@ module rpc =
                 | _ -> ())
             |> ignore
             request fullname (fun _ -> task { 
-                let result = 
-                    match Helper.GetProp fieldName with
-                    | Some v -> Ok v
-                    | None -> Result.Error(box "not found")
-                return { result=result }
+                match Helper.GetProp fieldName with
+                | Some v -> return Ok v
+                | None -> return Error(box "not found")
             })
 
         let bool = prop<bool> (|Bool|_|)
@@ -289,23 +298,12 @@ let private UpdateUICapabilities() =
         in ()
     } |> runAsync
 
-//let private UpdateUIWindows() =
-//    if ui_windows then
-//        // TODO maybe also tabline?
-//        ui_multigrid <- true
-//    else
-//        ui_multigrid <- false
-    
-
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
-let Start (serveropts, norc, debugMultigrid) =
+let Start (serveropts, norc) =
     trace "starting neovim instance..."
     trace "opts = %A" serveropts
-    if debugMultigrid then
-        states.ui_multigrid <- true
-        //states.ui_windows <- true
     nvim.start serveropts
     nvim.subscribe 
         (AvaloniaSynchronizationContext.Current) 
@@ -354,7 +352,6 @@ let Start (serveropts, norc, debugMultigrid) =
         |> Observable.subscribe(UpdateUICapabilities)
         rpc.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
         rpc.register.notify "remote.detach" (fun _ -> Detach())
-        //rpc.register.watch "ui.windows" UpdateUIWindows
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
@@ -366,7 +363,7 @@ let Start (serveropts, norc, debugMultigrid) =
         let text = String.Join("\n", lines)
         let! _ = Avalonia.Application.Current.Clipboard.SetTextAsync(text)
         trace "set-clipboard called. regtype=%s" regtype
-        return { result = Ok(box [||]) }
+        return Ok(box [||])
     })
 
     rpc.register.request "get-clipboard" (fun _ -> task {
@@ -383,7 +380,7 @@ let Start (serveropts, norc, debugMultigrid) =
                 trace "get-clipboard: mismatch, using system clipboard"
                 sysClipboardLines, "v"
 
-        return { result = Ok(box [| box lines; box regtype |])}
+        return Ok(box [| box lines; box regtype |])
     })
 
     trace "commencing early initialization..."
@@ -393,13 +390,13 @@ let Start (serveropts, norc, debugMultigrid) =
 
       let! api_info = nvim.call { method = "nvim_get_api_info"; parameters = [||] }
       let api_query_result = 
-          match api_info.result with
+          match api_info with
           | Ok(ObjArray [| Integer32 _; metadata |]) -> Ok metadata
-          | _ -> Result.Error("nvim_get_api_info")
+          | _ -> Error("nvim_get_api_info")
           >?= fun metadata ->
           match metadata with
           | FindKV "ui_options" (P (|String|_|) ui_options) -> Ok(Set.ofArray ui_options)
-          | _ -> Result.Error("find ui_options")
+          | _ -> Error("find ui_options")
           >?= fun ui_options ->
           trace "available ui options: %A" ui_options
           ui_available_opts <- ui_options
@@ -409,7 +406,7 @@ let Start (serveropts, norc, debugMultigrid) =
           if not (ui_available_opts.Contains uiopt_ext_linegrid) ||
              not (ui_available_opts.Contains uiopt_rgb) then
              failwithf "api_query_result: your NeoVim version is too low. fvim requires \"rgb\" and \"ext_linegrid\" options, got: %A" ui_available_opts
-      | Result.Error(msg) ->
+      | Error(msg) ->
           failwithf "api_query_result: %s" msg
 
       // for remote, send open file args as edit commands
@@ -429,7 +426,7 @@ let Start (serveropts, norc, debugMultigrid) =
       let clientVersion = 
           hashmap [
               "major", "0"
-              "minor", "2"
+              "minor", "3"
               "prerelease", "dev"
           ]
       let clientType = "ui"
@@ -645,12 +642,10 @@ let InsertText text =
 
 let GetBufferPath (win: int) =
     async {
-        let! rsp = nvim.call { method = "nvim_win_get_buf"; parameters = mkparams1 win }
-        match rsp.result with
+        match! nvim.call { method = "nvim_win_get_buf"; parameters = mkparams1 win } with
+        | Error(_) -> return ""
         | Ok(Integer32 bufnr) -> 
-            let! rsp = nvim.call { method = "nvim_buf_get_name"; parameters = mkparams1 bufnr }
-            match rsp.result with
-            | Ok(String path) -> return path
-            | _ -> return ""
+        match! nvim.call { method = "nvim_buf_get_name"; parameters = mkparams1 bufnr } with
+        | Ok(String path) -> return path
         | _ -> return ""
     }

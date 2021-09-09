@@ -72,6 +72,10 @@ do
     default_fg <- fg
     default_sp <- sp
 
+let getSemanticHighlightGroup x =
+    semhl.TryFind x 
+    |> Option.defaultValue 1 
+    |> GetDrawAttrs
 
 let setSemanticHighlightGroups grp =
     semhl <- grp
@@ -88,7 +92,7 @@ let setSemanticHighlightGroups grp =
             SemanticHighlightGroup.VertSplit
             SemanticHighlightGroup.Folded
         ] 
-        |> List.map (semhl.TryFind >> Option.defaultValue 1 >> GetDrawAttrs)
+        |> List.map getSemanticHighlightGroup
 
     themeconfig_ev.Trigger(nfg, nbg, sfg, sbg, scfg, scbg, bbg, ifg)
 

@@ -23,7 +23,7 @@ type ServerOptions =
     | FVimRemote of serverName: string option * transport: FVimRemoteTransport * verb: FVimRemoteVerb * files: string list
 
 type Intent =
-    | Start of serveropts: ServerOptions * norc: bool * debugMultigrid: bool
+    | Start of serveropts: ServerOptions * norc: bool
     | Setup
     | Uninstall
     | Daemon of pipe: string option * nvim: string * stderrenc: System.Text.Encoding
@@ -72,7 +72,6 @@ let parseOptions (args: string[]) =
     let daemon              = eat1 "--daemon"
     let pipe                = eat2 "--pipe"
     //  debug & tracing
-    let debug_multigrid     = eat1 "--debug-multigrid"
     let trace_to_stdout     = eat1 "--trace-to-stdout"
     let trace_to_file       = eat1 "--trace-to-file"
     let trace_patterns      = eat2 "--trace-patterns"
@@ -148,7 +147,7 @@ let parseOptions (args: string[]) =
               in
                 Embedded(prog, args, enc)
         in
-          Start(serveropts, norc, debug_multigrid)
+          Start(serveropts, norc)
 
     { 
         logToStdout     = trace_to_stdout
