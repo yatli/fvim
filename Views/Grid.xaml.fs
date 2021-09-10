@@ -348,7 +348,6 @@ type Grid() as this =
     // todo mouse over opacity adjustment
     let top,bot,row,lc = 
         let top,bot,row,_,lc = vm.ScrollbarData
-        printfn "%d" row
         float top, float bot, float row, float lc
     let bar_w = 8.0
     let slide_w = 7.0
@@ -359,6 +358,7 @@ type Grid() as this =
     ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y, bar_w, vm_h)))
     if bot <= top || lc <= 0.0 then ()
     else
+    let bot = min bot lc
     let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
     let slide_p1, slide_p2 = top / lc, bot / lc
     let slide_h = (slide_p2 - slide_p1) * vm_h
@@ -439,12 +439,12 @@ type Grid() as this =
     // let's assume grid_fb is aligned with root vm row x col.
     // vm.GlyphHeight/vm.GlyphWidth don't work well here because it's for Skia/Harfbuzz.
     // calculate the proper values now:
-    let gx,gy = grid_fb.Size.Width/float grid_vm.Cols,grid_fb.Size.Height/float grid_vm.Rows
+    let gw,gh = grid_fb.Size.Width/float grid_vm.Cols,grid_fb.Size.Height/float grid_vm.Rows
     let dc = ctx.PlatformImpl
     for vm in _drawVMs do
         // do not draw gadgets for the root grid / floating windows (borders only)
         if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg then 
-            drawGadgets vm dc gx gy
+            drawGadgets vm dc gw gh
 
 #if DEBUG
     timer.Stop()
