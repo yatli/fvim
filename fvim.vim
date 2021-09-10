@@ -56,6 +56,21 @@ function! s:fvim_on_bufwinenter()
   call rpcnotify(g:fvim_channel, 'OnBufWinEnter', l:bufnr, l:wins)
 endfunction
 
+function! s:fvim_on_winenter()
+  let l:win=nvim_get_current_win()
+  let l:bufnr=nvim_win_get_buf(l:win)
+  call rpcnotify(g:fvim_channel, 'OnBufWinEnter', l:bufnr, [l:win])
+endfunction
+
+function! s:fvim_on_cursorhold()
+  let l:bufnr=nvim_get_current_buf()
+  let l:signs=sign_getplaced(l:bufnr, {'group': '*'})
+  call rpcnotify(g:fvim_channel, 'OnSignUpdate', l:bufnr, l:signs)
+endfunction
+
 augroup FVim
   autocmd BufWinEnter * call <SID>fvim_on_bufwinenter()
+  autocmd WinEnter * call <SID>fvim_on_winenter()
+  autocmd CursorHold * call <SID>fvim_on_cursorhold()
+  autocmd CursorHoldI * call <SID>fvim_on_cursorhold()
 augroup END

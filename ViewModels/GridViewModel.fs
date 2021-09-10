@@ -78,6 +78,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_row  = 0
     let mutable m_scrollbar_col  = 0
     let mutable m_scrollbar_linecount = 0
+    let mutable m_signs          = [||]
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -397,6 +398,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
         | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
+        | SignUpdate(bufnr, signs)                                           -> if bufnr = m_bufnr then m_signs <- signs
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
@@ -476,6 +478,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             )
 
             rpc.register.notify "OnBufWinEnter" this.OnBufWinEnter
+            rpc.register.notify "OnSignUpdate" this.OnSignUpdate
         ] 
 
     interface IGridUI with
@@ -625,11 +628,20 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             // TODO mark more precisely?
             markDirty oldRegion
 
-    member __.OnBufWinEnter [| String(bufnr); ObjArray(wins) |] =
-        let bufnr = int bufnr
+    member __.OnBufWinEnter [| bufnr; ObjArray(wins) |] =
+        let bufnr = 
+            match bufnr with
+            | String bufnr -> int bufnr
+            | Integer32 bufnr -> bufnr
         if Array.exists (function | Integer32(w) when w = m_winhnd -> true | _ -> false) wins then
             trace _gridid "bufnr updated to %d" bufnr
             m_bufnr <- bufnr
+
+    member __.OnSignUpdate [| Integer32 bufnr; signs |] =
+        if bufnr <> m_bufnr then ()
+        else
+        let signs = parseBufferSignPlacements signs
+        trace _gridid "OnSignUpdate: my = %d bufnr = %d signs = %A" m_bufnr bufnr signs
 
     (*******************   Exposed properties   ***********************)
 
@@ -695,6 +707,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ScrollbarData = m_scrollbar_top,m_scrollbar_bot,m_scrollbar_row,m_scrollbar_col,m_scrollbar_linecount
     member __.IsFloat = m_is_float
     member __.IsMsg = m_is_msg
+    member __.Signs = m_signs
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with

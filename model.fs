@@ -147,6 +147,20 @@ module private ModelImpl =
         trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
+    let onSignUpdate [| Integer32 bufnr; signs |] =
+        let signs = parseBufferSignPlacements signs
+                    |> Array.map (fun (ln,name) -> 
+                        let kind = 
+                            if name.Contains("Warning") then SignKind.Warning
+                            elif name.Contains("Error") then SignKind.Error
+                            elif name.Contains("Add") then SignKind.Add
+                            elif name.Contains("Delete") then SignKind.Delete
+                            elif name.Contains("Change") then SignKind.Change
+                            else SignKind.Other
+                        { line = ln; kind = kind }
+                    )
+        broadcast (SignUpdate(bufnr, signs))
+
 let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
 let Shutdown code = 
   try _appLifetime.Value.Shutdown code
@@ -345,6 +359,7 @@ let Start (serveropts, norc) =
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
+        rpc.register.notify "OnSignUpdate" onSignUpdate
     ]
 
     rpc.register.request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {

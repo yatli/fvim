@@ -292,6 +292,20 @@ type SemanticHighlightGroup =
     | MsgSeparator = 47
     | NormalFloat  = 48
 
+type SignKind =
+    | Add          = 0
+    | Change       = 1
+    | Delete       = 2
+    | Warning      = 3
+    | Error        = 4
+    | Other        = 5
+
+type SignPlacement =
+    {
+        line: int
+        kind: SignKind
+    }
+
 type RedrawCommand =
 ///  -- global --
 | SetOption of UiOption[]
@@ -385,6 +399,7 @@ type RedrawCommand =
 | UnknownCommand of data: obj
 ///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
+| SignUpdate of bufnr: int * signs: SignPlacement[]
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -801,4 +816,9 @@ let backgroundCompositionToString =
     | Acrylic -> "acrylic"
     | Transparent -> "transparent" 
 
+let parseBufferSignPlacements (ObjArray [| FindKV("signs") (ObjArray signs) |]) =
+    signs
+    |> Array.choose (function
+                     | FindKV("lnum")(Integer32 num) & FindKV("name")(String name) -> Some(num,name)
+                     | _ -> None)
 

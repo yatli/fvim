@@ -49,6 +49,7 @@ type Grid() as this =
   let mutable m_debug = false
   let mutable m_me_focus = false
   let mutable m_scrollbar_fg, m_scrollbar_bg, _, _ = theme.getSemanticHighlightGroup SemanticHighlightGroup.PmenuSbar
+  let mutable m_gadget_enable = true
   let mutable m_gadget_pen = Pen()
   let mutable m_gadget_brush = SolidColorBrush()
   let m_gridComparer = GridViewModel.MakeGridComparer()
@@ -330,6 +331,7 @@ type Grid() as this =
             |> (fun c -> Pen(c.ToUint32(), thickness = 1.0))
         let y = float abs_r * grid_vm.GlyphHeight + 0.5
         grid_dc.DrawLine(pen, Point(0.0,y), Point(grid_fb.Size.Width, y))
+        m_gadget_enable <- false // hide gadgets to avoid overlapping...
     vm.DrawOps.Count <> 0
 
   /// draw add-ons attached to the grids. for example:
@@ -351,27 +353,46 @@ type Grid() as this =
         float top, float bot, float row, float lc
     let bar_w = 8.0
     let slide_w = 7.0
+    let sign_w = 4.0
+    // -- bg
     let bar_x = vm_x + vm_w - bar_w
     let c = m_scrollbar_bg.ToUint32() ||| 0xff000000u
     m_gadget_brush.Color <- Color.FromUInt32(c)
     m_gadget_brush.Opacity <- 1.0
     ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y, bar_w, vm_h)))
-    if bot <= top || lc <= 0.0 then ()
-    else
-    let bot = min bot lc
-    let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
-    let slide_p1, slide_p2 = top / lc, bot / lc
-    let slide_h = (slide_p2 - slide_p1) * vm_h
-    let slide_y = slide_p1 * vm_h
-    m_gadget_brush.Color <- m_scrollbar_fg
-    m_gadget_brush.Opacity <- 1.0
-    ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(slide_x, vm_y + slide_y, slide_w, slide_h)))
-    let cur_y = row / lc * vm_h
-    let cur_h = 2.0
-    m_gadget_brush.Color <- vm.CursorInfo.bg
-    m_gadget_brush.Opacity <- 1.0
-    ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y + cur_y, bar_w, cur_h)))
-    ()
+    // -- fg
+    if bot > top && lc > 0.0 then
+        let bot = min bot lc
+        let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
+        let slide_p1, slide_p2 = top / lc, bot / lc
+        let slide_h = (slide_p2 - slide_p1) * vm_h
+        let slide_y = slide_p1 * vm_h
+        m_gadget_brush.Color <- m_scrollbar_fg
+        m_gadget_brush.Opacity <- 1.0
+        ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(slide_x, vm_y + slide_y, slide_w, slide_h)))
+    // -- cursor
+    if lc > 0.0 then
+        let cur_y = row / lc * vm_h
+        let cur_h = 2.0
+        m_gadget_brush.Color <- vm.CursorInfo.bg
+        m_gadget_brush.Opacity <- 1.0
+        ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y + cur_y, bar_w, cur_h)))
+    // -- signs
+    if lc > 0.0 then
+        let sign_h = vm_h / lc
+        let xl = vm_x + vm_w - bar_w
+        let xr = vm_x + vm_w - sign_w
+        for {line=line;kind=kind} in vm.Signs do
+            let color,sx = match kind with
+                           | SignKind.Warning -> Colors.Green,xr
+                           | SignKind.Error -> Colors.Red,xr
+                           | SignKind.Add -> Colors.LightGreen,xl
+                           | SignKind.Delete -> Colors.Gray,xl
+                           | SignKind.Change -> Colors.Yellow,xl
+                           | _ -> Colors.Transparent,xl
+            let sy = float line / lc * vm_h
+            m_gadget_brush.Color <- color
+            ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(sx, vm_y + sy, sign_w, sign_h)))
 
   do
     this.Watch
@@ -421,6 +442,7 @@ type Grid() as this =
 #endif
     _drawnRegions.Clear()
     _drawVMs.Clear()
+    m_gadget_enable <- true
     scanDrawVMs grid_vm
     _drawVMs.Sort(m_gridComparer)
     let mutable drawn = false
@@ -443,7 +465,7 @@ type Grid() as this =
     let dc = ctx.PlatformImpl
     for vm in _drawVMs do
         // do not draw gadgets for the root grid / floating windows (borders only)
-        if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg then 
+        if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg && m_gadget_enable then 
             drawGadgets vm dc gw gh
 
 #if DEBUG
