@@ -358,7 +358,7 @@ type Grid() as this =
     let bar_x = vm_x + vm_w - bar_w
     let c = m_scrollbar_bg.ToUint32() ||| 0xff000000u
     m_gadget_brush.Color <- Color.FromUInt32(c)
-    m_gadget_brush.Opacity <- 1.0
+    m_gadget_brush.Opacity <- 0.5 
     ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y, bar_w, vm_h)))
     // -- fg
     if bot > top && lc > 0.0 then
@@ -368,7 +368,7 @@ type Grid() as this =
         let slide_h = (slide_p2 - slide_p1) * vm_h
         let slide_y = slide_p1 * vm_h
         m_gadget_brush.Color <- m_scrollbar_fg
-        m_gadget_brush.Opacity <- 1.0
+        m_gadget_brush.Opacity <- 0.5
         ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(slide_x, vm_y + slide_y, slide_w, slide_h)))
     // -- cursor
     if lc > 0.0 then
@@ -379,7 +379,7 @@ type Grid() as this =
         ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y + cur_y, bar_w, cur_h)))
     // -- signs
     if lc > 0.0 then
-        let sign_h = vm_h / lc
+        let sign_h = max (vm_h / lc) 4.0
         let xl = vm_x + vm_w - bar_w
         let xr = vm_x + vm_w - sign_w
         for {line=line;kind=kind} in vm.Signs do
@@ -392,6 +392,7 @@ type Grid() as this =
                            | _ -> Colors.Transparent,xl
             let sy = float line / lc * vm_h
             m_gadget_brush.Color <- color
+            m_gadget_brush.Opacity <- 1.0
             ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(sx, vm_y + sy, sign_w, sign_h)))
 
   do

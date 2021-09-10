@@ -819,6 +819,6 @@ let backgroundCompositionToString =
 let parseBufferSignPlacements (ObjArray [| FindKV("signs") (ObjArray signs) |]) =
     signs
     |> Array.choose (function
-                     | FindKV("lnum")(Integer32 num) & FindKV("name")(String name) -> Some(num,name)
+                     | FindKV("lnum")(Integer32 num) & FindKV("name")(String name) -> Some(num-1,name)
                      | _ -> None)
 
