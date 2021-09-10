@@ -70,7 +70,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_msg_scrolled   = false
     let mutable m_msg_sepchar    = ""
     let mutable m_z              = -100
-    let mutable m_winhnd         = 0 // for single-purpose windows e.g. floats and exts
+    let mutable m_winhnd         = 0 // the window handle (winid), not winnr
+    let mutable m_bufnr          = 0
     let mutable m_scrollbar_show = false
     let mutable m_scrollbar_top  = 0
     let mutable m_scrollbar_bot  = 0
@@ -473,6 +474,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
               trace _gridid "focus state changed: %A" x.Value
               cursorConfig()
             )
+
+            rpc.register.notify "OnBufWinEnter" this.OnBufWinEnter
         ] 
 
     interface IGridUI with
@@ -622,6 +625,11 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             // TODO mark more precisely?
             markDirty oldRegion
 
+    member __.OnBufWinEnter [| String(bufnr); ObjArray(wins) |] =
+        let bufnr = int bufnr
+        if Array.exists (function | Integer32(w) when w = m_winhnd -> true | _ -> false) wins then
+            trace _gridid "bufnr updated to %d" bufnr
+            m_bufnr <- bufnr
 
     (*******************   Exposed properties   ***********************)
 
