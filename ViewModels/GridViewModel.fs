@@ -712,7 +712,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
                 member __.Compare(x: GridViewModel, y: GridViewModel): int = 
-                  x.ZIndex - y.ZIndex
+                  let dz = x.ZIndex - y.ZIndex
+                  if dz = 0 then
+                    y.GridId - x.GridId
+                  else dz
           }
 
 
