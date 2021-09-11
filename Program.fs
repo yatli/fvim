@@ -36,15 +36,15 @@ let buildAvaloniaApp() =
 type MsgPackFormatter(resolver: IFormatterResolver) = 
   let m_formatter = resolver.GetFormatter<obj>()
   interface IMessagePackFormatter<obj> with
-    member this.Serialize(bytes: byref<byte []>, offset: int, value: obj, formatterResolver: IFormatterResolver): int = 
-      m_formatter.Serialize(&bytes, offset, value, formatterResolver)
-    member x.Deserialize(bytes: byte[] , offset: int, formatterResolver: IFormatterResolver , readSize: byref<int>) =
-      if MessagePackBinary.GetMessagePackType(bytes, offset) = MessagePackType.Extension then
-        let result = MessagePackBinary.ReadExtensionFormat(bytes, offset, &readSize)
-        let mutable _size = 0
-        m_formatter.Deserialize(result.Data, 0, formatterResolver, &_size)
+    member this.Serialize(writer: byref<MessagePackWriter>, value: obj, options: MessagePackSerializerOptions): unit = 
+      m_formatter.Serialize(&writer, value, options)
+    member this.Deserialize(reader: byref<MessagePackReader>, options: MessagePackSerializerOptions): obj = 
+      if reader.NextMessagePackType = MessagePackType.Extension then
+        let result = reader.ReadExtensionFormat()
+        let mutable data = result.Data
+        MessagePackSerializer.Deserialize(&data, options)
       else
-        m_formatter.Deserialize(bytes, offset, formatterResolver, &readSize)
+        m_formatter.Deserialize(&reader, options)
 
 type MsgPackResolver() =
   static let s_formatter = box(MsgPackFormatter(MessagePack.Resolvers.StandardResolver.Instance))
@@ -125,13 +125,6 @@ let main(args: string[]) =
 
   let _ = Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
 
-  CompositeResolver.RegisterAndSetAsDefault(
-    MsgPackResolver()
-  //  ImmutableCollectionResolver.Instance,
-  //  FSharpResolver.Instance,
-  //  StandardResolver.Instance
-  )
-
   AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
     let filename = Path.Combine(config.configdir, sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")))
     use dumpfile = new StreamWriter(filename)
@@ -139,6 +132,12 @@ let main(args: string[]) =
     dumpfile.WriteLine(exArgs.ExceptionObject.ToString())
   )
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
+  let msgpackResolver = MsgPackResolver()
+  let msgpackOpts = 
+    MessagePack
+      .MessagePackSerializerOptions.Standard
+      .WithResolver(msgpackResolver)
+  MessagePack.MessagePackSerializer.DefaultOptions <- msgpackOpts
 
   let builder = lazy buildAvaloniaApp()
   let lifetime = lazy new ClassicDesktopStyleApplicationLifetime()

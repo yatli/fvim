@@ -130,22 +130,29 @@ type Nvim() as nvim =
             | Disconnected -> failwith "not connected."
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
-            Task.Factory.StartNew(fun () ->
+            let F() = 
+              let t = task {
                 trace "begin read loop"
                 let mutable channelClosed = false
                 let mutable unhandledException = None
+                use reader = new MessagePackStreamReader(stdout)
                 while not channelClosed && not cancel.IsCancellationRequested && unhandledException.IsNone do
-                   try
-                       let data = MessagePackSerializer.Deserialize<obj>(stdout, true)
-                       ob.OnNext(data)
-                   with 
-                   | :? InvalidOperationException as _ex when _ex.Message = "Invalid MessagePack code was detected, code:-1"
-                        -> channelClosed <- true
-                   | :? System.IO.IOException
-                   | :? System.Net.Sockets.SocketException
-                   | :? ObjectDisposedException
-                        -> channelClosed <- true
-                   | ex -> unhandledException <- Some ex
+                  try
+                    let! data = reader.ReadAsync(cancel) 
+                    if data.HasValue then
+                        let mutable v = data.Value
+                        let data = MessagePackSerializer.Deserialize<obj>(&v)
+                        ob.OnNext(data)
+                    else
+                        channelClosed <- true
+                  with 
+                  | :? InvalidOperationException as _ex when _ex.Message = "Invalid MessagePack code was detected, code:-1"
+                       -> channelClosed <- true
+                  | :? System.IO.IOException
+                  | :? System.Net.Sockets.SocketException
+                  | :? ObjectDisposedException
+                       -> channelClosed <- true
+                  | ex -> unhandledException <- Some ex
 
                 match serverExitCode(), unhandledException with
                 | Some code, _ ->
@@ -162,8 +169,9 @@ type Nvim() as nvim =
                   trace "end read loop."
                   ob.OnNext([|box Exit|])
                 ob.OnCompleted()
-
-            , cancel, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+              }
+              t :> Task
+            Task.Run(F)
 
         let reply (id: int) (rsp: Response) = task {
             let result, error = 
@@ -241,7 +249,7 @@ type Nvim() as nvim =
 
             let payload = mkparams4 0 myid ev.method ev.parameters
 #if DEBUG
-            MessagePackSerializer.ToJson(payload) |> trace "call: %d -> %s" myid
+            MessagePackSerializer.SerializeToJson(payload) |> trace "call: %d -> %s" myid
 #endif
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()

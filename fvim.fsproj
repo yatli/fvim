@@ -85,7 +85,7 @@
     <PackageReference Include="FSharp.Data" Version="4.1.1" />
     <PackageReference Include="FSharp.Span.Utils" Version="1.1.3353.13900" />
     <PackageReference Include="FSharp.SystemTextJson" Version="0.17.4" />
-    <PackageReference Include="MessagePack" Version="1.9.11" />
+    <PackageReference Include="MessagePack" Version="2.3.75" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
