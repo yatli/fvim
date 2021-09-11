@@ -18,7 +18,6 @@ open Avalonia.Layout
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2
 open System.Reflection
-open System.Collections.Concurrent
 open System.IO
 
 #nowarn "0025"
@@ -160,6 +159,16 @@ module private ModelImpl =
                         { line = ln; kind = kind }
                     )
         broadcast (SignUpdate(bufnr, signs))
+
+    let onGuiWidgetPut [| obj |] =
+        match obj with
+        | FindKV("id")(Integer32 id) & FindKV("data")(String data) & FindKV("mime")(String mime)
+            & FindKV("str_len")(Integer32 str_len) & FindKV("stat_size")(Integer32 stat_size)->
+            data |> String.iteri(fun i c ->
+                if int(c) > 255 then
+                    trace "big value @ %d: %d" i (int c))
+            trace "onGuiWidgetPut: id = %d mime = %s, data len: %d, str_len: %d, stat_size: %d" id mime (data.Length) str_len stat_size
+        | _ -> ()
 
 let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
 let Shutdown code = 
@@ -360,6 +369,7 @@ let Start (serveropts, norc) =
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
         rpc.register.notify "OnSignUpdate" onSignUpdate
+        rpc.register.notify "GuiWidgetPut" onGuiWidgetPut
     ]
 
     rpc.register.request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {
@@ -474,17 +484,17 @@ let Start (serveropts, norc) =
       // Another instance is already up
       if fvimChannels.Length > 1 then
           Environment.Exit(0)
-      let! _ = nvim.set_var "fvim_channel" myChannel
-      let fvimPath =
-          Assembly.GetExecutingAssembly().Location
-          |> Path.GetDirectoryName 
-      let scriptPath = Path.Combine(fvimPath, "fvim.vim")
-      trace "script path: %A" scriptPath
-      let! _ = nvim.command ("source " + scriptPath)
 
-      // trigger ginit upon VimEnter
       if not norc then
-        let! _ = nvim.command "if v:vim_did_enter | runtime! ginit.vim | else | execute \"autocmd VimEnter * runtime! ginit.vim\" | endif"
+        let! _ = nvim.set_var "fvim_channel" myChannel
+        let fvimPath =
+            Assembly.GetExecutingAssembly().Location
+            |> Path.GetDirectoryName 
+        let scriptPath = Path.Combine(fvimPath, "fvim.vim")
+        trace "script path: %A" scriptPath
+        let! _ = nvim.command ("source " + scriptPath)
+        // trigger upon VimEnter
+        let! _ = nvim.command "if v:vim_did_enter | execute \"FVimOnVimEnter\" | else | execute \"autocmd VimEnter * execute \\\"FVimOnVimEnter\\\"\" | endif"
         ()
 
       // initialization complete. no more messages will be sent from this thread.

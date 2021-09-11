@@ -68,6 +68,22 @@ function! s:fvim_on_cursorhold()
   call rpcnotify(g:fvim_channel, 'OnSignUpdate', l:bufnr, l:signs)
 endfunction
 
+function! s:fvim_on_vim_enter()
+  runtime! ginit.vim
+  if exists("g:gui_widgets")
+    call GuiWidgetClientAttach(g:fvim_channel)
+  endif
+  delcommand FVimOnVimEnter
+endfunction
+
+function FVimTestGuiWidget()
+  " let id = GuiWidgetPut("C:/Users/Yatao/AppData/Local/nvim/image/RIM.png","image")
+  let id = GuiWidgetPut("C:/Users/Yatao/test.bin","image")
+  echo("GuiWidgetPut returns ".id)
+endfunction
+
+command! -nargs=0 FVimOnVimEnter call <SID>fvim_on_vim_enter()
+
 augroup FVim
   autocmd BufWinEnter * call <SID>fvim_on_bufwinenter()
   autocmd WinEnter * call <SID>fvim_on_winenter()
