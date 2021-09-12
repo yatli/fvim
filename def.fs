@@ -400,6 +400,7 @@ type RedrawCommand =
 ///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
 | SignUpdate of bufnr: int * signs: SignPlacement[]
+| GuiWidgetUpdate of buf: int * placements: (int*int*int*int*int)[]
 
 type EventParseException(data: obj) =
     inherit exn()

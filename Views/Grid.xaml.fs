@@ -4,6 +4,7 @@ open FVim.ui
 open FVim.wcwidth
 open FVim.def
 open FVim.common
+open FVim.widgets
 
 open ReactiveUI
 open Avalonia
@@ -341,16 +342,16 @@ type Grid() as this =
   /// no need to worry about the grid content being overwritten here
   /// because we are working with the drawing context directly, not 
   /// the grid framebuffer.
-  let drawGadgets (vm: GridViewModel) (ctx: IDrawingContextImpl) gw gh =
+  let drawGadgets (vm: GridViewModel) (ctx: DrawingContext) gw gh =
     let vm_x, vm_y, vm_w, vm_h = 
-        let y1,x1 = vm.AbsAnchor
-        let w,h = vm.Cols,vm.Rows
-        float x1 * gw, float y1 * gh, float w * gw, float h * gh
+      let y1,x1 = vm.AbsAnchor
+      let w,h = vm.Cols,vm.Rows
+      float x1 * gw, float y1 * gh, float w * gw, float h * gh
+    let view_top,view_bot,cur_row,line_count = 
+      let top,bot,row,_,lc = vm.ScrollbarData
+      float top, float bot, float row, float lc
     // scrollbar
     // todo mouse over opacity adjustment
-    let top,bot,row,lc = 
-        let top,bot,row,_,lc = vm.ScrollbarData
-        float top, float bot, float row, float lc
     let bar_w = 8.0
     let slide_w = 7.0
     let sign_w = 4.0
@@ -359,41 +360,52 @@ type Grid() as this =
     let c = m_scrollbar_bg.ToUint32() ||| 0xff000000u
     m_gadget_brush.Color <- Color.FromUInt32(c)
     m_gadget_brush.Opacity <- 0.5 
-    ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y, bar_w, vm_h)))
+    ctx.FillRectangle(m_gadget_brush, Rect(bar_x, vm_y, bar_w, vm_h))
     // -- fg
-    if bot > top && lc > 0.0 then
-        let bot = min bot lc
-        let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
-        let slide_p1, slide_p2 = top / lc, bot / lc
-        let slide_h = (slide_p2 - slide_p1) * vm_h
-        let slide_y = slide_p1 * vm_h
-        m_gadget_brush.Color <- m_scrollbar_fg
-        m_gadget_brush.Opacity <- 0.5
-        ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(slide_x, vm_y + slide_y, slide_w, slide_h)))
+    if view_bot > view_top && line_count > 0.0 then
+      let bot = min view_bot line_count
+      let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
+      let slide_p1, slide_p2 = view_top / line_count, bot / line_count
+      let slide_h = (slide_p2 - slide_p1) * vm_h
+      let slide_y = slide_p1 * vm_h
+      m_gadget_brush.Color <- m_scrollbar_fg
+      m_gadget_brush.Opacity <- 0.5
+      ctx.FillRectangle(m_gadget_brush, Rect(slide_x, vm_y + slide_y, slide_w, slide_h))
     // -- cursor
-    if lc > 0.0 then
-        let cur_y = row / lc * vm_h
-        let cur_h = 2.0
-        m_gadget_brush.Color <- vm.CursorInfo.bg
-        m_gadget_brush.Opacity <- 1.0
-        ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(bar_x, vm_y + cur_y, bar_w, cur_h)))
+    if line_count > 0.0 then
+      let cur_y = cur_row / line_count * vm_h
+      let cur_h = 2.0
+      m_gadget_brush.Color <- vm.CursorInfo.bg
+      m_gadget_brush.Opacity <- 1.0
+      ctx.FillRectangle(m_gadget_brush, Rect(bar_x, vm_y + cur_y, bar_w, cur_h))
     // -- signs
-    if lc > 0.0 then
-        let sign_h = max (vm_h / lc) 4.0
-        let xl = vm_x + vm_w - bar_w
-        let xr = vm_x + vm_w - sign_w
-        for {line=line;kind=kind} in vm.Signs do
-            let color,sx = match kind with
-                           | SignKind.Warning -> Colors.Green,xr
-                           | SignKind.Error -> Colors.Red,xr
-                           | SignKind.Add -> Colors.LightGreen,xl
-                           | SignKind.Delete -> Colors.Gray,xl
-                           | SignKind.Change -> Colors.Yellow,xl
-                           | _ -> Colors.Transparent,xl
-            let sy = float line / lc * vm_h
-            m_gadget_brush.Color <- color
-            m_gadget_brush.Opacity <- 1.0
-            ctx.DrawRectangle(m_gadget_brush, m_gadget_pen, RoundedRect(Rect(sx, vm_y + sy, sign_w, sign_h)))
+    if line_count > 0.0 then
+      let sign_h = max (vm_h / line_count) 4.0
+      let xl = vm_x + vm_w - bar_w
+      let xr = vm_x + vm_w - sign_w
+      for {line=line;kind=kind} in vm.Signs do
+        let color,sx = match kind with
+                       | SignKind.Warning -> Colors.Green,xr
+                       | SignKind.Error -> Colors.Red,xr
+                       | SignKind.Add -> Colors.LightGreen,xl
+                       | SignKind.Delete -> Colors.Gray,xl
+                       | SignKind.Change -> Colors.Yellow,xl
+                       | _ -> Colors.Transparent,xl
+        let sy = float line / line_count * vm_h
+        m_gadget_brush.Color <- color
+        m_gadget_brush.Opacity <- 1.0
+        ctx.FillRectangle(m_gadget_brush, Rect(sx, vm_y + sy, sign_w, sign_h))
+
+    // gui widgets
+    do
+      use clip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
+      for (wid,r,c,w,h) in vm.Widgets do
+        let r, c, w, h = (float r - view_top) * gh, float (c + 3) * gw, float w * gw, float h * gh
+        let widget = getGuiWidget wid
+        match widget with
+        | ImageWidget img ->
+          ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
+        | _ -> ()
 
   do
     this.Watch
@@ -463,11 +475,10 @@ type Grid() as this =
     // vm.GlyphHeight/vm.GlyphWidth don't work well here because it's for Skia/Harfbuzz.
     // calculate the proper values now:
     let gw,gh = grid_fb.Size.Width/float grid_vm.Cols,grid_fb.Size.Height/float grid_vm.Rows
-    let dc = ctx.PlatformImpl
     for vm in _drawVMs do
         // do not draw gadgets for the root grid / floating windows (borders only)
         if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg && m_gadget_enable then 
-            drawGadgets vm dc gw gh
+            drawGadgets vm ctx gw gh
 
 #if DEBUG
     timer.Stop()

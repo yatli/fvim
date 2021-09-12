@@ -38,6 +38,7 @@
     <Compile Include="ui.fs" />
     <Compile Include="theme.fs" />
     <Compile Include="input.fs" />
+    <Compile Include="widgets.fs" />
     <Compile Include="model.fs" />
     <Compile Include="ViewModels\ViewModelBase.fs" />
     <Compile Include="ViewModels\ThemableViewModelBase.fs" />

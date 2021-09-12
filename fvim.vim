@@ -77,9 +77,23 @@ function! s:fvim_on_vim_enter()
 endfunction
 
 function FVimTestGuiWidget()
-  " let id = GuiWidgetPut("C:/Users/Yatao/AppData/Local/nvim/image/RIM.png","image")
-  let id = GuiWidgetPut("C:/Users/Yatao/test.bin","image")
-  echo("GuiWidgetPut returns ".id)
+  " :put =string(nvim_get_namespaces())
+  "  {'lsp_cxx_hl_symbols_11_1': 11, 'coc-color': 13, 'vim_lsp_references': 3,
+  "    'coc-codelens': 12, 'vim_lsp_diagnostics': 4, 'GuiWidget': 1,
+  "    'lsp_cxx_hl_symbols_11_0': 10, 'lsp_cxx_hl_skipped_11_0': 8,
+  "    'lsp_cxx_hl_skipped_11_1': 9, 'vim_lsp_signs': 5, 'hlyank': 2,
+  "    'treesitter/highlighter': 6, 'coc-diagnosticlua': 7}
+  "
+  " :put =string(nvim_buf_get_extmarks(11,12,0,-1,{})
+  "  [[258, 62, 0], [261, 64, 0], [254, 67, 0], [256, 72, 0], [262, 74, 0], 
+  "   [257, 75, 0], [253, 76, 0], [264, 77, 0], [260, 78, 0], [263, 79, 0], 
+  "   [255, 80, 0], [259, 84, 0]]
+
+  let w1 = GuiWidgetPut("F:/test/1.png","image/png")
+  let w2 = GuiWidgetPut("F:/test/2.png","image/png")
+  call GuiWidgetPlace(w1, 0, 1, 0, 20, 5)
+  call GuiWidgetPlace(w2, 0, 6, 0, 20, 5)
+  call GuiWidgetUpdateView(0)
 endfunction
 
 command! -nargs=0 FVimOnVimEnter call <SID>fvim_on_vim_enter()

@@ -7,6 +7,7 @@ open def
 open neovim
 open getopt
 open log
+open widgets
 
 open Avalonia.Media
 open System
@@ -36,7 +37,6 @@ module private ModelImpl =
     let grids         = hashmap[]
     let frames        = hashmap[]
     let init          = new TaskCompletionSource<unit>()
-    let gui_widgets   = hashmap[]
 
     let add_grid(grid: IGridUI) =
         let id = grid.Id
@@ -169,8 +169,22 @@ module private ModelImpl =
         match obj with
         | FindKV("id")(Integer32 id) & FindKV("data")(ByteArray data) & FindKV("mime")(String mime) ->
             trace "onGuiWidgetPut: id = %d mime = %s, data len: %d" id mime (data.Length)
-            gui_widgets.[id] <- (mime,data)
+            loadGuiResource id mime data
         | _ -> ()
+
+    let onGuiWidgetUpdateView [| obj |] =
+        match obj with
+        | FindKV("buf")(Integer32 buf) & FindKV("widgets")(ObjArray widgets) ->
+          let widgets = 
+              widgets
+              |> Array.choose(
+                function 
+                | ObjArray([| Integer32(wid); Integer32(r); Integer32(c); Integer32(w); Integer32(h)  |]) -> Some(wid,r,c,w,h) 
+                | _ -> None)
+          broadcast (GuiWidgetUpdate (buf, widgets))
+          trace $"onGuiWidgetUpdateView: buf = {buf}, #widgets={widgets.Length}"
+        | _ -> ()
+
 
 let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
 let Shutdown code = 
@@ -372,6 +386,7 @@ let Start (serveropts, norc) =
         rpc.register.watch "font" ui.InvalidateFontCache
         rpc.register.notify "OnSignUpdate" onSignUpdate
         rpc.register.notify "GuiWidgetPut" onGuiWidgetPut
+        rpc.register.notify "GuiWidgetUpdateView" onGuiWidgetUpdateView
     ]
 
     rpc.register.request "set-clipboard" (fun [| P(|String|_|)lines; String regtype |] -> task {
@@ -489,6 +504,7 @@ let Start (serveropts, norc) =
 
       if not norc then
         let! _ = nvim.set_var "fvim_channel" myChannel
+        // !!! breaks remote execution
         let fvimPath =
             Assembly.GetExecutingAssembly().Location
             |> Path.GetDirectoryName 
@@ -617,3 +633,4 @@ let GetBufferPath (win: int) =
         | Ok(String path) -> return path
         | _ -> return ""
     }
+

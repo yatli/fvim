@@ -79,6 +79,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_col  = 0
     let mutable m_scrollbar_linecount = 0
     let mutable m_signs          = [||]
+    let mutable m_widgets        = [||]
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -399,6 +400,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
         | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
         | SignUpdate(bufnr, signs)                                           -> if bufnr = m_bufnr then m_signs <- signs
+        | GuiWidgetUpdate(bufnr, widgets)                                    -> if bufnr = m_bufnr then m_widgets <- widgets
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
@@ -708,6 +710,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.IsFloat = m_is_float
     member __.IsMsg = m_is_msg
     member __.Signs = m_signs
+    member __.Widgets = m_widgets
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
