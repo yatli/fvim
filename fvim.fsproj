@@ -33,6 +33,7 @@
     <Compile Include="daemon.fs" />
     <Compile Include="shell.fs" />
     <Compile Include="states.fs" />
+    <Compile Include="msgpack.fs" />
     <Compile Include="neovim.fs" />
     <Compile Include="ui.fs" />
     <Compile Include="theme.fs" />

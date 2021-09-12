@@ -8,15 +8,11 @@ open Avalonia
 open Avalonia.ReactiveUI
 open Avalonia.Controls.ApplicationLifetimes
 
-open MessagePack
-open MessagePack.Resolvers
-
 open def
 open getopt
 open common
 open shell
 open daemon
-open MessagePack.Formatters
 open FVim.ui
 
 let inline trace x = FVim.log.trace "main" x
@@ -32,29 +28,6 @@ let buildAvaloniaApp() =
     //.With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false))
     //.With(new X11PlatformOptions(UseDeferredRendering=false))
     //.With(new MacOSPlatformOptions(ShowInDock=true))
-
-type MsgPackFormatter(resolver: IFormatterResolver) = 
-  let m_formatter = resolver.GetFormatter<obj>()
-  interface IMessagePackFormatter<obj> with
-    member this.Serialize(writer: byref<MessagePackWriter>, value: obj, options: MessagePackSerializerOptions): unit = 
-      m_formatter.Serialize(&writer, value, options)
-    member this.Deserialize(reader: byref<MessagePackReader>, options: MessagePackSerializerOptions): obj = 
-      if reader.NextMessagePackType = MessagePackType.Extension then
-        let result = reader.ReadExtensionFormat()
-        let mutable data = result.Data
-        MessagePackSerializer.Deserialize(&data, options)
-      else
-        m_formatter.Deserialize(&reader, options)
-
-type MsgPackResolver() =
-  static let s_formatter = box(MsgPackFormatter(MessagePack.Resolvers.StandardResolver.Instance))
-  static let s_resolver = MessagePack.Resolvers.StandardResolver.Instance
-  interface IFormatterResolver with
-    member x.GetFormatter<'a>() =
-      if typeof<'a> = typeof<obj> then
-        s_formatter :?> IMessagePackFormatter<'a>
-      else
-        s_resolver.GetFormatter<'a>()
 
 let startMainWindow app serveropts =
     let app = app()
@@ -132,12 +105,6 @@ let main(args: string[]) =
     dumpfile.WriteLine(exArgs.ExceptionObject.ToString())
   )
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
-  let msgpackResolver = MsgPackResolver()
-  let msgpackOpts = 
-    MessagePack
-      .MessagePackSerializerOptions.Standard
-      .WithResolver(msgpackResolver)
-  MessagePack.MessagePackSerializer.DefaultOptions <- msgpackOpts
 
   let builder = lazy buildAvaloniaApp()
   let lifetime = lazy new ClassicDesktopStyleApplicationLifetime()

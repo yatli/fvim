@@ -6,6 +6,7 @@ open log
 open common
 open states
 open daemon
+open msgpack
 
 open MessagePack
 
@@ -141,7 +142,7 @@ type Nvim() as nvim =
                     let! data = reader.ReadAsync(cancel) 
                     if data.HasValue then
                         let mutable v = data.Value
-                        let data = MessagePackSerializer.Deserialize<obj>(&v)
+                        let data = MessagePackSerializer.Deserialize<obj>(&v, options=msgpackOpts)
                         ob.OnNext(data)
                     else
                         channelClosed <- true
@@ -232,7 +233,9 @@ type Nvim() as nvim =
 
         let notify (ev: Request) = task {
             let payload = mkparams3 2 ev.method ev.parameters
-            // MessagePackSerializer.ToJson(payload) |> trace "notify: %s"
+#if DEBUG
+            //MessagePackSerializer.SerializeToJson(payload) |> trace "notify: %s"
+#endif
             do! MessagePackSerializer.SerializeAsync(stdin, payload)
             do! stdin.FlushAsync()
         }

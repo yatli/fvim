@@ -3,6 +3,7 @@ module FVim.common
 open System.Threading.Tasks
 open System
 open System.Diagnostics
+open System.Buffers
 
 let mkparams1 (t1: 'T1)                                          = [| box t1 |]
 let mkparams2 (t1: 'T1) (t2: 'T2)                                = [| box t1; box t2 |]
@@ -82,6 +83,12 @@ let (|Float|_|) (x:obj) =
     | :? single as x     -> Some(float x)
     | :? float as x      -> Some(float x)
     | _ -> None
+
+let (|ByteArray|_|) (x:obj) =
+    match x with
+    | :? (byte[]) as x    -> Some(x)
+    | _ -> None
+
 
 // converts to bool in a desperate (read: JavaScript) attempt
 let (|ForceBool|_|) (x:obj) =

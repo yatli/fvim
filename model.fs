@@ -36,6 +36,7 @@ module private ModelImpl =
     let grids         = hashmap[]
     let frames        = hashmap[]
     let init          = new TaskCompletionSource<unit>()
+    let gui_widgets   = hashmap[]
 
     let add_grid(grid: IGridUI) =
         let id = grid.Id
@@ -142,6 +143,10 @@ module private ModelImpl =
         | MultiRedrawCommand xs             -> Array.iter redraw xs
         | x                                 -> trace "unimplemented command: %A" x
 
+    let onRedraw arr =
+        for o in arr do
+            parse_redrawcmd o |> redraw
+
     let onGridResize(gridui: IGridUI) =
         trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
@@ -162,12 +167,9 @@ module private ModelImpl =
 
     let onGuiWidgetPut [| obj |] =
         match obj with
-        | FindKV("id")(Integer32 id) & FindKV("data")(String data) & FindKV("mime")(String mime)
-            & FindKV("str_len")(Integer32 str_len) & FindKV("stat_size")(Integer32 stat_size)->
-            data |> String.iteri(fun i c ->
-                if int(c) > 255 then
-                    trace "big value @ %d: %d" i (int c))
-            trace "onGuiWidgetPut: id = %d mime = %s, data len: %d, str_len: %d, stat_size: %d" id mime (data.Length) str_len stat_size
+        | FindKV("id")(Integer32 id) & FindKV("data")(ByteArray data) & FindKV("mime")(String mime) ->
+            trace "onGuiWidgetPut: id = %d mime = %s, data len: %d" id mime (data.Length)
+            gui_widgets.[id] <- (mime,data)
         | _ -> ()
 
 let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
@@ -363,7 +365,7 @@ let Start (serveropts, norc) =
         ev_uiopt.Publish
         |> Observable.throttle(TimeSpan.FromMilliseconds 20.0)
         |> Observable.subscribe(UpdateUICapabilities)
-        rpc.register.notify "redraw" (Array.map parse_redrawcmd >> Array.iter redraw)
+        rpc.register.notify "redraw" onRedraw 
         rpc.register.notify "remote.detach" (fun _ -> Detach())
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
