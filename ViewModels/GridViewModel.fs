@@ -416,7 +416,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         // sync font to popupmenu vm
         m_popupmenu_vm.SetFont(theme.guifont, theme.fontsize)
         markAllDirty()
-        m_resize_ev.Trigger(this)
+        if this.IsTopLevel then
+          m_resize_ev.Trigger(this)
 
     let hlConfig(id) =
         if id = 0 then
@@ -590,10 +591,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.SetMeasuredSize (v: Size) =
         trace _gridid "set measured size: %A" v
         let gridui = this :> IGridUI
-        let gw, gh = gridui.GridWidth, gridui.GridHeight
         this.Width <- v.Width
         this.Height <- v.Height
-        let gw', gh' = gridui.GridWidth, gridui.GridHeight
+        let gw, gh = gridui.GridWidth, gridui.GridHeight
+        let gw', gh' = int(this.BufferWidth / this.GlyphWidth), int(this.BufferHeight / this.GlyphHeight)
         if gw <> gw' || gh <> gh' then 
             if this.IsTopLevel then
                 m_resize_ev.Trigger(this)

@@ -41,8 +41,6 @@ type Grid() as this =
 
   let mutable grid_fb: RenderTargetBitmap = null
   let mutable grid_dc: IDrawingContextImpl = null
-  (*let mutable grid_fb_scroll: RenderTargetBitmap = null*)
-  (*let mutable grid_dc_scroll: IDrawingContextImpl = null*)
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
@@ -66,12 +64,11 @@ type Grid() as this =
     if grid_fb <> null then 
       grid_fb.Dispose()
       grid_dc.Dispose()
-      (*grid_fb_scroll.Dispose()*)
-      (*grid_dc_scroll.Dispose()*)
     grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
     grid_dc <- grid_fb.CreateDrawingContext(null)
-    (*grid_fb_scroll <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale*)
-    (*grid_dc_scroll <- grid_fb_scroll.CreateDrawingContext(null)*)
+    if this.Bounds.Size.Width - grid_vm.BufferWidth > grid_vm.GlyphWidth * 2.0 
+       || this.Bounds.Size.Height - grid_vm.BufferHeight > grid_vm.GlyphHeight * 2.0 then
+       this.InvalidateMeasure()
 
   //-------------------------------------------------------------------------
   //           = The rounding error of the rendering system =
