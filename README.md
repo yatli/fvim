@@ -43,6 +43,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
   - High performance rendering, low latency (60FPS on 4K display with reasonable font size!)
   - GPU acceleration
   - Multi-grid support -- try `Ctrl-w ge` to detach a window into a separate OS window!
+  - Input method support built from scratch
+  - Rich information scrollbar (currently read-only)
+  - [Extend with UI Server Protocol](https://github.com/yatli/gui-widgets.nvim) -- UI widgets as NeoVim plugins
 - Remoting
   - Use a Windows FVim frontend with a WSL neovim: `fvim --wsl`
   - Use custom neovim binary: `fvim --nvim ~/bin/nvim.appimage`
@@ -225,11 +228,27 @@ The FVim arguments will be consumed and filtered before the rest are passed to N
 
 ### Goals
 
-- Input method support built from scratch (wip)
-- Multi-grid <=> Multi-window mapping (multiple windows in the OS sense, not Vim "frames")
-- Extend with UI-Protocol -- UI widgets as NeoVim plugins
-
+- Keep up with the latest NeoVim features
+- Ergonomics improvements via GUI/native OS integration
+- Drive the flexible and accessible UI extension method "UI Server Protocol"
+  - The idea is to establish a standard protocol for UI extensions, so that the nice 
+    GUI additions are not limited to one specific front-end. Think of a front end as
+    a UI server handling UI Server Protocol requests issued from front-end-agnostic 
+    plugins. It's like Language Server Protocol, but for UI.
 
 ### Non-Goals
 
-- Electron ecosystem integration
+- Electron ecosystem integration :p
+- No walled garden. Everything should be accessible from the NeoVim core, which means:
+  - No project explorers -- use a NeoVim plugin
+  - No custom tab lines / document wells -- use a NeoVim plugin
+  - No side-by-side markdown viewer, unless it's a NeoVim plugin, implemented via the
+    UI-Protocol extensions.
+
+### Fellow Front-Ends (to name a few)
+
+- [Neovide](https://github.com/neovide/neovide)
+- [goneovim](https://github.com/akiyosi/goneovim)
+- [Gnvim](https://github.com/vhakulinen/gnvim)
+- [Uivonim](https://github.com/smolck/uivonim)
+- [firenvim](https://github.com/glacambre/firenvim)
