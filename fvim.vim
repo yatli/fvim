@@ -59,7 +59,8 @@ endfunction
 function! s:fvim_on_winenter()
   let l:win=nvim_get_current_win()
   let l:bufnr=nvim_win_get_buf(l:win)
-  call rpcnotify(g:fvim_channel, 'OnBufWinEnter', l:bufnr, [l:win])
+  let l:wins=win_findbuf(l:bufnr)
+  call rpcnotify(g:fvim_channel, 'OnBufWinEnter', l:bufnr, l:wins)
 endfunction
 
 function! s:fvim_on_cursorhold()
@@ -101,6 +102,8 @@ command! -nargs=0 FVimOnVimEnter call s:fvim_on_vim_enter()
 augroup FVim
   autocmd BufWinEnter * call s:fvim_on_bufwinenter()
   autocmd WinEnter * call s:fvim_on_winenter()
+  autocmd WinNew * call s:fvim_on_winenter()
+  autocmd WinScrolled * call s:fvim_on_winenter()
   autocmd CursorHold * call s:fvim_on_cursorhold()
   autocmd CursorHoldI * call s:fvim_on_cursorhold()
 augroup END

@@ -637,7 +637,15 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             | Integer32 bufnr -> bufnr
         if Array.exists (function | Integer32(w) when w = m_winhnd -> true | _ -> false) wins then
             trace _gridid "bufnr updated to %d" bufnr
+            if m_bufnr <> bufnr then
+              m_signs <- [||]
+              m_widgets <- [||]
             m_bufnr <- bufnr
+        elif bufnr = m_bufnr then // but current win is not found in the array
+            trace _gridid "bufnr %d detached" bufnr
+            m_signs <- [||]
+            m_widgets <- [||]
+            m_bufnr <- 0
 
     member __.OnSignUpdate [| Integer32 bufnr; signs |] =
         if bufnr <> m_bufnr then ()
