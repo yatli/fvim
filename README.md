@@ -19,9 +19,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
     - Arch Linux:  [Install via AUR](https://aur.archlinux.org/packages/fvim/)
     - RPM-based distributions: `rpm -ivh fvim_package_name.rpm`
     - Fedora: `dnf install fvim_package_name.rpm`
-    - Compile from Source (having dotnet-sdk-3.1.404+ installed):
+    - Compile from Source (having dotnet-sdk-5.0.x installed):
         ```
-            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f netcoreapp3.1 -c Release -r linux-x64 --self-contained
+            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f net5.0 -c Release -r linux-x64 --self-contained
         ```
 - Note, currently FVim will treat all keyboards as en-US so characters and symbols are mapped incorrectly if you use a non en-US layout. [The issue is tracked here](https://github.com/yatli/fvim/issues/36).
 
@@ -82,7 +82,7 @@ Detaching a window into an external OS window with `Ctrl-w ge`:
 Detach as many and span them over your monitors!
 
 ### Building from source
-We're now targeting `netcoreapp3.1` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet-core/3.1).
+We're now targeting `net5.0` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet/5.0).
 We're actively tracking the head of `Avalonia`, and fetch the nightly packages from myget (see `NuGet.config`).
 
 Then, simply:
