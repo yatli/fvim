@@ -208,7 +208,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         let new_gridsize = { rows = nrow; cols = ncol }
         if m_gridsize <> new_gridsize then
           m_gridsize <- new_gridsize
+          #if DEBUG
           trace _gridid "buffer resize = %A" m_gridsize
+          #endif
           clearBuffer preserveContent
 
     let putBuffer (M: ReadOnlyMemory<_>) =
@@ -275,7 +277,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         //    `cols` is always zero in this version of Nvim, and reserved for future
         //    use. 
 
+        #if DEBUG
         trace _gridid "scroll: %A %A %A %A %A %A" top bot left right rows cols
+        #endif
 
         let copy src dst =
             if src >= 0 && src < m_gridsize.rows && dst >= 0 && dst < m_gridsize.rows then
@@ -327,7 +331,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             | Some p -> p
             | None -> failwith "setWinPos: no parent"
         let grid = _gridid
+        #if DEBUG
         trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
+        #endif
         (* manually resize and position the child grid as per neovim docs *)
         initBuffer r c true
         m_anchor_col <- startcol
@@ -346,7 +352,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_winhnd <- win
         m_is_float <- true
         m_z <- z
+        #if DEBUG
         trace _gridid "setWinFloatPos: z = %d" z
+        #endif
         setWinPos (int r) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume assume NW
         m_parent.Value.SortChildren()
 
@@ -481,7 +489,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             )
 
             rpc.register.notify "OnBufWinEnter" this.OnBufWinEnter
-            rpc.register.notify "OnSignUpdate" this.OnSignUpdate
         ] 
 
     interface IGridUI with
@@ -524,11 +531,15 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.CursorGoto id row col =
         // translation back to parent
         if m_parent.IsSome && id = _gridid then
+        #if DEBUG
             trace _gridid "CursorGoto parent"
+        #endif
             m_parent.Value.CursorGoto m_parent.Value.GridId (row + m_anchor_row) (col + m_anchor_col)
         // goto me
         elif id = _gridid then
+        #if DEBUG
             trace _gridid "CursorGoto me"
+        #endif
             m_cursor_vm.focused <- true
             m_cursor_vm.row <- row
             m_cursor_vm.col <- col
@@ -539,7 +550,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             ()
         // was me, but not anymore
         elif m_cursor_vm.focused then
+        #if DEBUG
             trace _gridid "CursorGoto notme"
+        #endif
             m_cursor_vm.focused <- false
             m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
@@ -552,7 +565,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         let startPos  = this.GetPoint row col
         let cursorPos = this.GetPoint (m_cursor_vm.row + 1) m_cursor_vm.col
 
+        #if DEBUG
         trace _gridid "show popup menu at [%O, %O]" startPos cursorPos
+        #endif
 
         //  Decide the maximum size of the popup menu based on grid dimensions
         let menuLines = min items.Length 15
@@ -637,22 +652,20 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             | String bufnr -> int bufnr
             | Integer32 bufnr -> bufnr
         if Array.exists (function | Integer32(w) when w = m_winhnd -> true | _ -> false) wins then
+        #if DEBUG
             trace _gridid "bufnr updated to %d" bufnr
+        #endif
             if m_bufnr <> bufnr then
               m_signs <- [||]
               m_widgets <- [||]
             m_bufnr <- bufnr
         elif bufnr = m_bufnr then // but current win is not found in the array
+        #if DEBUG
             trace _gridid "bufnr %d detached" bufnr
+        #endif
             m_signs <- [||]
             m_widgets <- [||]
             m_bufnr <- 0
-
-    member __.OnSignUpdate [| Integer32 bufnr; signs |] =
-        if bufnr <> m_bufnr then ()
-        else
-        let signs = parseBufferSignPlacements signs
-        trace _gridid "OnSignUpdate: my = %d bufnr = %d signs = %A" m_bufnr bufnr signs
 
     (*******************   Exposed properties   ***********************)
 
@@ -740,39 +753,40 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
-            raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
-            //let vm, r, c = findTargetVm y x
-            //m_mouse_pressed_vm <- vm
-            //raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
+            //raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
+            let _, _, vm, r, c, _ = this.FindTargetVm y x
+            m_mouse_pressed_vm <- vm
+            raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
-            raiseInputEvent _gridid <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
-            //let r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
-            //let r = max 0 (min r (m_mouse_pressed_vm.Rows-1))
-            //let c = max 0 (min c (m_mouse_pressed_vm.Cols-1))
-            //raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
+            //raiseInputEvent _gridid <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
+            let ar,ac = m_mouse_pressed_vm.AbsAnchor
+            let r, c = (y-ar),(x-ac)
+            raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
-                trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
-                raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
-                //let mutable r, c = (y-m_mouse_pressed_vm.AnchorRow),(x-m_mouse_pressed_vm.AnchorCol)
-                //if r >= m_mouse_pressed_vm.Rows then r <- 999
-                //let y,x = (r+m_mouse_pressed_vm.AnchorRow),(c+m_mouse_pressed_vm.AnchorCol)
                 //trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
-                //raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                //raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
+                let ar,ac = m_mouse_pressed_vm.AbsAnchor
+                let r,c = (y-ar),(x-ac)
+                #if DEBUG
+                trace m_mouse_pressed_vm.GridId "mousemove: %d %d" r c
+                #endif
+                raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
+            let _, _, vm, r, c, _ = this.FindTargetVm y x
             let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent _gridid <| InputEvent.MouseWheel(e.KeyModifiers, y, x, dx, dy)
+            raiseInputEvent vm.GridId <| InputEvent.MouseWheel(e.KeyModifiers, r, c, dx, dy)
 
     member __.OnTextInput (e: TextInputEventArgs) = 
         raiseInputEvent _gridid <| InputEvent.TextInput(e.Text)

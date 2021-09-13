@@ -59,7 +59,9 @@ type Grid() as this =
 
   // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
+  #if DEBUG
     trace grid_vm "resizeFrameBuffer bufw=%A bufh=%A" grid_vm.BufferWidth grid_vm.BufferHeight
+  #endif
     grid_scale <- this.GetVisualRoot().RenderScaling
     if grid_fb <> null then 
       grid_fb.Dispose()
@@ -292,7 +294,9 @@ type Grid() as this =
 
     if vm.Hidden then false
     elif vm.Dirty then
+    #if DEBUG
         trace vm "drawing whole grid"
+    #endif
         for row = 0 to vm.Rows - 1 do
             drawBufferLine vm grid_dc row 0 vm.Cols
             _drawnRegions.Add(row + abs_r, abs_c, vm.Cols + abs_c)
