@@ -91,16 +91,16 @@ function FVimTestGuiWidget()
 
   let w1 = GuiWidgetPut("F:/test/1.png","image/png")
   let w2 = GuiWidgetPut("F:/test/2.png","image/png")
-  call GuiWidgetPlace(w1, 0, 1, 0, 20, 5)
-  call GuiWidgetPlace(w2, 0, 6, 0, 20, 5)
+  call GuiWidgetPlace(w1, 0, 2, 0, 20, 5)
+  call GuiWidgetPlace(w2, 0, 7, 0, 20, 5)
   call GuiWidgetUpdateView(0)
 endfunction
 
-command! -nargs=0 FVimOnVimEnter call <SID>fvim_on_vim_enter()
+command! -nargs=0 FVimOnVimEnter call s:fvim_on_vim_enter()
 
 augroup FVim
-  autocmd BufWinEnter * call <SID>fvim_on_bufwinenter()
-  autocmd WinEnter * call <SID>fvim_on_winenter()
-  autocmd CursorHold * call <SID>fvim_on_cursorhold()
-  autocmd CursorHoldI * call <SID>fvim_on_cursorhold()
+  autocmd BufWinEnter * call s:fvim_on_bufwinenter()
+  autocmd WinEnter * call s:fvim_on_winenter()
+  autocmd CursorHold * call s:fvim_on_cursorhold()
+  autocmd CursorHoldI * call s:fvim_on_cursorhold()
 augroup END

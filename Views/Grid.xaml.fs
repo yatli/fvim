@@ -400,11 +400,14 @@ type Grid() as this =
     do
       use clip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
       for (wid,r,c,w,h) in vm.Widgets do
-        let r, c, w, h = (float r - view_top) * gh, float (c + 3) * gw, float w * gw, float h * gh
+        let r, c, w, h = (float r - view_top) * gh, float (c + 4) * gw, float w * gw, float h * gh
         let widget = getGuiWidget wid
         match widget with
-        | ImageWidget img ->
+        | BitmapWidget img ->
           ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
+        | VectorImageWidget img ->
+          ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
+          ctx.DrawRectangle(new Pen(m_gadget_brush), Rect(vm_x + c, vm_y + r, w, h))
         | _ -> ()
 
   do

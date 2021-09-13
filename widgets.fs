@@ -1,20 +1,28 @@
 ﻿module FVim.widgets
 
 open common
-open SkiaSharp
 open Avalonia.Media.Imaging
+open Avalonia.Svg
 open System.IO
+open Avalonia
 
 type GuiWidgetType =
-| ImageWidget of Bitmap
+| BitmapWidget of Bitmap
+| VectorImageWidget of SvgImage
 | UnknownWidget of mime: string * data: byte[]
 | NotFound
 
 let private guiWidgets = hashmap[]
 let loadGuiResource (id:int) (mime: string) (data: byte[]) =
-    if mime.StartsWith("image/") then
+    if mime = "image/svg" then
+      let tmp = System.IO.Path.GetTempFileName()
+      System.IO.File.WriteAllBytes(tmp, data)
+      let img = new SvgImage()
+      img.Source <- SvgSource.Load(tmp, null)
+      guiWidgets.[id] <- VectorImageWidget(img)
+    elif mime.StartsWith("image/") then
         use stream = new MemoryStream(data)
-        guiWidgets.[id] <- ImageWidget(new Bitmap(stream))
+        guiWidgets.[id] <- BitmapWidget(new Bitmap(stream))
     else
         guiWidgets.[id] <- UnknownWidget(mime, data)
 

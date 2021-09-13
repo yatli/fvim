@@ -363,6 +363,9 @@ type Nvim() as nvim =
 
         nvim.command(sprintf "command! -nargs=%s %s %s" nargs name cmd)
 
+    member __.exec (src: string) (output: bool) =
+        nvim.call { method = "nvim_exec"; parameters = mkparams2 src output }
+
     member __.edit (file: string) =
         nvim.command ("edit " + file)
 

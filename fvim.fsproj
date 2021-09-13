@@ -82,6 +82,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="0.10.6" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.6" />
     <PackageReference Include="Avalonia.Diagnostics" Version="0.10.6" />
+    <PackageReference Include="Avalonia.Svg" Version="0.10.6.3" />
 
     <PackageReference Include="FSharp.Control.Reactive" Version="5.0.2" />
     <PackageReference Include="FSharp.Data" Version="4.1.1" />
