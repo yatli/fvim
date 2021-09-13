@@ -23,7 +23,7 @@ type ServerOptions =
     | FVimRemote of serverName: string option * transport: FVimRemoteTransport * verb: FVimRemoteVerb * files: string list
 
 type Intent =
-    | Start of serveropts: ServerOptions * norc: bool
+    | Start of serveropts: ServerOptions * norc: bool * remoteinit: bool
     | Setup
     | Uninstall
     | Daemon of pipe: string option * nvim: string * stderrenc: System.Text.Encoding
@@ -114,7 +114,7 @@ let parseOptions (args: string[]) =
         elif uninstall then Uninstall
         elif daemon then Daemon(pipe, nvim, enc)
         else 
-        let serveropts = 
+        let serveropts, remoteinit = 
             match fvr, nvr with
             | Some fvrVerb, _ -> 
               let transport = 
@@ -131,23 +131,23 @@ let parseOptions (args: string[]) =
                 match verb with
                 | NewSession _ -> []
                 | _ -> argsL
-              FVimRemote(pipe, transport, verb, files)
+              FVimRemote(pipe, transport, verb, files),true
             | _, Some nvrAddr ->
               match nvrAddr.Split(":") with
-              | [| ParseIp ipaddr; ParseUInt16 port |] -> NeovimRemote(Tcp <| IPEndPoint(ipaddr, int port), argsL)
-              | _ -> NeovimRemote(NamedPipe nvrAddr, argsL)
+              | [| ParseIp ipaddr; ParseUInt16 port |] -> NeovimRemote(Tcp <| IPEndPoint(ipaddr, int port), argsL),true
+              | _ -> NeovimRemote(NamedPipe nvrAddr, argsL),true
             | None, None -> 
-              let prog, args = 
+              let prog, args, r = 
                 if wsl then 
-                    "wsl", ["bash"; "-l"; "-c"; sprintf "nvim --embed %s" (args |> escapeArgs |> join)] 
+                    "wsl", ["bash"; "-l"; "-c"; sprintf "nvim --embed %s" (args |> escapeArgs |> join)], true
                 elif ssh.IsSome then 
-                    "ssh", [ssh.Value; nvim; "--embed"] @ argsL
+                    "ssh", [ssh.Value; nvim; "--embed"] @ argsL, true
                 else 
-                    nvim, ["--embed"] @ argsL
+                    nvim, ["--embed"] @ argsL, false
               in
-                Embedded(prog, args, enc)
+                Embedded(prog, args, enc),r
         in
-          Start(serveropts, norc)
+          Start(serveropts, norc, remoteinit)
 
     { 
         logToStdout     = trace_to_stdout

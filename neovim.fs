@@ -366,6 +366,9 @@ type Nvim() as nvim =
     member __.exec (src: string) (output: bool) =
         nvim.call { method = "nvim_exec"; parameters = mkparams2 src output }
 
+    member __.exec_lua (src: string) (args: obj[]) =
+        nvim.call { method = "nvim_exec_lua"; parameters = mkparams2 src args }
+
     member __.edit (file: string) =
         nvim.command ("edit " + file)
 

@@ -330,7 +330,7 @@ let private UpdateUICapabilities() =
 /// <summary>
 /// Call this once at initialization.
 /// </summary>
-let Start (serveropts, norc) =
+let Start (serveropts, norc, remote) =
     trace "starting neovim instance..."
     trace "opts = %A" serveropts
     nvim.start serveropts
@@ -504,15 +504,40 @@ let Start (serveropts, norc) =
 
       if not norc then
         let! _ = nvim.set_var "fvim_channel" myChannel
-        // !!! breaks remote execution
         let fvimPath =
             Assembly.GetExecutingAssembly().Location
             |> Path.GetDirectoryName 
         let scriptPath = Path.Combine(fvimPath, "fvim.vim")
         trace "script path: %A" scriptPath
-        let! _ = nvim.command ("source " + scriptPath)
-        // trigger upon VimEnter
-        let! _ = nvim.command "if v:vim_did_enter | execute \"FVimOnVimEnter\" | else | execute \"autocmd VimEnter * execute \\\"FVimOnVimEnter\\\"\" | endif"
+        if remote then
+          let! scriptText = File.ReadAllTextAsync(scriptPath) |> Async.AwaitTask
+          let luaText = $"""local uv = vim.loop
+local txt = [[{scriptText}]]
+local template = "fvim-init.vim-XXXXXX"
+local temp_env = os.getenv("TEMP")
+if temp_env == nil then
+  template = "/tmp/"..template
+else
+  template = temp_env.."\\"..template
+end
+uv.fs_mkstemp(template, function(err,fd,path)
+  assert(not err, err)
+  uv.fs_write(fd,txt,nil,function(err,n)
+    assert(not err, err)
+    uv.fs_close(fd, vim.schedule_wrap(function(err)
+      assert(not err, err)
+      vim.cmd("source "..path)
+      uv.fs_unlink(path)
+      vim.g.fvim_init_complete = true
+    end))
+  end)
+end)
+"""
+          let! _ = nvim.exec_lua (luaText.Replace("\r\n", "\n")) [||]
+          ()
+        else 
+          let! _ = nvim.command ("source " + scriptPath)
+          ()
         ()
 
       // initialization complete. no more messages will be sent from this thread.

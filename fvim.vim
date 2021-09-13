@@ -74,30 +74,16 @@ function! s:fvim_on_vim_enter()
   if exists("g:gui_widgets")
     call GuiWidgetClientAttach(g:fvim_channel)
   endif
-  delcommand FVimOnVimEnter
+  let g:fvim_ginit_complete = v:true
 endfunction
 
 function FVimTestGuiWidget()
-  " :put =string(nvim_get_namespaces())
-  "  {'lsp_cxx_hl_symbols_11_1': 11, 'coc-color': 13, 'vim_lsp_references': 3,
-  "    'coc-codelens': 12, 'vim_lsp_diagnostics': 4, 'GuiWidget': 1,
-  "    'lsp_cxx_hl_symbols_11_0': 10, 'lsp_cxx_hl_skipped_11_0': 8,
-  "    'lsp_cxx_hl_skipped_11_1': 9, 'vim_lsp_signs': 5, 'hlyank': 2,
-  "    'treesitter/highlighter': 6, 'coc-diagnosticlua': 7}
-  "
-  " :put =string(nvim_buf_get_extmarks(11,12,0,-1,{})
-  "  [[258, 62, 0], [261, 64, 0], [254, 67, 0], [256, 72, 0], [262, 74, 0], 
-  "   [257, 75, 0], [253, 76, 0], [264, 77, 0], [260, 78, 0], [263, 79, 0], 
-  "   [255, 80, 0], [259, 84, 0]]
-
   let w1 = GuiWidgetPut("F:/test/1.png","image/png")
   let w2 = GuiWidgetPut("F:/test/2.png","image/png")
   call GuiWidgetPlace(w1, 0, 2, 0, 20, 5)
   call GuiWidgetPlace(w2, 0, 7, 0, 20, 5)
   call GuiWidgetUpdateView(0)
 endfunction
-
-command! -nargs=0 FVimOnVimEnter call s:fvim_on_vim_enter()
 
 augroup FVim
   autocmd BufWinEnter * call s:fvim_on_bufwinenter()
@@ -107,3 +93,10 @@ augroup FVim
   autocmd CursorHold * call s:fvim_on_cursorhold()
   autocmd CursorHoldI * call s:fvim_on_cursorhold()
 augroup END
+
+" trigger upon VimEnter
+if v:vim_did_enter 
+  call s:fvim_on_vim_enter()
+else 
+  autocmd VimEnter * call s:fvim_on_vim_enter()
+endif

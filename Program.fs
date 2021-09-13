@@ -29,9 +29,9 @@ let buildAvaloniaApp() =
     //.With(new X11PlatformOptions(UseDeferredRendering=false))
     //.With(new MacOSPlatformOptions(ShowInDock=true))
 
-let startMainWindow app serveropts =
+let startMainWindow app opts =
     let app = app()
-    model.Start serveropts
+    model.Start opts
 
     let cfg = config.load()
     let cwd = Environment.CurrentDirectory |> Path.GetFullPath
@@ -127,6 +127,6 @@ let main(args: string[]) =
     | Setup -> setup()
     | Uninstall -> uninstall()
     | Daemon(pipe, nvim, enc) -> daemon pipe nvim enc
-    | Start(a,b) -> startMainWindow app (a,b) 
+    | Start(opts,norc,remote) -> startMainWindow app (opts,norc,remote)
   with 
     | ex -> startCrashReportWindow app ex
