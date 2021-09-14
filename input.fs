@@ -300,7 +300,12 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
             | (Mouse m)                             -> Choice2Of3(gridid, m, (|ModifiersPrefix|_|)x)
             | ImeEvent                              -> Choice3Of3 ()
             | TextInput txt when _imeArmed          -> Choice1Of3 txt
-            | x                                     -> trace "rejected: %A" x; Choice3Of3 ()
+            | x                                     -> 
+              #if DEBUG
+              trace "rejected: %A" x
+              #endif
+              Choice3Of3 ()
+
         )
     let key   = inputClassifier |> Observable.choose (function | Choice1Of3 x -> Some x | _ -> None)
     let mouse = inputClassifier |> Observable.choose (function | Choice2Of3 x -> Some x | _ -> None)

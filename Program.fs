@@ -26,7 +26,7 @@ let buildAvaloniaApp() =
     .UseReactiveUI()
     //.With(new Win32PlatformOptions(UseDeferredRendering=true, UseWgl=true))
     //.With(new AvaloniaNativePlatformOptions(UseDeferredRendering=false))
-    //.With(new X11PlatformOptions(UseDeferredRendering=false))
+    .With(new X11PlatformOptions(EnableIme=true))
     //.With(new MacOSPlatformOptions(ShowInDock=true))
 
 let startMainWindow app opts =
