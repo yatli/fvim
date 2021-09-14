@@ -239,7 +239,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
     let setBusy (v: bool) =
+      #if DEBUG
         trace _gridid "neovim: busy: %A" v
+      #endif
         m_busy <- v
         setCursorEnabled <| not v
 
