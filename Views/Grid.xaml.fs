@@ -389,7 +389,7 @@ type Grid() as this =
                        | SignKind.Warning -> Colors.Green,xr
                        | SignKind.Error -> Colors.Red,xr
                        | SignKind.Add -> Colors.LightGreen,xl
-                       | SignKind.Delete -> Colors.Gray,xl
+                       | SignKind.Delete -> Colors.LightCoral,xl
                        | SignKind.Change -> Colors.Yellow,xl
                        | _ -> Colors.Transparent,xl
         let sy = float line / line_count * vm_h
