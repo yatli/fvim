@@ -334,6 +334,8 @@ type Grid() as this =
         let y = float abs_r * grid_vm.GlyphHeight + 0.5
         grid_dc.DrawLine(pen, Point(0.0,y), Point(grid_fb.Size.Width, y))
         m_gadget_enable <- false // hide gadgets to avoid overlapping...
+    if vm.IsFloat then
+        m_gadget_enable <- false // hide gadgets to avoid overlapping...
     vm.DrawOps.Count <> 0
 
   /// draw add-ons attached to the grids. for example:

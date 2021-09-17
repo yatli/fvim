@@ -82,7 +82,6 @@ function FVimTestGuiWidget()
   let w2 = GuiWidgetPut("F:/test/2.png","image/png")
   call GuiWidgetPlace(w1, 0, 2, 0, 20, 5)
   call GuiWidgetPlace(w2, 0, 7, 0, 20, 5)
-  call GuiWidgetUpdateView(0)
 endfunction
 
 augroup FVim
