@@ -300,20 +300,6 @@ type SignKind =
     | Error        = 4
     | Other        = 5
 
-type SignPlacement =
-    {
-        line: int
-        kind: SignKind
-    }
-
-type WidgetPlacement = 
-  {
-    mark: int
-    widget: int
-    w: int
-    h: int
-  }
-
 type Extmark = 
   {
     ns: int
@@ -421,7 +407,6 @@ type RedrawCommand =
 | UnknownCommand of data: obj
 ///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
-| SignUpdate of bufnr: int * signs: SignPlacement[]
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -692,12 +677,6 @@ let parse_extmark =
   function
   | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; Integer32 e |] 
       -> Some({ns = a; mark = b; startRow = c; endRow = d; col = e})
-  | _ -> None
-
-let parse_placement =
-  function
-  | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; |] 
-      -> Some({mark = a; widget = b; w = c; h = d})
   | _ -> None
 
 let parse_win_extmarks = 

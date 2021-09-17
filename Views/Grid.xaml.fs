@@ -30,6 +30,7 @@ open model
 open Avalonia.Input.TextInput
 open Avalonia.Input
 open Avalonia.Media
+open Avalonia.Layout
 
 type Grid() as this =
   inherit Canvas()
@@ -356,22 +357,24 @@ type Grid() as this =
 
     // gui widgets
     do
-      use clip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
       let placements = getGuiWidgetPlacements vm.BufNr
       for r = 0 to vm.Rows - 1 do
         for c = 0 to vm.Cols - 1 do
           for {ns = ns; mark = mark} in vm.[r,c].marks do
             if ns = model.guiwidgetNamespace then
               match (placements.TryGetValue mark) with
-              | true, {widget=wid; w=w; h=h} ->
+              | true, ({widget=wid; w=w; h=h} as p) ->
                   let r, c, w, h = float r * gh, float c * gw, float w * gw, float h * gh
+                  let bounds = Rect(vm_x + c, vm_y + r, w, h)
+                  use _clip = ctx.PushClip(bounds)
                   let widget = getGuiWidget wid
                   match widget with
                   | BitmapWidget img ->
-                    ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
+                    let src, dst = p.GetDrawingBounds img.Size bounds
+                    ctx.DrawImage(img, src, dst)
                   | VectorImageWidget img ->
-                    ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
-                    ctx.DrawRectangle(new Pen(m_gadget_brush), Rect(vm_x + c, vm_y + r, w, h))
+                    ctx.DrawImage(img, bounds)
+                    ctx.DrawRectangle(new Pen(m_gadget_brush), bounds)
                   | _ -> ()
               | _ -> ()
     // scrollbar
@@ -407,7 +410,8 @@ type Grid() as this =
       let sign_h = max (vm_h / line_count) 4.0
       let xl = vm_x + vm_w - bar_w
       let xr = vm_x + vm_w - sign_w
-      for {line=line;kind=kind} in vm.Signs do
+      let signs = getSignPlacements vm.BufNr
+      for {line=line;kind=kind} in signs do
         let color,sx = match kind with
                        | SignKind.Warning -> Colors.Green,xr
                        | SignKind.Error -> Colors.Red,xr
@@ -442,10 +446,10 @@ type Grid() as this =
         //  Input handling
         this.TextInput |> subscribeAndHandleInput(fun e vm -> vm.OnTextInput e)
         this.KeyDown |> subscribeAndHandleInput(fun e vm -> vm.OnKey e)
-        this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this)
-        this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
-        this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
-        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this) 
+        this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this m_gadget_enable)
+        this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this m_gadget_enable)
+        this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this m_gadget_enable)
+        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this m_gadget_enable)
 
         //  Theming
         theme.themeconfig_ev.Publish 

@@ -78,7 +78,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_row  = 0
     let mutable m_scrollbar_col  = 0
     let mutable m_scrollbar_linecount = 0
-    let mutable m_signs          = [||]
     let mutable m_extmarks       = hashmap[] // tracks existing extmarks -- some may be scrolled out of viewport
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
@@ -425,7 +424,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
         | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
-        | SignUpdate(bufnr, signs)                                           -> if bufnr = m_bufnr then m_signs <- signs
         | WinExtmarks(win, marks)                                            -> if win = m_winhnd then putExtmarks marks
         | x -> trace _gridid "unimplemented command: %A" x
 
@@ -673,14 +671,11 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         #if DEBUG
             trace _gridid "bufnr updated to %d" bufnr
         #endif
-            if m_bufnr <> bufnr then
-              m_signs <- [||]
             m_bufnr <- bufnr
         elif bufnr = m_bufnr then // but current win is not found in the array
         #if DEBUG
             trace _gridid "bufnr %d detached" bufnr
         #endif
-            m_signs <- [||]
             m_bufnr <- 0
 
     (*******************   Exposed properties   ***********************)
@@ -747,7 +742,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ScrollbarData = m_scrollbar_top,m_scrollbar_bot,m_scrollbar_row,m_scrollbar_col,m_scrollbar_linecount
     member __.IsFloat = m_is_float
     member __.IsMsg = m_is_msg
-    member __.Signs = m_signs
     member __.BufNr = m_bufnr
 
     static member MakeGridComparer() =
@@ -765,7 +759,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.OnKey (e: KeyEventArgs) = 
         raiseInputEvent _gridid <| InputEvent.Key(e.KeyModifiers, e.Key)
 
-    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
+    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
@@ -774,7 +768,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             m_mouse_pressed_vm <- vm
             raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
-    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
+    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
@@ -783,7 +777,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             let r, c = (y-ar),(x-ac)
             raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
-    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
+    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
@@ -797,7 +791,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 #endif
                 raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)
 
-    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
+    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let _, _, vm, r, c, _ = this.FindTargetVm y x

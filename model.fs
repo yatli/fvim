@@ -176,7 +176,7 @@ module private ModelImpl =
                             else SignKind.Other
                         { line = ln; kind = kind }
                     )
-        broadcast (SignUpdate(bufnr, signs))
+        loadSignPlacements bufnr signs
 
     let onGuiWidgetPut [| obj |] =
         match obj with
@@ -194,7 +194,8 @@ module private ModelImpl =
           #if DEBUG
           trace $"onGuiWidgetUpdateView: buf = {buf}, #placements={placements.Length}"
           #endif
-        | _ -> ()
+        | _ -> 
+          trace $"onGuiWidgetUpdateView: unrecognized arguments: %A{obj}"
 
 
 let private _appLifetime = lazy(Avalonia.Application.Current.ApplicationLifetime :?> Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)

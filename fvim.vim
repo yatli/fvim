@@ -74,13 +74,22 @@ function! s:fvim_on_vim_enter()
   call rpcnotify(g:fvim_channel, 'OnInitComplete')
 endfunction
 
-function FVimTestGuiWidget()
-  let w1 = GuiWidgetPut("F:/test/1.png","image/png")
-  let w2 = GuiWidgetPut("F:/test/2.png","image/png")
-  call GuiWidgetPlace(w1, 0, 2, 0, 20, 5)
-  call GuiWidgetPlace(w2, 0, 7, 0, 20, 5)
-  call GuiWidgetUpdateView(0)
-endfunction
+lua <<EOF
+fvim_test_gui = function()
+  local gui = require('gui-widgets')
+  local w1 = gui.put("F:/test/push_1.png","image/png")
+  local w2 = gui.put("F:/test/push_2.png","image/png")
+  gui.place(w1, 0, 0, 0, 8, 2, {
+    ['clicked-widget']=w2;
+    ['clicked-exec']='silent call VsimToggleColor()';
+    ['released-widget']=w1;
+    ['halign']='center';
+    ['valign']='center';
+    ['stretch']='uniform';
+  })
+  gui.update_view(0)
+end
+EOF
 
 augroup FVim
   autocmd BufWinEnter * call s:fvim_on_bufwinenter()
