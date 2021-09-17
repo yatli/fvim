@@ -27,7 +27,6 @@ open FSharp.Control.Tasks.V2
 open System.Runtime.InteropServices
 
 let inline private trace x = trace "model" x
-let mutable guiwidgetNamespace = -1
 
 [<AutoOpen>]
 module private ModelImpl =
@@ -675,3 +674,10 @@ let GetBufferPath (win: int) =
         | _ -> return ""
     }
 
+let GuiWidgetMouseUp (buf: int) (mark: int) =
+   nvim.exec_lua $"require('gui-widgets').mouse_up({buf},{mark})" [||]
+   |> runAsync
+
+let GuiWidgetMouseDown (buf: int) (mark: int) =
+   nvim.exec_lua $"require('gui-widgets').mouse_down({buf},{mark})" [||]
+   |> runAsync

@@ -30,6 +30,9 @@ type GridBufferCell =
         mutable marks: Extmark list
     } 
     with 
+    member cell.ContainsMark markid =
+      cell.marks
+      |> List.exists (fun (x: Extmark) -> x.mark = markid)
     static member CreateGrid r c =
       Array2D.init r c (fun _ _ -> { text  = Rune.empty; hlid = 0; marks = [] })
     // copies the line from src to dst, and then refill the dst with "new cells"

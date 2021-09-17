@@ -13,6 +13,7 @@ open FSharp.Control.Reactive
 
 open System
 open model
+open widgets
 open System.Collections.Generic
 
 #nowarn "0025"
@@ -48,6 +49,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_mouse_en       = true
     let mutable m_mouse_pressed  = MouseButton.None
     let mutable m_mouse_pressed_vm = this
+    let mutable m_mouse_pressed_widget = -1
     let mutable m_mouse_pos      = 0,0
 
     let mutable m_gridsize       = _d { rows = 10; cols= 10 } _gridsize
@@ -78,7 +80,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_row  = 0
     let mutable m_scrollbar_col  = 0
     let mutable m_scrollbar_linecount = 0
-    let mutable m_extmarks       = hashmap[] // tracks existing extmarks -- some may be scrolled out of viewport
+    let mutable m_extmarks       = hashmap[] // tracks existing extmarks and last known position -- some may be scrolled out of viewport
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -238,11 +240,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
       for mark in M do
         let { mark = id; startRow = row; col = col } = mark
         match m_extmarks.TryGetValue id with
-        | true, cell -> 
-          let ms = rm cell.marks id
-          cell.marks <- ms
+        | true, (mark, cell, r, c) -> 
+          cell.marks <- rm cell.marks id
         | _ -> ()
-        m_extmarks.[id] <- m_gridbuffer.[row, col]
+        m_extmarks.[id] <- (mark, m_gridbuffer.[row, col], row, col)
         m_gridbuffer.[row, col].marks <- mark :: m_gridbuffer.[row, col].marks
 
     let changeMode (name: string) (index: int) = 
@@ -743,6 +744,18 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.IsFloat = m_is_float
     member __.IsMsg = m_is_msg
     member __.BufNr = m_bufnr
+    member __.Extmarks = m_extmarks
+    member __.FindTargetWidget (r: int) (c: int) =
+      let placements = getGuiWidgetPlacements m_bufnr
+      m_extmarks.Values
+      |> Seq.tryPick(fun ({ns = ns; mark = mark},cell,cr,cc) -> 
+        if ns <> guiwidgetNamespace || not(cell.ContainsMark mark) then None else
+        match placements.TryGetValue mark with
+        | false, _ -> None
+        | true, {w=w;h=h} -> 
+        if cr <= r && r < cr + h && cc <= c && c < cc + w then Some mark
+        else None)
+      |> Option.defaultValue -1
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
@@ -766,7 +779,14 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             //raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
             let _, _, vm, r, c, _ = this.FindTargetVm y x
             m_mouse_pressed_vm <- vm
-            raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
+            let wid = 
+              if not gadgetsEnable then -1
+              else vm.FindTargetWidget r c 
+            if wid > 0 then
+              m_mouse_pressed_widget <- wid
+              model.GuiWidgetMouseDown vm.BufNr wid
+            else
+              raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en then
@@ -775,7 +795,11 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             //raiseInputEvent _gridid <| InputEvent.MouseRelease(e.KeyModifiers, y, x, button)
             let ar,ac = m_mouse_pressed_vm.AbsAnchor
             let r, c = (y-ar),(x-ac)
-            raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
+            if m_mouse_pressed_widget > 0 then
+              model.GuiWidgetMouseUp m_mouse_pressed_vm.BufNr m_mouse_pressed_widget
+              m_mouse_pressed_widget <- -1
+            else
+              raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
@@ -786,10 +810,13 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 //raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
                 let ar,ac = m_mouse_pressed_vm.AbsAnchor
                 let r,c = (y-ar),(x-ac)
-                #if DEBUG
-                trace m_mouse_pressed_vm.GridId "mousemove: %d %d" r c
-                #endif
-                raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)
+                if gadgetsEnable && m_mouse_pressed_widget > 0 then 
+                  ()
+                else
+                  #if DEBUG
+                  trace m_mouse_pressed_vm.GridId "mousemove: %d %d" r c
+                  #endif
+                  raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
         if m_mouse_en then

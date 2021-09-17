@@ -9,6 +9,8 @@ open Avalonia
 open Avalonia.Layout
 open Avalonia.Media
 
+let mutable guiwidgetNamespace = -1
+
 type SignPlacement =
     {
         line: int
@@ -120,3 +122,4 @@ let getSignPlacements (buf:int) =
   match sign_placements.TryGetValue buf with
   | true, p -> p
   | _ -> _no_sign_placements
+

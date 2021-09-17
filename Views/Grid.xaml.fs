@@ -358,25 +358,24 @@ type Grid() as this =
     // gui widgets
     do
       let placements = getGuiWidgetPlacements vm.BufNr
-      for r = 0 to vm.Rows - 1 do
-        for c = 0 to vm.Cols - 1 do
-          for {ns = ns; mark = mark} in vm.[r,c].marks do
-            if ns = model.guiwidgetNamespace then
-              match (placements.TryGetValue mark) with
-              | true, ({widget=wid; w=w; h=h} as p) ->
-                  let r, c, w, h = float r * gh, float c * gw, float w * gw, float h * gh
-                  let bounds = Rect(vm_x + c, vm_y + r, w, h)
-                  use _clip = ctx.PushClip(bounds)
-                  let widget = getGuiWidget wid
-                  match widget with
-                  | BitmapWidget img ->
-                    let src, dst = p.GetDrawingBounds img.Size bounds
-                    ctx.DrawImage(img, src, dst)
-                  | VectorImageWidget img ->
-                    ctx.DrawImage(img, bounds)
-                    ctx.DrawRectangle(new Pen(m_gadget_brush), bounds)
-                  | _ -> ()
+      for ({ns = ns; mark = mark}, cell, r, c) in vm.Extmarks.Values do
+        // if cell.marks does not have this mark, it means cell has scrolled out of view.
+        if ns = guiwidgetNamespace && cell.ContainsMark mark then
+          match (placements.TryGetValue mark) with
+          | true, ({widget=wid; w=w; h=h} as p) ->
+              let r, c, w, h = float r * gh, float c * gw, float w * gw, float h * gh
+              let bounds = Rect(vm_x + c, vm_y + r, w, h)
+              use _clip = ctx.PushClip(bounds)
+              let widget = getGuiWidget wid
+              match widget with
+              | BitmapWidget img ->
+                let src, dst = p.GetDrawingBounds img.Size bounds
+                ctx.DrawImage(img, src, dst)
+              | VectorImageWidget img ->
+                ctx.DrawImage(img, bounds)
+                ctx.DrawRectangle(new Pen(m_gadget_brush), bounds)
               | _ -> ()
+          | _ -> ()
     // scrollbar
     // todo mouse over opacity adjustment
     let bar_w = 8.0
