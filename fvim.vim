@@ -71,10 +71,7 @@ endfunction
 
 function! s:fvim_on_vim_enter()
   runtime! ginit.vim
-  if exists("g:gui_widgets")
-    call GuiWidgetClientAttach(g:fvim_channel)
-  endif
-  let g:fvim_ginit_complete = v:true
+  call rpcnotify(g:fvim_channel, 'OnInitComplete')
 endfunction
 
 function FVimTestGuiWidget()
@@ -82,6 +79,7 @@ function FVimTestGuiWidget()
   let w2 = GuiWidgetPut("F:/test/2.png","image/png")
   call GuiWidgetPlace(w1, 0, 2, 0, 20, 5)
   call GuiWidgetPlace(w2, 0, 7, 0, 20, 5)
+  call GuiWidgetUpdateView(0)
 endfunction
 
 augroup FVim

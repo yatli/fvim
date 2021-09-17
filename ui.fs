@@ -23,14 +23,23 @@ type InputEvent =
 | MouseWheel   of mods: KeyModifiers * row: int * col: int * dx: float * dy: float
 | TextInput    of text: string
 
-
-[<Struct>]
 type GridBufferCell =
     {
         mutable text:  Rune
         mutable hlid:  int32
+        mutable marks: Extmark list
     } 
-    with static member empty = { text  = Rune.empty; hlid = 0 }
+    with 
+    static member CreateGrid r c =
+      Array2D.init r c (fun _ _ -> { text  = Rune.empty; hlid = 0; marks = [] })
+    // copies the line from src to dst, and then refill the dst with "new cells"
+    static member MoveLine (grid: GridBufferCell[,]) src dst left right =
+      for c = left to right - 1 do
+        // since the "dst" line will be overwritten, we may say it's really new cells...
+        let tmp = grid.[dst,c]
+        grid.[dst,c] <- grid.[src,c]
+        grid.[src,c] <- tmp
+        tmp.marks <- []
 
 [<Struct>]
 type GridSize =

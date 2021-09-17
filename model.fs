@@ -27,6 +27,7 @@ open FSharp.Control.Tasks.V2
 open System.Runtime.InteropServices
 
 let inline private trace x = trace "model" x
+let mutable guiwidgetNamespace = -1
 
 [<AutoOpen>]
 module private ModelImpl =
@@ -114,9 +115,8 @@ module private ModelImpl =
         | PopupMenuShow _
         | PopupMenuSelect _             | PopupMenuHide _
         | Busy _                        | Mouse _
-        | ModeChange _
-        | GridCursorGoto _
-                                            -> broadcast cmd
+        | ModeChange _                  | GridCursorGoto _
+        | WinExtmarks _                     -> broadcast cmd
         //  Unicast
         | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
         | WinClose id                   | WinHide(id) 
@@ -151,6 +151,19 @@ module private ModelImpl =
         trace "Grid #%d resized to %d %d" gridui.Id gridui.GridWidth gridui.GridHeight
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
+    let onInitComplete _ =
+      async {
+        trace "init complete."
+        // watch gui-widgets extmark namespace
+        match! nvim.call { method = "nvim_get_namespaces"; parameters = [||] } with
+        | Ok(FindKV("GuiWidget")(Integer32 id)) -> 
+          trace "nvim supports gui-widgets."
+          let! _ = nvim.call { method = "nvim_ui_watch_extmark"; parameters = mkparams1 id }
+          let! _ = nvim.call { method = "nvim_call_function"; parameters = mkparams2 "GuiWidgetClientAttach" (mkparams1 channel_id) }
+          guiwidgetNamespace <- id
+        | _ -> ()
+      } |> runAsync
+
     let onSignUpdate [| Integer32 bufnr; signs |] =
         let signs = parseBufferSignPlacements signs
                     |> Array.map (fun (ln,name) -> 
@@ -168,21 +181,19 @@ module private ModelImpl =
     let onGuiWidgetPut [| obj |] =
         match obj with
         | FindKV("id")(Integer32 id) & FindKV("data")(ByteArray data) & FindKV("mime")(String mime) ->
+            #if DEBUG
             trace "onGuiWidgetPut: id = %d mime = %s, data len: %d" id mime (data.Length)
+            #endif
             loadGuiResource id mime data
         | _ -> ()
 
     let onGuiWidgetUpdateView [| obj |] =
         match obj with
-        | FindKV("buf")(Integer32 buf) & FindKV("widgets")(ObjArray widgets) ->
-          let widgets = 
-              widgets
-              |> Array.choose(
-                function 
-                | ObjArray([| Integer32(wid); Integer32(r); Integer32(c); Integer32(w); Integer32(h)  |]) -> Some(wid,r,c,w,h) 
-                | _ -> None)
-          broadcast (GuiWidgetUpdate (buf, widgets))
-          trace $"onGuiWidgetUpdateView: buf = {buf}, #widgets={widgets.Length}"
+        | FindKV("buf")(Integer32 buf) & FindKV("widgets")(PX(parse_placement)placements) ->
+          loadGuiWidgetPlacements buf placements
+          #if DEBUG
+          trace $"onGuiWidgetUpdateView: buf = {buf}, #placements={placements.Length}"
+          #endif
         | _ -> ()
 
 
@@ -384,6 +395,7 @@ let Start (serveropts, norc, remote) =
         rpc.register.watch "ui" ev_uiopt.Trigger
         rpc.register.watch "font" theme.fontConfig
         rpc.register.watch "font" ui.InvalidateFontCache
+        rpc.register.notify "OnInitComplete" onInitComplete
         rpc.register.notify "OnSignUpdate" onSignUpdate
         rpc.register.notify "GuiWidgetPut" onGuiWidgetPut
         rpc.register.notify "GuiWidgetUpdateView" onGuiWidgetUpdateView
@@ -584,21 +596,24 @@ let OnGridReady(gridui: IGridUI) =
         async {
           let! _ = nvim.set_var "fvim_render_scale" gridui.RenderScale
           let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
-          let! _ = nvim.command "execute \"autocmd InsertEnter * call rpcnotify(g:fvim_channel, 'EnableIme', v:true)\""
-          let! _ = nvim.command "execute \"autocmd InsertLeave * call rpcnotify(g:fvim_channel, 'EnableIme', v:false)\""
-
+          let! _ = nvim.exec "autocmd InsertEnter * call rpcnotify(g:fvim_channel, 'EnableIme', v:true)" false
+          let! _ = nvim.exec "autocmd InsertLeave * call rpcnotify(g:fvim_channel, 'EnableIme', v:false)" false
           in ()
         } |> runAsync
 
+let private _pum_arg4: hashmap<obj,obj> = hashmap[]
+
 let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
+  #if DEBUG
     trace "SelectPopupMenuItem: index=%d insert=%b finish=%b" index insert finish
-    let insert = if insert then "v:true" else "v:false"
-    let finish = if finish then "v:true" else "v:false"
-    nvim.command (sprintf "call nvim_select_popupmenu_item(%d, %s, %s, {})" index insert finish)
-    |> runAsync
+  #endif
+    nvim.call { method = "nvim_select_popupmenu_item"; parameters = mkparams4 index insert finish _pum_arg4 }
+              |> runAsync
 
 let SetPopupMenuPos width height row col =
+  #if DEBUG
     trace "SetPopupMenuPos: w=%f h=%f r=%f c=%f" width height row col
+  #endif
     nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
     |> runAsync
 

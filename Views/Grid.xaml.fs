@@ -353,6 +353,27 @@ type Grid() as this =
     let view_top,view_bot,cur_row,line_count = 
       let top,bot,row,_,lc = vm.ScrollbarData
       float top, float bot, float row, float lc
+
+    // gui widgets
+    do
+      use clip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
+      let placements = getGuiWidgetPlacements vm.BufNr
+      for r = 0 to vm.Rows - 1 do
+        for c = 0 to vm.Cols - 1 do
+          for {ns = ns; mark = mark} in vm.[r,c].marks do
+            if ns = model.guiwidgetNamespace then
+              match (placements.TryGetValue mark) with
+              | true, {widget=wid; w=w; h=h} ->
+                  let r, c, w, h = float r * gh, float c * gw, float w * gw, float h * gh
+                  let widget = getGuiWidget wid
+                  match widget with
+                  | BitmapWidget img ->
+                    ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
+                  | VectorImageWidget img ->
+                    ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
+                    ctx.DrawRectangle(new Pen(m_gadget_brush), Rect(vm_x + c, vm_y + r, w, h))
+                  | _ -> ()
+              | _ -> ()
     // scrollbar
     // todo mouse over opacity adjustment
     let bar_w = 8.0
@@ -398,20 +419,6 @@ type Grid() as this =
         m_gadget_brush.Color <- color
         m_gadget_brush.Opacity <- 1.0
         ctx.FillRectangle(m_gadget_brush, Rect(sx, vm_y + sy, sign_w, sign_h))
-
-    // gui widgets
-    do
-      use clip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
-      for (wid,r,c,w,h) in vm.Widgets do
-        let r, c, w, h = (float r - view_top) * gh, float (c + 4) * gw, float w * gw, float h * gh
-        let widget = getGuiWidget wid
-        match widget with
-        | BitmapWidget img ->
-          ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
-        | VectorImageWidget img ->
-          ctx.DrawImage(img, Rect(vm_x + c, vm_y + r, w, h))
-          ctx.DrawRectangle(new Pen(m_gadget_brush), Rect(vm_x + c, vm_y + r, w, h))
-        | _ -> ()
 
   do
     this.Watch

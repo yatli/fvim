@@ -306,6 +306,23 @@ type SignPlacement =
         kind: SignKind
     }
 
+type WidgetPlacement = 
+  {
+    mark: int
+    widget: int
+    w: int
+    h: int
+  }
+
+type Extmark = 
+  {
+    ns: int
+    mark: int
+    startRow: int
+    endRow: int
+    col: int
+  }
+
 type RedrawCommand =
 ///  -- global --
 | SetOption of UiOption[]
@@ -361,6 +378,11 @@ type RedrawCommand =
 ///  `botline` is set to one more than the line count of the buffer, if
 ///  there are filler lines past the end.
 | WinViewport of grid:int * win: int * topline: int * botline: int * curline: int * curcol: int * linecount: int
+///  Updates the position of an extmark which is currently visible in a
+///	 window. Only emitted after the client calls `nvim_ui_watch_extmark` to
+///	 watch for a specific namespace `ns_id`. `start_row`, `end_row` and
+///	 `start_col` are relative to the window.
+| WinExtmarks of win: int * marks: Extmark[]
 ///  Display messages on `grid`.  The grid will be displayed at `row` on the
 ///  default grid (grid=1), covering the full column width. `scrolled`
 ///  indicates whether the message area has been scrolled to cover other
@@ -400,7 +422,6 @@ type RedrawCommand =
 ///  --------- Custom messages -----------
 | MultiRedrawCommand of xs: RedrawCommand []
 | SignUpdate of bufnr: int * signs: SignPlacement[]
-| GuiWidgetUpdate of buf: int * placements: (int*int*int*int*int)[]
 
 type EventParseException(data: obj) =
     inherit exn()
@@ -667,6 +688,24 @@ let parse_int_singleton =
         -> Some(i)
     | _ -> None
 
+let parse_extmark =
+  function
+  | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; Integer32 e |] 
+      -> Some({ns = a; mark = b; startRow = c; endRow = d; col = e})
+  | _ -> None
+
+let parse_placement =
+  function
+  | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; |] 
+      -> Some({mark = a; widget = b; w = c; h = d})
+  | _ -> None
+
+let parse_win_extmarks = 
+    function
+    | ObjArray [| (Integer32 win); ObjArray(PX(parse_extmark)data) |] 
+        -> Some(WinExtmarks(win, data))
+    | _ -> None
+
 let unwrap_multi xs =
     match xs with
     | [| one |] -> one
@@ -707,6 +746,7 @@ let parse_redrawcmd (x: obj) =
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C("win_close", PX(parse_int_singleton)ids)                                           -> ids |> Array.map(WinClose) |> unwrap_multi
     | C("win_viewport", PX(parse_win_viewport)cmds)                                        -> unwrap_multi cmds
+    | C("win_extmarks", PX(parse_win_extmarks)cmds)                                        -> unwrap_multi cmds
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
         (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)

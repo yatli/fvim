@@ -52,7 +52,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let mutable m_gridsize       = _d { rows = 10; cols= 10 } _gridsize
     let mutable m_gridscale      = 1.0
-    let mutable m_gridbuffer     = Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
+    let mutable m_gridbuffer     = GridBufferCell.CreateGrid m_gridsize.rows m_gridsize.cols
     let mutable m_griddirty      = false // if true, the whole grid needs to be redrawn.
     let mutable m_fontsize       = theme.fontsize
     let mutable m_glyphsize      = Size(10.0, 10.0)
@@ -79,7 +79,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_col  = 0
     let mutable m_scrollbar_linecount = 0
     let mutable m_signs          = [||]
-    let mutable m_widgets        = [||]
+    let mutable m_extmarks       = hashmap[] // tracks existing extmarks -- some may be scrolled out of viewport
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -185,7 +185,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let clearBuffer preserveContent =
         let oldgrid = m_gridbuffer
-        m_gridbuffer <- Array2D.create m_gridsize.rows m_gridsize.cols GridBufferCell.empty
+        m_gridbuffer <- GridBufferCell.CreateGrid m_gridsize.rows m_gridsize.cols
         if preserveContent then
             let crow = 
                 Array2D.length1 oldgrid
@@ -229,6 +229,22 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 m_gridbuffer.[row, col].text <- cell.text
                 col <- col + 1
         markDirty { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
+
+    let putExtmarks (M: Extmark[]) =
+      let rec rm (l: Extmark list) (id: int) =
+        match l with
+        | [] -> []
+        | {mark = mark} :: rest when mark = id -> rm rest id
+        | x :: rest -> x :: (rm rest id)
+      for mark in M do
+        let { mark = id; startRow = row; col = col } = mark
+        match m_extmarks.TryGetValue id with
+        | true, cell -> 
+          let ms = rm cell.marks id
+          cell.marks <- ms
+        | _ -> ()
+        m_extmarks.[id] <- m_gridbuffer.[row, col]
+        m_gridbuffer.[row, col].marks <- mark :: m_gridbuffer.[row, col].marks
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
@@ -285,7 +301,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
         let copy src dst =
             if src >= 0 && src < m_gridsize.rows && dst >= 0 && dst < m_gridsize.rows then
-                Array.Copy(m_gridbuffer, src * m_gridsize.cols + left, m_gridbuffer, dst * m_gridsize.cols + left, right - left)
+              GridBufferCell.MoveLine m_gridbuffer src dst left right
 
         if rows > 0 then
             for i = top + rows to bot do
@@ -410,7 +426,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
         | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
         | SignUpdate(bufnr, signs)                                           -> if bufnr = m_bufnr then m_signs <- signs
-        | GuiWidgetUpdate(bufnr, widgets)                                    -> if bufnr = m_bufnr then m_widgets <- widgets
+        | WinExtmarks(win, marks)                                            -> if win = m_winhnd then putExtmarks marks
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
@@ -659,14 +675,12 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         #endif
             if m_bufnr <> bufnr then
               m_signs <- [||]
-              m_widgets <- [||]
             m_bufnr <- bufnr
         elif bufnr = m_bufnr then // but current win is not found in the array
         #if DEBUG
             trace _gridid "bufnr %d detached" bufnr
         #endif
             m_signs <- [||]
-            m_widgets <- [||]
             m_bufnr <- 0
 
     (*******************   Exposed properties   ***********************)
@@ -734,7 +748,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.IsFloat = m_is_float
     member __.IsMsg = m_is_msg
     member __.Signs = m_signs
-    member __.Widgets = m_widgets
+    member __.BufNr = m_bufnr
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
