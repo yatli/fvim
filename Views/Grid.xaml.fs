@@ -283,8 +283,11 @@ type Grid() as this =
     _drawVMs.Add(vm)
     vm.ChildGrids |> Seq.iter scanDrawVMs
 
-  let drawOps (vm: GridViewModel) = 
+  let drawOps (vm: GridViewModel) gw gh = 
     let abs_r,abs_c = vm.AbsAnchor
+    // clip each vm individually to prevent shaped text run overflow into the root grid...
+    let vm_bounds = Rect(float abs_c * gw, float abs_r * gh, float vm.Cols * gw, float vm.Rows * gh)
+    grid_dc.PushClip(vm_bounds)
     // if other grids tainted the region, mark it dirty
     let touched = _drawnRegions 
                   |> Seq.exists(fun(r,c,ce) -> 
@@ -301,6 +304,7 @@ type Grid() as this =
         for row = 0 to vm.Rows - 1 do
             drawBufferLine vm grid_dc row 0 vm.Cols
             _drawnRegions.Add(row + abs_r, abs_c, vm.Cols + abs_c)
+        grid_dc.PopClip()
         true
     else
     // not tainted. can draw with my draw ops.
@@ -337,6 +341,8 @@ type Grid() as this =
         m_gadget_enable <- false // hide gadgets to avoid overlapping...
     if vm.IsFloat then
         m_gadget_enable <- false // hide gadgets to avoid overlapping...
+
+    grid_dc.PopClip()
     vm.DrawOps.Count <> 0
 
   /// draw add-ons attached to the grids. for example:
@@ -475,9 +481,15 @@ type Grid() as this =
     m_gadget_enable <- true
     scanDrawVMs grid_vm
     _drawVMs.Sort(m_gridComparer)
+
+    // let's assume grid_fb is aligned with root vm row x col.
+    // children vm.GlyphHeight/vm.GlyphWidth don't work well here
+    // calculate the proper values now:
+    let gw,gh = grid_fb.Size.Width/float grid_vm.Cols,grid_fb.Size.Height/float grid_vm.Rows
+
     let mutable drawn = false
     for vm in _drawVMs do
-        let drawn' = drawOps vm
+        let drawn' = drawOps vm gw gh
         drawn <- drawn || drawn'
     if m_debug then drawDebug grid_dc
     grid_dc.PopClip()
@@ -488,10 +500,6 @@ type Grid() as this =
     let tgt_rect = Rect(0.0, 0.0, grid_fb.Size.Width, grid_fb.Size.Height)
 
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.LowQuality)
-    // let's assume grid_fb is aligned with root vm row x col.
-    // vm.GlyphHeight/vm.GlyphWidth don't work well here because it's for Skia/Harfbuzz.
-    // calculate the proper values now:
-    let gw,gh = grid_fb.Size.Width/float grid_vm.Cols,grid_fb.Size.Height/float grid_vm.Rows
     for vm in _drawVMs do
         // do not draw gadgets for the root grid / floating windows (borders only)
         if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg && m_gadget_enable then 
