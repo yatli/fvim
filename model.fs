@@ -115,7 +115,8 @@ module private ModelImpl =
         | PopupMenuSelect _             | PopupMenuHide _
         | Busy _                        | Mouse _
         | ModeChange _                  | GridCursorGoto _
-        | WinExtmarks _                     -> broadcast cmd
+        | WinExtmarks _                 
+        | WinExtmarksClear _                -> broadcast cmd
         //  Unicast
         | GridClear id                  | GridScroll(id,_,_,_,_,_,_)    
         | WinClose id                   | WinHide(id) 

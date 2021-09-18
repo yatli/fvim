@@ -24,6 +24,12 @@ module private GridViewModelHelper =
 
 open GridViewModelHelper
 
+type TrackedGridPosition =
+  {
+    mutable trow: int
+    mutable tcol: int
+  }
+
 [<Struct>]
 type GridDrawOperation = 
   | Scroll of int * int * int * int * int * int
@@ -214,7 +220,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
           #endif
           clearBuffer preserveContent
 
-    let putBuffer (M: ReadOnlyMemory<_>) =
+    let putBuffer (M: ReadOnlyMemory<GridLine>) =
       //if _gridid = 1 then
       //    trace _gridid "putBuffer"
       for line in M.Span do
@@ -228,22 +234,36 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             for _i = 1 to rep do
                 m_gridbuffer.[row, col].hlid <- hlid
                 m_gridbuffer.[row, col].text <- cell.text
+                for m in m_gridbuffer.[row, col].marks do
+                  m_extmarks.Remove m.mark |> ignore
+                m_gridbuffer.[row, col].marks <- []
                 col <- col + 1
         markDirty { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
 
+    let clearMarks() =
+      for _,cell,_ in m_extmarks.Values do
+        cell.marks <- []
+      m_extmarks.Clear()
+    #if DEBUG
+      trace _gridid $"clearMarks"
+    #endif
+
     let putExtmarks (M: Extmark[]) =
+    #if DEBUG
+      trace _gridid $"putExtmarks:\n%A{M}"
+    #endif
       let rec rm (l: Extmark list) (id: int) =
         match l with
         | [] -> []
         | {mark = mark} :: rest when mark = id -> rm rest id
         | x :: rest -> x :: (rm rest id)
       for mark in M do
-        let { mark = id; startRow = row; col = col } = mark
+        let { mark = id; row = row; col = col } = mark
         match m_extmarks.TryGetValue id with
-        | true, (mark, cell, r, c) -> 
+        | true, (_, cell, _) -> 
           cell.marks <- rm cell.marks id
         | _ -> ()
-        m_extmarks.[id] <- (mark, m_gridbuffer.[row, col], row, col)
+        m_extmarks.[id] <- (mark, m_gridbuffer.[row, col], { trow = row; tcol = col })
         m_gridbuffer.[row, col].marks <- mark :: m_gridbuffer.[row, col].marks
 
     let changeMode (name: string) (index: int) = 
@@ -299,9 +319,23 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         trace _gridid "scroll: %A %A %A %A %A %A" top bot left right rows cols
         #endif
 
+        // copies the line from src to dst, and then refill the dst with "new cells"
         let copy src dst =
             if src >= 0 && src < m_gridsize.rows && dst >= 0 && dst < m_gridsize.rows then
-              GridBufferCell.MoveLine m_gridbuffer src dst left right
+              for c = left to right - 1 do
+                // since the "dst" line will be overwritten, we may say it's really new cells...
+                let dst_cell = m_gridbuffer.[dst,c]
+                let src_cell = m_gridbuffer.[src,c]
+                m_gridbuffer.[dst,c] <- src_cell
+                m_gridbuffer.[src,c] <- dst_cell
+                // update src row marks -> dst row
+                for m in src_cell.marks do
+                  let _,_,pos = m_extmarks.[m.mark]
+                  pos.trow <- dst
+                // remove dst row marks
+                for m in dst_cell.marks do
+                  m_extmarks.Remove m.mark |> ignore
+                dst_cell.marks <- []
 
         if rows > 0 then
             for i = top + rows to bot do
@@ -426,6 +460,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
         | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
         | WinExtmarks(win, marks)                                            -> if win = m_winhnd then putExtmarks marks
+        | WinExtmarksClear(win)                                              -> if win = m_winhnd then clearMarks()
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
@@ -748,7 +783,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.FindTargetWidget (r: int) (c: int) =
       let placements = getGuiWidgetPlacements m_bufnr
       m_extmarks.Values
-      |> Seq.tryPick(fun ({ns = ns; mark = mark},cell,cr,cc) -> 
+      |> Seq.tryPick(fun ({ns = ns; mark = mark},cell,{trow=cr;tcol=cc}) -> 
         if ns <> guiwidgetNamespace || not(cell.ContainsMark mark) then None else
         match placements.TryGetValue mark with
         | false, _ -> None

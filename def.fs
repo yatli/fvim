@@ -304,8 +304,7 @@ type Extmark =
   {
     ns: int
     mark: int
-    startRow: int
-    endRow: int
+    row: int
     col: int
   }
 
@@ -369,6 +368,7 @@ type RedrawCommand =
 ///	 watch for a specific namespace `ns_id`. `start_row`, `end_row` and
 ///	 `start_col` are relative to the window.
 | WinExtmarks of win: int * marks: Extmark[]
+| WinExtmarksClear of win: int
 ///  Display messages on `grid`.  The grid will be displayed at `row` on the
 ///  default grid (grid=1), covering the full column width. `scrolled`
 ///  indicates whether the message area has been scrolled to cover other
@@ -673,17 +673,17 @@ let parse_int_singleton =
         -> Some(i)
     | _ -> None
 
-let parse_extmark =
-  function
-  | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; Integer32 e |] 
-      -> Some({ns = a; mark = b; startRow = c; endRow = d; col = e})
-  | _ -> None
-
-let parse_win_extmarks = 
+let parse_win_extmarks_1 = 
     function
-    | ObjArray [| (Integer32 win); ObjArray(PX(parse_extmark)data) |] 
-        -> Some(WinExtmarks(win, data))
+    | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; Integer32 e |]
+        -> Some(a,{ns=b;mark=c;row=d;col=e})
     | _ -> None
+
+let parse_win_extmarks_2 (tuples: (int*Extmark)[]) = 
+    tuples
+    |> Array.groupBy fst
+    |> Array.map(fun (win, marks) -> 
+                 WinExtmarks(win, marks |> Array.map snd))
 
 let unwrap_multi xs =
     match xs with
@@ -725,7 +725,8 @@ let parse_redrawcmd (x: obj) =
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C("win_close", PX(parse_int_singleton)ids)                                           -> ids |> Array.map(WinClose) |> unwrap_multi
     | C("win_viewport", PX(parse_win_viewport)cmds)                                        -> unwrap_multi cmds
-    | C("win_extmarks", PX(parse_win_extmarks)cmds)                                        -> unwrap_multi cmds
+    | C("win_extmarks", PX(parse_win_extmarks_1)cmds)                                      -> cmds |> parse_win_extmarks_2 |> unwrap_multi 
+    | C1("win_extmarks_clear", PX(Integer32)ids)                                           -> ids |> Array.map(WinExtmarksClear) |> unwrap_multi 
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
         (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)

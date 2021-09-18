@@ -354,11 +354,12 @@ type Grid() as this =
     let view_top,view_bot,cur_row,line_count = 
       let top,bot,row,_,lc = vm.ScrollbarData
       float top, float bot, float row, float lc
+    use _mainClipclip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
 
     // gui widgets
     do
       let placements = getGuiWidgetPlacements vm.BufNr
-      for ({ns = ns; mark = mark}, cell, r, c) in vm.Extmarks.Values do
+      for ({ns = ns; mark = mark}, cell, {trow=r;tcol=c}) in vm.Extmarks.Values do
         // if cell.marks does not have this mark, it means cell has scrolled out of view.
         if ns = guiwidgetNamespace && cell.ContainsMark mark then
           match (placements.TryGetValue mark) with
