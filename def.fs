@@ -726,7 +726,7 @@ let parse_redrawcmd (x: obj) =
     | C("win_close", PX(parse_int_singleton)ids)                                           -> ids |> Array.map(WinClose) |> unwrap_multi
     | C("win_viewport", PX(parse_win_viewport)cmds)                                        -> unwrap_multi cmds
     | C("win_extmarks", PX(parse_win_extmarks_1)cmds)                                      -> cmds |> parse_win_extmarks_2 |> unwrap_multi 
-    | C1("win_extmarks_clear", PX(Integer32)ids)                                           -> ids |> Array.map(WinExtmarksClear) |> unwrap_multi 
+    | C("win_extmarks_clear", PX(parse_int_singleton)ids)                                  -> ids |> Array.map(WinExtmarksClear) |> unwrap_multi 
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
         (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)
