@@ -49,7 +49,6 @@ type Grid() as this =
   let mutable m_debug = false
   let mutable m_me_focus = false
   let mutable m_scrollbar_fg, m_scrollbar_bg, _, _ = theme.getSemanticHighlightGroup SemanticHighlightGroup.PmenuSbar
-  let mutable m_gadget_enable = true
   let mutable m_gadget_pen = Pen()
   let mutable m_gadget_brush = SolidColorBrush()
   let m_gridComparer = GridViewModel.MakeGridComparer()
@@ -276,11 +275,14 @@ type Grid() as this =
   // prevent repetitive drawings
   let _drawnRegions = ResizeArray()
   let _drawVMs = ResizeArray()
+  let _aboveGadgetsVMs = ResizeArray()
 
   let rec scanDrawVMs (vm: GridViewModel) =
     if vm.Hidden then ()
     else
     _drawVMs.Add(vm)
+    if vm.AboveGadgets then 
+      _aboveGadgetsVMs.Add(vm)
     vm.ChildGrids |> Seq.iter scanDrawVMs
 
   let drawOps (vm: GridViewModel) gw gh = 
@@ -338,9 +340,6 @@ type Grid() as this =
             |> (fun c -> Pen(c.ToUint32(), thickness = 1.0))
         let y = float abs_r * grid_vm.GlyphHeight + 0.5
         grid_dc.DrawLine(pen, Point(0.0,y), Point(grid_fb.Size.Width, y))
-        m_gadget_enable <- false // hide gadgets to avoid overlapping...
-    if vm.IsFloat then
-        m_gadget_enable <- false // hide gadgets to avoid overlapping...
 
     grid_dc.PopClip()
     vm.DrawOps.Count <> 0
@@ -452,10 +451,10 @@ type Grid() as this =
         //  Input handling
         this.TextInput |> subscribeAndHandleInput(fun e vm -> vm.OnTextInput e)
         this.KeyDown |> subscribeAndHandleInput(fun e vm -> vm.OnKey e)
-        this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this m_gadget_enable)
-        this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this m_gadget_enable)
-        this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this m_gadget_enable)
-        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this m_gadget_enable)
+        this.PointerPressed |> subscribeAndHandleInput(fun e vm -> vm.OnMouseDown e this)
+        this.PointerReleased |> subscribeAndHandleInput(fun e vm -> vm.OnMouseUp e this)
+        this.PointerMoved |> subscribeAndHandleInput(fun e vm -> vm.OnMouseMove e this)
+        this.PointerWheelChanged |> subscribeAndHandleInput(fun e vm -> vm.OnMouseWheel e this)
 
         //  Theming
         theme.themeconfig_ev.Publish 
@@ -478,7 +477,7 @@ type Grid() as this =
 #endif
     _drawnRegions.Clear()
     _drawVMs.Clear()
-    m_gadget_enable <- true
+    _aboveGadgetsVMs.Clear()
     scanDrawVMs grid_vm
     _drawVMs.Sort(m_gridComparer)
 
@@ -501,9 +500,18 @@ type Grid() as this =
 
     ctx.DrawImage(grid_fb, src_rect, tgt_rect, BitmapInterpolationMode.LowQuality)
     for vm in _drawVMs do
-        // do not draw gadgets for the root grid / floating windows (borders only)
-        if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg && m_gadget_enable then 
+        // do not draw gadgets for the root grid / message / floating windows (borders only)
+        if vm.GridId <> 1 && not vm.IsFloat && not vm.IsMsg then 
             drawGadgets vm ctx gw gh
+
+    // now redraw those above gadgets
+    let pgw, pgh = src_rect.Width / float grid_vm.Cols, src_rect.Height / float grid_vm.Rows
+    for vm in _aboveGadgetsVMs do
+      let abs_r,abs_c = vm.AbsAnchor
+      let r,c,w,h = float abs_r, float abs_c, float vm.Cols, float vm.Rows
+      let src_rect' = Rect(c * pgw, r * pgh, w * pgw, h * pgh)
+      let dst_rect' = Rect(c * gw, r * gh, w * gw, h * gh)
+      ctx.DrawImage(grid_fb, src_rect', dst_rect', BitmapInterpolationMode.LowQuality)
 
 #if DEBUG
     timer.Stop()

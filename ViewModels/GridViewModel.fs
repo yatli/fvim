@@ -781,6 +781,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.BufNr = m_bufnr
     member __.Extmarks = m_extmarks
     member __.FindTargetWidget (r: int) (c: int) =
+      if this.AboveGadgets then -1 else
       let placements = getGuiWidgetPlacements m_bufnr
       m_extmarks.Values
       |> Seq.tryPick(fun ({ns = ns; mark = mark},cell,{trow=cr;tcol=cc}) -> 
@@ -791,6 +792,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if cr <= r && r < cr + h && cc <= c && c < cc + w then Some mark
         else None)
       |> Option.defaultValue -1
+    member __.AboveGadgets = m_is_float || (m_is_msg && m_msg_scrolled)
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with
@@ -807,23 +809,21 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.OnKey (e: KeyEventArgs) = 
         raiseInputEvent _gridid <| InputEvent.Key(e.KeyModifiers, e.Key)
 
-    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
+    member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
             //raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
             let _, _, vm, r, c, _ = this.FindTargetVm y x
             m_mouse_pressed_vm <- vm
-            let wid = 
-              if not gadgetsEnable then -1
-              else vm.FindTargetWidget r c 
+            let wid = vm.FindTargetWidget r c 
             if wid > 0 then
               m_mouse_pressed_widget <- wid
               model.GuiWidgetMouseDown vm.BufNr wid
             else
               raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
 
-    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
+    member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let button = updateMouseButton(e.GetCurrentPoint null)
@@ -836,16 +836,14 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             else
               raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
 
-    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
+    member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
             let x, y = e.GetPosition root |> getPos
             if (x,y) <> m_mouse_pos then
                 m_mouse_pos <- x,y
-                //trace m_mouse_pressed_vm.GridId "mousemove: %d %d" y x
-                //raiseInputEvent _gridid <| InputEvent.MouseDrag(e.KeyModifiers, y, x, m_mouse_pressed)
                 let ar,ac = m_mouse_pressed_vm.AbsAnchor
                 let r,c = (y-ar),(x-ac)
-                if gadgetsEnable && m_mouse_pressed_widget > 0 then 
+                if m_mouse_pressed_widget > 0 then 
                   ()
                 else
                   #if DEBUG
@@ -853,7 +851,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                   #endif
                   raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)
 
-    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) (gadgetsEnable: bool) = 
+    member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let _, _, vm, r, c, _ = this.FindTargetVm y x
