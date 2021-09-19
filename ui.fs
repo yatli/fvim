@@ -43,8 +43,8 @@ type GridSize =
         cols: int32
     }
 
-let inline private (<<->) a b = fun x -> a <= x && x < b
-let inline private (<->>) a b = fun x -> a < x && x <= b
+let inline (<<->) a b = fun x -> a <= x && x < b
+let inline (<->>) a b = fun x -> a < x && x <= b
 
 [<Struct>]
 type GridRect =

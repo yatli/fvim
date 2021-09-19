@@ -586,6 +586,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         #if DEBUG
             trace _gridid "CursorGoto parent"
         #endif
+            m_cursor_vm.row <- row
+            m_cursor_vm.col <- col
             m_parent.Value.CursorGoto m_parent.Value.GridId (row + m_anchor_row) (col + m_anchor_col)
         // goto me
         elif id = _gridid then

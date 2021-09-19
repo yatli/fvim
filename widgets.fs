@@ -2,12 +2,14 @@
 
 open common
 open def
+open theme
 open Avalonia.Media.Imaging
 open Avalonia.Svg
 open System.IO
 open Avalonia
 open Avalonia.Layout
 open Avalonia.Media
+open System.Text
 
 let mutable guiwidgetNamespace = -1
 
@@ -16,6 +18,11 @@ type SignPlacement =
         line: int
         kind: SignKind
     }
+
+type CursorHide =
+| NoHide
+| CursorOverlap
+| CursorLineOverlap
 
 type WidgetPlacement = 
   {
@@ -60,6 +67,28 @@ type WidgetPlacement =
                        | VerticalAlignment.Bottom -> dst_bounds.Bottom - scaled_size.Height, scaled_size.Height
                        | (* VerticalAlignment.Stretch *) _ -> dst_bounds.Top, dst_bounds.Height
     Rect(0.0, 0.0, src_size.Width, src_size.Height), Rect(dst_l, dst_t, dst_w, dst_h)
+  member this.GetTextAttr() =
+    let drawAttrs = match this.opt.TryGetValue("text-hlid") with
+                    | true, (Integer32 id) -> GetDrawAttrs id
+                    | true, (String semid) ->
+                      match SemanticHighlightGroup.TryParse semid with
+                      | true, semid -> getSemanticHighlightGroup semid
+                      | _ -> GetDrawAttrs 1
+                    | _ -> GetDrawAttrs 1
+    let font = match this.opt.TryGetValue("text-font") with
+               | true, String(fnt) -> fnt
+               | _ -> theme.guifont
+    let size = match this.opt.TryGetValue("text-scale") with
+               | true, Float(x) -> theme.fontsize * x
+               | _ -> theme.fontsize
+    let fg,_,_,attrs = drawAttrs
+    let typeface = ui.GetTypeface(Rune.empty, attrs.italic, attrs.bold, font, theme.guifontwide)
+    fg, typeface, size
+  member this.GetHideAttr() =
+    match this.opt.TryGetValue("hide") with
+    | true, String("cursor") -> CursorOverlap
+    | true, String("cursorline") -> CursorLineOverlap
+    | _ -> NoHide
 
 let private s_no_opt = hashmap[]
 
@@ -75,6 +104,7 @@ let parse_placement =
 type GuiWidgetType =
 | BitmapWidget of Bitmap
 | VectorImageWidget of SvgImage
+| PlainTextWidget of string
 | UnknownWidget of mime: string * data: byte[]
 | NotFound
 
@@ -83,17 +113,22 @@ let private widget_placements = hashmap[]
 let private sign_placements = hashmap[]
 
 let loadGuiResource (id:int) (mime: string) (data: byte[]) =
-    if mime = "image/svg" then
+    widget_resources.[id] <- 
+    match mime with
+    | "image/svg" ->
       let tmp = System.IO.Path.GetTempFileName()
       System.IO.File.WriteAllBytes(tmp, data)
       let img = new SvgImage()
       img.Source <- SvgSource.Load(tmp, null)
-      widget_resources.[id] <- VectorImageWidget(img)
-    elif mime.StartsWith("image/") then
-        use stream = new MemoryStream(data)
-        widget_resources.[id] <- BitmapWidget(new Bitmap(stream))
-    else
-        widget_resources.[id] <- UnknownWidget(mime, data)
+      VectorImageWidget(img)
+    | x when x.StartsWith("image/") ->
+      use stream = new MemoryStream(data)
+      BitmapWidget(new Bitmap(stream))
+    | "text/plain" ->
+      let data = Encoding.UTF8.GetString(data)
+      PlainTextWidget data
+    | _ ->
+      UnknownWidget(mime, data)
 
 let loadGuiWidgetPlacements (buf:int) (M: WidgetPlacement[]) =
   let index = hashmap[]

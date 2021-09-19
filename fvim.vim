@@ -77,8 +77,8 @@ endfunction
 lua <<EOF
 fvim_test_gui = function()
   local gui = require('gui-widgets')
-  local w1 = gui.put("F:/test/push_1.png","image/png")
-  local w2 = gui.put("F:/test/push_2.png","image/png")
+  local w1 = gui.put_file("F:/test/push_1.png","image/png")
+  local w2 = gui.put_file("F:/test/push_2.png","image/png")
   gui.place(w1, 0, 0, 0, 8, 2, {
     ['clicked-widget']=w2;
     ['clicked-exec']='silent call VsimToggleColor()';
@@ -86,6 +86,15 @@ fvim_test_gui = function()
     ['halign']='center';
     ['valign']='center';
     ['stretch']='uniform';
+    ['hide']='cursor';
+  })
+
+  local w3 = gui.put_data("Hello Text","text/plain")
+  gui.place(w3, 0, 2, 0, 20, 2, {
+    ['text-font']='Arial';
+    ['text-scale']=2;
+    ['text-hlid']='Normal';
+    ['hide']='cursorline';
   })
   gui.update_view(0)
 end

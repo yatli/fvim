@@ -77,3 +77,5 @@ let msgpackResolver = MsgPackResolver()
 let msgpackOpts = MessagePack
                     .MessagePackSerializerOptions.Standard
                     .WithResolver(msgpackResolver)
+                    .WithAllowAssemblyVersionMismatch(true)
+                    .WithOmitAssemblyVersion(true)

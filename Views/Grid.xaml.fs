@@ -369,6 +369,14 @@ type Grid() as this =
         if ns = guiwidgetNamespace && cell.ContainsMark mark then
           match (placements.TryGetValue mark) with
           | true, ({widget=wid; w=w; h=h} as p) ->
+              let hide = match p.GetHideAttr() with
+                         | CursorOverlap -> 
+                             vm.CursorInfo.row |> (r <<-> r+h) &&
+                             vm.CursorInfo.col |> (c <<-> c+w)
+                         | CursorLineOverlap ->
+                             vm.CursorInfo.row |> (r <<-> r+h)
+                         | _ -> false
+              if hide then () else
               let r, c, w, h = float r * gh, float c * gw, float w * gw, float h * gh
               let bounds = Rect(vm_x + c, vm_y + r, w, h)
               use _clip = ctx.PushClip(bounds)
@@ -380,6 +388,11 @@ type Grid() as this =
               | VectorImageWidget img ->
                 ctx.DrawImage(img, bounds)
                 ctx.DrawRectangle(new Pen(m_gadget_brush), bounds)
+              | PlainTextWidget(text) ->
+                let color, font, size = p.GetTextAttr()
+                m_gadget_brush.Color <- color
+                let text = FormattedText(text, font, size, TextAlignment.Left, TextWrapping.Wrap, bounds.Size)
+                ctx.DrawText(m_gadget_brush, bounds.TopLeft, text)
               | _ -> ()
           | _ -> ()
     // scrollbar
