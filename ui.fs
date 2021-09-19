@@ -166,7 +166,8 @@ let GetTypeface(txt, italic, bold, font, wfont) =
             let slang    = if italic then FontStyle.Italic else FontStyle.Normal
             let typeface = 
                 try Typeface(fname, slang, weight)
-                with | _ -> Typeface.Default
+                with | _ -> try Typeface(DefaultFont, slang, weight)
+                            with | _ -> Typeface.Default
             fontcache.[(fname, italic, bold)] <- typeface
             typeface
 
