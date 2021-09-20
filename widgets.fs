@@ -81,9 +81,10 @@ type WidgetPlacement =
     let size = match this.opt.TryGetValue("text-scale") with
                | true, Float(x) -> theme.fontsize * x
                | _ -> theme.fontsize
-    let fg,_,_,attrs = drawAttrs
+    let fg,bg,_,attrs = drawAttrs
+    let bg = Color(255uy, bg.R, bg.G, bg.B)
     let typeface = ui.GetTypeface(Rune.empty, attrs.italic, attrs.bold, font, theme.guifontwide)
-    fg, typeface, size
+    fg, bg, typeface, size
   member this.GetHideAttr() =
     match this.opt.TryGetValue("hide") with
     | true, String("cursor") -> CursorOverlap

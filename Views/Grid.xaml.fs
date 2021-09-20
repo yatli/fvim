@@ -389,8 +389,10 @@ type Grid() as this =
                 ctx.DrawImage(img, bounds)
                 ctx.DrawRectangle(new Pen(m_gadget_brush), bounds)
               | PlainTextWidget(text) ->
-                let color, font, size = p.GetTextAttr()
-                m_gadget_brush.Color <- color
+                let fg, bg, font, size = p.GetTextAttr()
+                m_gadget_brush.Color <- bg
+                ctx.FillRectangle(m_gadget_brush, bounds)
+                m_gadget_brush.Color <- fg
                 let text = FormattedText(text, font, size, TextAlignment.Left, TextWrapping.Wrap, bounds.Size)
                 ctx.DrawText(m_gadget_brush, bounds.TopLeft, text)
               | _ -> ()
