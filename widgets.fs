@@ -4,12 +4,13 @@ open common
 open def
 open theme
 open Avalonia.Media.Imaging
-open Avalonia.Svg
 open System.IO
 open Avalonia
 open Avalonia.Layout
 open Avalonia.Media
 open System.Text
+open Svg.Skia
+open SkiaSharp
 
 let mutable guiwidgetNamespace = -1
 
@@ -104,7 +105,7 @@ let parse_placement =
 
 type GuiWidgetType =
 | BitmapWidget of Bitmap
-| VectorImageWidget of SvgImage
+| VectorImageWidget of Bitmap // ... no.
 | PlainTextWidget of string
 | UnknownWidget of mime: string * data: byte[]
 | NotFound
@@ -117,11 +118,17 @@ let loadGuiResource (id:int) (mime: string) (data: byte[]) =
     widget_resources.[id] <- 
     match mime with
     | "image/svg" ->
-      let tmp = System.IO.Path.GetTempFileName()
-      System.IO.File.WriteAllBytes(tmp, data)
-      let img = new SvgImage()
-      img.Source <- SvgSource.Load(tmp, null)
-      VectorImageWidget(img)
+      let data = Encoding.UTF8.GetString(data)
+      use svg = new SKSvg()
+      let pic = svg.FromSvg(data)
+      let w,h = pic.CullRect.Width, pic.CullRect.Height
+      let scale = max 1.0f (max (128.0f / w) (128.0f / h))
+      use stream = new MemoryStream()
+      if svg.Save(stream, SKColors.Transparent, SKEncodedImageFormat.Png, 100, scale, scale) then
+        let _ = stream.Seek(0L, SeekOrigin.Begin)
+        VectorImageWidget(new Bitmap(stream))
+      else
+        failwith "cannot convert svg"
     | x when x.StartsWith("image/") ->
       use stream = new MemoryStream(data)
       BitmapWidget(new Bitmap(stream))

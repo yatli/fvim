@@ -96,6 +96,14 @@ fvim_test_gui = function()
     ['text-hlid']='Normal';
     ['hide']='cursorline';
   })
+
+  local w4 = gui.put_file("F:/test/7.svg", "image/svg")
+  gui.place(w4, 0, 4, 0, 8, 2, {
+    ['halign']='center';
+    ['valign']='center';
+    ['stretch']='uniform';
+    ['hide']='cursor';
+  })
   gui.update_view(0)
 end
 EOF

@@ -386,8 +386,11 @@ type Grid() as this =
                 let src, dst = p.GetDrawingBounds img.Size bounds
                 ctx.DrawImage(img, src, dst)
               | VectorImageWidget img ->
-                ctx.DrawImage(img, bounds)
-                ctx.DrawRectangle(new Pen(m_gadget_brush), bounds)
+                let src, dst = p.GetDrawingBounds img.Size bounds
+                let _, bg, _, _ = theme.GetDrawAttrs 1
+                m_gadget_brush.Color <- Color(255uy, bg.R, bg.G, bg.B)
+                ctx.FillRectangle(m_gadget_brush, bounds)
+                ctx.DrawImage(img, src, dst)
               | PlainTextWidget(text) ->
                 let fg, bg, font, size = p.GetTextAttr()
                 m_gadget_brush.Color <- bg
