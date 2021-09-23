@@ -782,7 +782,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.IsMsg = m_is_msg
     member __.BufNr = m_bufnr
     member __.Extmarks = m_extmarks
-    member __.FindTargetWidget (r: int) (c: int) =
+    member __.FindTargetWidget (r: int) (c: int) (pred: WidgetPlacement -> bool) =
       if this.AboveGadgets then -1 else
       let placements = getGuiWidgetPlacements m_bufnr
       m_extmarks.Values
@@ -790,8 +790,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if ns <> guiwidgetNamespace || not(cell.ContainsMark mark) then None else
         match placements.TryGetValue mark with
         | false, _ -> None
-        | true, {w=w;h=h} -> 
-        if cr <= r && r < cr + h && cc <= c && c < cc + w then Some mark
+        | true, ({w=w;h=h} as p) -> 
+        if cr <= r && r < cr + h && cc <= c && c < cc + w && pred p then Some mark
         else None)
       |> Option.defaultValue -1
     member __.AboveGadgets = m_is_float || (m_is_msg && m_msg_scrolled)
@@ -818,7 +818,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             //raiseInputEvent _gridid <| InputEvent.MousePress(e.KeyModifiers, y, x, button)
             let _, _, vm, r, c, _ = this.FindTargetVm y x
             m_mouse_pressed_vm <- vm
-            let wid = vm.FindTargetWidget r c 
+            let wid = vm.FindTargetWidget r c (fun x -> x.Mouse)
             if wid > 0 then
               m_mouse_pressed_widget <- wid
               model.GuiWidgetMouseDown vm.BufNr wid

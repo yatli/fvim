@@ -103,6 +103,10 @@ type WidgetPlacement =
         GetDrawAttrs 1
     let white = removeAlpha white
     themed, black, white
+  member this.Mouse =
+    match this.opt.TryGetValue("mouse") with
+    | true, Bool x -> x
+    | _ -> false
 
 let private s_no_opt = hashmap[]
 let parse_placement =
