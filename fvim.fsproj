@@ -36,6 +36,7 @@
     <Compile Include="msgpack.fs" />
     <Compile Include="neovim.fs" />
     <Compile Include="ui.fs" />
+    <Compile Include="svg.fs" />
     <Compile Include="theme.fs" />
     <Compile Include="input.fs" />
     <Compile Include="widgets.fs" />
@@ -82,6 +83,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="0.10.7" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.7" />
     <PackageReference Include="Avalonia.Diagnostics" Version="0.10.7" />
+    <PackageReference Include="Avalonia.Svg" Version="0.10.7.1" />
 
     <PackageReference Include="FSharp.Control.Reactive" Version="5.0.2" />
     <PackageReference Include="FSharp.Data" Version="4.2.2" />
@@ -93,7 +95,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Svg.Skia" Version="0.5.7.1" />
+    <PackageReference Include="Svg.Model" Version="0.5.7.1" />
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
     <PackageReference Include="UACHelper" Version="1.3.0.5" />
   </ItemGroup>

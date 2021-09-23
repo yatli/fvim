@@ -1,5 +1,7 @@
 ﻿namespace FVim
 
+open common
+
 open ReactiveUI
 open Avalonia.Media
 open Avalonia
@@ -21,7 +23,7 @@ type ThemableViewModelBase(x, y, w, h) as this =
 
     static let s_computeColors(nfg: Color, nbg: Color, sfg: Color, sbg: Color, scfg: Color, scbg: Color, bbg: Color, ifg: Color): IBrush list =
         let tobrush (x: Color) = 
-          Color(255uy, x.R, x.G, x.B)
+          removeAlpha x
           |> SolidColorBrush 
           :> IBrush
         let (/) (x: Color) (y: float) = 

@@ -359,47 +359,55 @@ type Grid() as this =
     let view_top,view_bot,cur_row,line_count = 
       let top,bot,row,_,lc = vm.ScrollbarData
       float top, float bot, float row, float lc
-    use _mainClipclip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
+    use _mainClip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
 
     // gui widgets
-    do
-      let placements = getGuiWidgetPlacements vm.BufNr
-      for ({ns = ns; mark = mark}, cell, {trow=r;tcol=c}) in vm.Extmarks.Values do
-        // if cell.marks does not have this mark, it means cell has scrolled out of view.
-        if ns = guiwidgetNamespace && cell.ContainsMark mark then
-          match (placements.TryGetValue mark) with
-          | true, ({widget=wid; w=w; h=h} as p) ->
-              let hide = match p.GetHideAttr() with
-                         | CursorOverlap -> 
-                             vm.CursorInfo.row |> (r <<-> r+h) &&
-                             vm.CursorInfo.col |> (c <<-> c+w)
-                         | CursorLineOverlap ->
-                             vm.CursorInfo.row |> (r <<-> r+h)
-                         | _ -> false
-              if hide then () else
-              let r, c, w, h = float r * gh, float c * gw, float w * gw, float h * gh
-              let bounds = Rect(vm_x + c, vm_y + r, w, h)
-              use _clip = ctx.PushClip(bounds)
-              let widget = getGuiWidget wid
-              match widget with
-              | BitmapWidget img ->
-                let src, dst = p.GetDrawingBounds img.Size bounds
-                ctx.DrawImage(img, src, dst)
-              | VectorImageWidget img ->
-                let src, dst = p.GetDrawingBounds img.Size bounds
-                let _, bg, _, _ = theme.GetDrawAttrs 1
-                m_gadget_brush.Color <- Color(255uy, bg.R, bg.G, bg.B)
-                ctx.FillRectangle(m_gadget_brush, bounds)
-                ctx.DrawImage(img, src, dst)
-              | PlainTextWidget(text) ->
-                let fg, bg, font, size = p.GetTextAttr()
-                m_gadget_brush.Color <- bg
-                ctx.FillRectangle(m_gadget_brush, bounds)
-                m_gadget_brush.Color <- fg
-                let text = FormattedText(text, font, size, TextAlignment.Left, TextWrapping.Wrap, bounds.Size)
-                ctx.DrawText(m_gadget_brush, bounds.TopLeft, text)
-              | _ -> ()
-          | _ -> ()
+    let placements = getGuiWidgetPlacements vm.BufNr
+    for ({ns = ns; mark = mark}, cell, {trow=r;tcol=c}) in vm.Extmarks.Values do
+    // if cell.marks does not have this mark, it means cell has scrolled out of view.
+    if not (ns = guiwidgetNamespace && cell.ContainsMark mark) then () else
+    match (placements.TryGetValue mark) with
+    | false, _ -> ()
+    | true, ({widget=wid; w=grid_w; h=grid_h} as p) ->
+    let hideAttr = p.GetHideAttr()
+    let singleLine = grid_h = 1
+    let lineOverlap = vm.CursorInfo.row |> (r <<-> r+grid_h)
+    let colOverlap = vm.CursorInfo.col |> (c <<-> c+grid_w)
+    let hide = match hideAttr with
+               | CursorOverlap -> lineOverlap && colOverlap
+               | CursorLineOverlap -> lineOverlap
+               | _ -> false
+    if hide then () else
+    let r, c, w, h = float r * gh, float c * gw, float grid_w * gw, float grid_h * gh
+    let bounds = Rect(vm_x + c, vm_y + r, w, h)
+    use _clip = ctx.PushClip(bounds)
+    let widget = getGuiWidget wid
+    match widget with
+    | BitmapWidget img ->
+      let src, dst = p.GetDrawingBounds img.Size bounds
+      ctx.DrawImage(img, src, dst)
+    | VectorImageWidget (img) ->
+      let src, dst = p.GetDrawingBounds (Size(img.Width,img.Height)) bounds
+      let themed, svg_fg, svg_bg = 
+        p.GetSvgAttr(hideAttr, lineOverlap, colOverlap, singleLine)
+      if themed then
+        m_gadget_brush.Color <- svg_bg
+        ctx.FillRectangle(m_gadget_brush, bounds)
+      let scaleMatrix = Matrix.CreateScale(dst.Width / src.Width, dst.Height / src.Height)
+      let translateMatrix = Matrix.CreateTranslation(dst.Left, dst.Top)
+      use _tr = ctx.PushPreTransform(scaleMatrix * translateMatrix)
+      if themed then
+        img.SetTheme(m_gadget_brush, svg_fg, svg_bg)
+      img.Draw(ctx)
+    | PlainTextWidget(text) ->
+      let fg, bg, font, size = p.GetTextAttr()
+      m_gadget_brush.Color <- bg
+      ctx.FillRectangle(m_gadget_brush, bounds)
+      m_gadget_brush.Color <- fg
+      let text = FormattedText(text, font, size, TextAlignment.Left, TextWrapping.Wrap, bounds.Size)
+      ctx.DrawText(m_gadget_brush, bounds.TopLeft, text)
+    | _ -> ()
+
     // scrollbar
     // todo mouse over opacity adjustment
     let bar_w = 8.0

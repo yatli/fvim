@@ -3,7 +3,7 @@
 open Avalonia.Media
 open ReactiveUI
 open FVim.def
-open FVim.common.helpers
+open FVim.common
 
 type CursorViewModel(cursorMode: int option) =
     inherit ViewModelBase(None, None, Some 1.0, Some 1.0)

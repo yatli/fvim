@@ -97,12 +97,22 @@ fvim_test_gui = function()
     ['hide']='cursorline';
   })
 
-  local w4 = gui.put_file("F:/test/7.svg", "image/svg")
+  local w4 = gui.put_file("F:/test/5.svg", "image/svg")
   gui.place(w4, 0, 4, 0, 8, 2, {
     ['halign']='center';
     ['valign']='center';
     ['stretch']='uniform';
     ['hide']='cursor';
+    ['svg-themed']=true;
+  })
+
+  local w5 = gui.put_file("F:/test/7.svg", "image/svg")
+  gui.place(w5, 0, 6, 0, 8, 1, {
+    ['halign']='center';
+    ['valign']='center';
+    ['stretch']='uniform';
+    ['hide']='cursor';
+    ['svg-themed']=true;
   })
   gui.update_view(0)
 end

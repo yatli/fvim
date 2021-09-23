@@ -4,6 +4,7 @@ open System.Threading.Tasks
 open System
 open System.Diagnostics
 open System.Buffers
+open Avalonia.Media
 
 let mkparams1 (t1: 'T1)                                          = [| box t1 |]
 let mkparams2 (t1: 'T1) (t2: 'T2)                                = [| box t1; box t2 |]
@@ -173,7 +174,11 @@ let newProcess prog args stderrenc =
   ignore <| AppDomain.CurrentDomain.ProcessExit.Subscribe(fun _ -> try p.Kill(true) with _ -> ())
   p
 
-[<AutoOpen>]
-module internal helpers =
-    let _d x = Option.defaultValue x
+let _d x = Option.defaultValue x
+let notNull x = isNull x |> not
+let inline (?->) x f =
+  if isNull x then ValueNone
+  else ValueSome(f x)
 
+let removeAlpha (x:Color) =
+  Color(255uy, x.R, x.G, x.B)

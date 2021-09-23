@@ -3,14 +3,14 @@
 open common
 open def
 open theme
-open Avalonia.Media.Imaging
-open System.IO
+open svg
+
 open Avalonia
 open Avalonia.Layout
 open Avalonia.Media
+open Avalonia.Media.Imaging
+open System.IO
 open System.Text
-open Svg.Skia
-open SkiaSharp
 
 let mutable guiwidgetNamespace = -1
 
@@ -83,7 +83,7 @@ type WidgetPlacement =
                | true, Float(x) -> theme.fontsize * x
                | _ -> theme.fontsize
     let fg,bg,_,attrs = drawAttrs
-    let bg = Color(255uy, bg.R, bg.G, bg.B)
+    let bg = removeAlpha bg
     let typeface = ui.GetTypeface(Rune.empty, attrs.italic, attrs.bold, font, theme.guifontwide)
     fg, bg, typeface, size
   member this.GetHideAttr() =
@@ -91,9 +91,20 @@ type WidgetPlacement =
     | true, String("cursor") -> CursorOverlap
     | true, String("cursorline") -> CursorLineOverlap
     | _ -> NoHide
+  member this.GetSvgAttr(hideAttr: CursorHide, lineOverlap: bool, colOverlap: bool, singleLine: bool) =
+    let themed =
+      match this.opt.TryGetValue("svg-themed") with
+      | true, ForceBool true -> true
+      | _ -> false
+    let black, white, _, _ = 
+      if lineOverlap && singleLine && hideAttr = CursorOverlap then
+        getSemanticHighlightGroup SemanticHighlightGroup.CursorLine
+      else
+        GetDrawAttrs 1
+    let white = removeAlpha white
+    themed, black, white
 
 let private s_no_opt = hashmap[]
-
 let parse_placement =
   function
   | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; |] 
@@ -105,7 +116,7 @@ let parse_placement =
 
 type GuiWidgetType =
 | BitmapWidget of Bitmap
-| VectorImageWidget of Bitmap // ... no.
+| VectorImageWidget of SvgPicture
 | PlainTextWidget of string
 | UnknownWidget of mime: string * data: byte[]
 | NotFound
@@ -119,16 +130,7 @@ let loadGuiResource (id:int) (mime: string) (data: byte[]) =
     match mime with
     | "image/svg" ->
       let data = Encoding.UTF8.GetString(data)
-      use svg = new SKSvg()
-      let pic = svg.FromSvg(data)
-      let w,h = pic.CullRect.Width, pic.CullRect.Height
-      let scale = max 1.0f (max (128.0f / w) (128.0f / h))
-      use stream = new MemoryStream()
-      if svg.Save(stream, SKColors.Transparent, SKEncodedImageFormat.Png, 100, scale, scale) then
-        let _ = stream.Seek(0L, SeekOrigin.Begin)
-        VectorImageWidget(new Bitmap(stream))
-      else
-        failwith "cannot convert svg"
+      VectorImageWidget(SvgPicture data)
     | x when x.StartsWith("image/") ->
       use stream = new MemoryStream(data)
       BitmapWidget(new Bitmap(stream))
