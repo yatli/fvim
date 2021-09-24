@@ -1,7 +1,8 @@
 {
   "profiles": {
     "fvim": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--nvim \"F:\\git\\neovim\\build\\bin\\nvim.exe\""
     },
     "multigrid": {
       "commandName": "Project",

@@ -20,5 +20,170 @@ Several runs are conducted:
 
 ### Analysis
 
-![](test.png)
+A typical full run looks like this:
+![020847_overview](020847_overview.png)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The "needles" in the graph are mostly drawBuffer, costing 10-30ms each.
+A closer look into one "needle":
+
+![needle](020847_zoomin.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Which consists of calls into DrawContextImpl.Clear(Color), PushClip(),
+DrawGlyphRun(), GlyphTypefaceImpl.GetGlyph etc.
+Flamegraph be like:
+
+![020847_sandwich](020847_sandwich.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Skipping `Grid.Render()`: most time-consuming calls are gone. FVim.input is
+still sampled here and there so perhaps it's more heavy than the other stuff.
+![015126](015126-sandwich.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Disabling DrawGlyphRun():
+
+![022906_sandwich](022906_sandwich.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Time cost for Clear, PushClip etc. are not impacted. Still there.
+
+Further disabling Clear, PushClip:
+
+![...](023521_sandwich.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Costly functions left = GetGlyph
