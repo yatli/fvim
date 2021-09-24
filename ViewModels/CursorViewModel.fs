@@ -1,7 +1,6 @@
 ﻿namespace FVim
 
 open Avalonia.Media
-open ReactiveUI
 open FVim.def
 open FVim.common
 

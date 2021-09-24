@@ -31,6 +31,8 @@ open Avalonia.Input.TextInput
 open Avalonia.Input
 open Avalonia.Media
 open Avalonia.Layout
+open SkiaSharp
+open Avalonia.Skia
 
 type Grid() as this =
   inherit Canvas()
@@ -42,6 +44,7 @@ type Grid() as this =
 
   let mutable grid_fb: RenderTargetBitmap = null
   let mutable grid_dc: IDrawingContextImpl = null
+  let mutable grid_canvas: SKCanvas = null
   let mutable grid_scale: float = 1.0
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
@@ -68,6 +71,8 @@ type Grid() as this =
       grid_dc.Dispose()
     grid_fb <- AllocateFramebuffer (grid_vm.BufferWidth) (grid_vm.BufferHeight) grid_scale
     grid_dc <- grid_fb.CreateDrawingContext(null)
+    grid_canvas <- (grid_dc :?> ISkiaDrawingContextImpl).SkCanvas
+    let _ = grid_canvas.Save()
     if this.Bounds.Size.Width - grid_vm.BufferWidth > grid_vm.GlyphWidth * 2.0 
        || this.Bounds.Size.Height - grid_vm.BufferHeight > grid_vm.GlyphHeight * 2.0 then
        this.InvalidateMeasure()
@@ -100,7 +105,7 @@ type Grid() as this =
   let mutable _render_glyph_buf: uint[] = [||]
   let mutable _render_char_buf: char[] = [||]
 
-  let drawBuffer (vm: GridViewModel) (ctx: IDrawingContextImpl) row col colend hlid (issym: bool) =
+  let drawBuffer (vm: GridViewModel) (ctx: IDrawingContextImpl) (vm_bounds: Rect) row col colend hlid (issym: bool) =
 
     if col = colend then () else
 
@@ -140,15 +145,14 @@ type Grid() as this =
         let mutable _len = 0
         for i = col to colend - 1 do
           Rune.feed(vm.[row, i].text, _render_glyph_buf, &_len)
-
         Unshaped <| ReadOnlyMemory(_render_glyph_buf, 0, _len)
 
     try
-        RenderText(ctx, bg_region, grid_scale, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize, clip)
+        RenderText(ctx, bg_region, vm_bounds, fg, bg, sp, attrs.underline, attrs.undercurl, txt, typeface, fontsize, clip)
     with ex -> trace vm "drawBuffer: %s" (ex.ToString())
 
   // assembles text from grid and draw onto the context.
-  let drawBufferLine (vm: GridViewModel) (ctx: IDrawingContextImpl) y x0 xN =
+  let drawBufferLine (vm: GridViewModel) (ctx: IDrawingContextImpl) (vm_bounds: Rect) y x0 xN =
     let xN = min xN vm.Cols
     let x0 = max x0 0
     let y = Math.Clamp(y, 0, (vm.Rows - 1))
@@ -188,7 +192,7 @@ type Grid() as this =
         let prev_span = if mysym && not sym && mywc = wc && not bold && not hlidchange 
                         then x + 2 
                         else x + 1
-        drawBuffer vm ctx y prev_span (x' + 1) prev_hlid sym
+        drawBuffer vm ctx vm_bounds y prev_span (x' + 1) prev_hlid sym
         x' <- prev_span - 1
         wc <- mywc
         sym <- mysym
@@ -197,7 +201,7 @@ type Grid() as this =
           bold <-
             let _, _, _, hl_attrs = theme.GetDrawAttrs prev_hlid
             hl_attrs.bold
-    drawBuffer vm ctx y x0 (x' + 1) prev_hlid sym
+    drawBuffer vm ctx vm_bounds y x0 (x' + 1) prev_hlid sym
 
   let doWithDataContext fn =
     match this.DataContext with
@@ -289,7 +293,6 @@ type Grid() as this =
     let abs_r,abs_c = vm.AbsAnchor
     // clip each vm individually to prevent shaped text run overflow into the root grid...
     let vm_bounds = Rect(float abs_c * gw, float abs_r * gh, float vm.Cols * gw, float vm.Rows * gh)
-    grid_dc.PushClip(vm_bounds)
     // if other grids tainted the region, mark it dirty
     let touched = _drawnRegions 
                   |> Seq.exists(fun(r,c,ce) -> 
@@ -304,16 +307,15 @@ type Grid() as this =
         trace vm "drawing whole grid"
     #endif
         for row = 0 to vm.Rows - 1 do
-            drawBufferLine vm grid_dc row 0 vm.Cols
+            drawBufferLine vm grid_dc vm_bounds row 0 vm.Cols
             _drawnRegions.Add(row + abs_r, abs_c, vm.Cols + abs_c)
-        grid_dc.PopClip()
         true
     else
     // not tainted. can draw with my draw ops.
     let draw row col colend = 
       let covered = _drawnRegions |> Seq.exists(fun (r, c, ce) -> r = row + abs_r && c <= col + abs_c && ce >= colend + abs_c)
       if not covered then
-        drawBufferLine vm grid_dc row col colend
+        drawBufferLine vm grid_dc vm_bounds row col colend
         _drawnRegions.Add(row + abs_r, col + abs_c, colend + abs_c)
       else
         ()
@@ -341,7 +343,6 @@ type Grid() as this =
         let y = float abs_r * grid_vm.GlyphHeight + 0.5
         grid_dc.DrawLine(pen, Point(0.0,y), Point(grid_fb.Size.Width, y))
 
-    grid_dc.PopClip()
     vm.DrawOps.Count <> 0
 
   /// draw add-ons attached to the grids. for example:
@@ -499,7 +500,6 @@ type Grid() as this =
     if isNull grid_fb then
       trace grid_vm "grid_fb is null"
     else
-    grid_dc.PushClip(Rect this.Bounds.Size)
 #if DEBUG
     let timer = System.Diagnostics.Stopwatch.StartNew()
 #endif
@@ -519,7 +519,6 @@ type Grid() as this =
         let drawn' = drawOps vm gw gh
         drawn <- drawn || drawn'
     if m_debug then drawDebug grid_dc
-    grid_dc.PopClip()
 
     grid_vm.MarkClean()
 

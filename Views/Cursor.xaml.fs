@@ -35,6 +35,8 @@ type Cursor() as this =
     let mutable cursor_fb = AllocateFramebuffer (20.0) (20.0) 1.0
     let mutable cursor_fb_vm = CursorViewModel(Some -1)
     let mutable cursor_fb_active = false
+    let mutable cursor_dc = cursor_fb.CreateDrawingContext(null)
+    let mutable cursor_canvas = (cursor_dc :?> ISkiaDrawingContextImpl).SkCanvas
     let mutable cursor_fb_s = 1.0
     let mutable cursor_chksum = -1
 
@@ -43,8 +45,12 @@ type Cursor() as this =
         if (cursor_fb_vm.FbIntegrityChecksum(),cursor_fb_s) <> (this.ViewModel.FbIntegrityChecksum(),s) then
             cursor_fb_vm <- this.ViewModel.Clone()
             cursor_fb_s <- s
+            cursor_dc.Dispose()
             cursor_fb.Dispose()
             cursor_fb <- AllocateFramebuffer (cursor_fb_vm.Width + 50.0) (cursor_fb_vm.Height + 50.0) s
+            cursor_dc <- cursor_fb.CreateDrawingContext(null)
+            cursor_canvas <- (cursor_dc :?> ISkiaDrawingContextImpl).SkCanvas
+            let _ = cursor_canvas.Save()
             true
         elif cursor_fb_vm.text <> this.ViewModel.text || cursor_fb_active <> this.IsActive then
             cursor_fb_vm.text <- this.ViewModel.text
@@ -173,32 +179,22 @@ type Cursor() as this =
                     let mutable _len = 0
                     Rune.feed(this.ViewModel.text, _buffer_glyph, &_len)
                     let span = Unshaped <| ReadOnlyMemory(_buffer_glyph, 0, _len)
-                    RenderText(ctx, bounds, scale, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, span, typeface, this.ViewModel.fontSize, true)
+                    RenderText(ctx, bounds, bounds, fg, bg, sp, this.ViewModel.underline, this.ViewModel.undercurl, span, typeface, this.ViewModel.fontSize, true)
                 else
                     let brush = SolidColorBrush(this.ViewModel.bg)
                     ctx.DrawRectangle(Brushes.Transparent, Pen(brush), RoundedRect(bounds))
 
             try
-                match ctx.PlatformImpl with
-                | :? ISkiaDrawingContextImpl ->
-                    // immediate
-                    fg <- UpdateOpacity fg this.Opacity
-                    bg <- UpdateOpacity bg this.Opacity
-                    sp <- UpdateOpacity sp this.Opacity
-                    render_block ctx.PlatformImpl
-                | _ ->
-                    // deferred
-                    let redraw = ensure_fb()
-                    if redraw then
-                        use cursor_dc = cursor_fb.CreateDrawingContext(null)
-                        cursor_dc.PushClip(bounds)
-                        if not cursor_fb_active then
-                            // clear the stale content, or the DrawRectangle won't be obvious..
-                            cursor_dc.Clear(Colors.Transparent);
-                        render_block cursor_dc
-                        cursor_dc.PopClip()
-                        cursor_dc.Dispose()
-                    ctx.DrawImage(cursor_fb, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
+              // deferred
+              let redraw = ensure_fb()
+              if redraw then
+                  //cursor_canvas.RestoreToCount(-1)
+                  //cursor_canvas.ClipRect(bounds.ToSKRect())
+                  if not cursor_fb_active then
+                      // clear the stale content, or the DrawRectangle won't be obvious..
+                      cursor_dc.Clear(Colors.Transparent);
+                  render_block cursor_dc
+              ctx.DrawImage(cursor_fb, Rect(0.0, 0.0, bounds.Width * scale, bounds.Height * scale), bounds)
             with
             | ex -> trace "cursor" "render exception: %s" <| ex.ToString()
         | CursorShape.Horizontal, p ->

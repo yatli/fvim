@@ -1,5 +1,6 @@
 ﻿module FVim.ui
 
+open common
 open def
 open wcwidth
 open log
@@ -9,9 +10,11 @@ open Avalonia.Input
 open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Platform
+open Avalonia.Skia
 open System
 open Avalonia.Media.TextFormatting
 open System.Globalization
+open SkiaSharp
 
 #nowarn "0009"
 
@@ -242,7 +245,11 @@ type TextRenderSpan =
 | Shaped of chars: ReadOnlyMemory<char>
 | Unshaped of runes: ReadOnlyMemory<uint>
 
-let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float, clip: bool) =
+let RenderText (ctx: IDrawingContextImpl, region: Rect, vm_bounds: Rect, fg: Color, bg: Color, sp: Color, underline: bool, undercurl: bool, text: TextRenderSpan, font: Typeface, fontSize: float, clip: bool) =
+    let skcanvas = 
+      match ctx with
+      | :? Avalonia.Skia.ISkiaDrawingContextImpl as skia -> skia.SkCanvas
+      | _ -> failwith "not supported"
 
     //  emoji, nerd params calibration hack...
     let isEmoji = emoji_typeface = font
@@ -278,14 +285,17 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
     _render_brush.Color <- fg
     _sp_pen.Thickness <- sp_thickness
     _sp_brush.Color <- sp
- 
-    //  push clip and fill bg
-    ctx.PushClip region
-    ctx.Clear bg
-    //  don't clip all along. see #60
-    //  but no clipping = symbols overflow bounds. see #164
-    //  so we treat symbols & characters differently... with the `clip` arg
-    if not clip then ctx.PopClip()
+
+    //  clip and fill bg
+    skcanvas.ClipRect(region.ToSKRect())
+    skcanvas.DrawColor(bg.ToSKColor(), SKBlendMode.Src)
+    if not clip then 
+      //  don't clip all along. see #60
+      //  but no clipping = symbols overflow bounds. see #164
+      //  so we treat symbols & characters differently... with the `clip` arg
+      skcanvas.RestoreToCount(-1)
+      let _ = skcanvas.Save()
+      skcanvas.ClipRect(vm_bounds.ToSKRect())
 
     use glyphrun = 
       match text with
@@ -303,7 +313,15 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, scale: float, fg: Color,
     glyphrun.BaselineOrigin <- fontPos
     ctx.DrawGlyphRun(_render_brush, glyphrun)
 
-    if clip then ctx.PopClip ()
+    if clip then 
+      // note: we explicitly arrange it like this so we don't
+      // call ctx.PushClip(..) or ctx.PopClip()
+      // It first pops all clip states from the canvas and then push
+      // a new state containing no rect clips.
+      // this improves performance -- reason unknown.
+      skcanvas.RestoreToCount(-1)
+      let _ = skcanvas.Save()
+      skcanvas.ClipRect(vm_bounds.ToSKRect())
 
     //  Text bounding box drawing:
     if states.font_drawBounds then

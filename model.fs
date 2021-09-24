@@ -9,22 +9,20 @@ open getopt
 open log
 open widgets
 
+open Avalonia.Layout
 open Avalonia.Media
-open System
 open Avalonia.Threading
 open FSharp.Control.Reactive
-open System.ComponentModel
-open SkiaSharp
-open Avalonia.Layout
-open System.Threading.Tasks
 open FSharp.Control.Tasks.V2
-open System.Reflection
+open SkiaSharp
+open System
+open System.ComponentModel
 open System.IO
+open System.Reflection
+open System.Runtime.InteropServices
+open System.Threading.Tasks
 
 #nowarn "0025"
-
-open FSharp.Control.Tasks.V2
-open System.Runtime.InteropServices
 
 let inline private trace x = trace "model" x
 

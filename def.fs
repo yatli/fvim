@@ -126,6 +126,8 @@ type RgbAttr =
         }
 
 [<Struct>]
+[<CustomEquality>]
+[<NoComparison>]
 type Rune =
     | SingleChar of chr: char
     | SurrogatePair of c1: char * c2: char
@@ -136,6 +138,25 @@ type Rune =
       | SingleChar c -> c.ToString()
       | SurrogatePair(c1, c2) -> sprintf "%c%c" c1 c2
       | Composed str -> String.Join("", str)
+    override x.GetHashCode() = 
+      match x with
+      | SingleChar c -> c.GetHashCode()
+      | SurrogatePair(c1, c2) -> c1.GetHashCode() ^^^ c2.GetHashCode()
+      | Composed str -> str |> Array.fold (fun chksum x -> chksum ^^^ x.GetHashCode()) 0
+    override x.Equals(y: obj) = 
+      match y with
+      | :? Rune as y -> (x :> IEquatable<Rune>).Equals(y)
+      | _ -> false
+    interface System.IEquatable<Rune> with
+      member x.Equals(y: Rune): bool = 
+        match x,y with
+        | SingleChar x, SingleChar y -> x = y
+        | SurrogatePair(x1,x2), SurrogatePair(y1,y2) -> x1=y1 && x2=y2
+        | Composed x, Composed y -> 
+          if x.Length <> y.Length then false else
+          not <| Array.exists2 (fun x y -> x <> y) x y
+        | _ -> false
+      
     member x.Codepoint with get() = 
       match x with
       | SingleChar c -> uint c
