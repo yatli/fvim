@@ -364,9 +364,8 @@ type Grid() as this =
 
     // gui widgets
     let placements = getGuiWidgetPlacements vm.BufNr
-    let drawGuiWidgets ({ns = ns; mark = mark}, cell: GridBufferCell, {trow=r;tcol=c}) =
-      // if cell.marks does not have this mark, it means cell has scrolled out of view.
-      if ns = guiwidgetNamespace && cell.ContainsMark mark then
+    let drawGuiWidgets ({ns = ns; mark = mark}, {trow=r;tcol=c}) =
+      if ns = guiwidgetNamespace then
         match (placements.TryGetValue mark) with
         | false, _ -> ()
         | true, ({widget=wid; w=grid_w; h=grid_h} as p) ->
@@ -408,7 +407,11 @@ type Grid() as this =
             let text = FormattedText(text, font, size, TextAlignment.Left, TextWrapping.Wrap, bounds.Size)
             ctx.DrawText(m_gadget_brush, bounds.TopLeft, text)
           | _ -> ()
-    for tup in vm.Extmarks.Values do
+    for ({mark=mark} as m, cell, pos) in vm.Extmarks.Values do
+      // if cell.marks does not have this mark, it means cell has scrolled out of view.
+      if cell.ContainsMark mark then
+        drawGuiWidgets(m,pos)
+    for tup in vm.ExtmarksOob.Values do
       drawGuiWidgets tup
 
     // scrollbar

@@ -86,7 +86,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_scrollbar_row  = 0
     let mutable m_scrollbar_col  = 0
     let mutable m_scrollbar_linecount = 0
-    let mutable m_extmarks       = hashmap[] // tracks existing extmarks and last known position -- some may be scrolled out of viewport
+    let mutable m_extmarks       = hashmap[] // tracks existing on-screen extmarks and last known position -- some may be scrolled out of viewport, and moved into oob
+    let mutable m_extmarks_oob   = hashmap[] // tracks existing off-screen extmarks and last known position
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
@@ -244,6 +245,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
       for _,cell,_ in m_extmarks.Values do
         cell.marks <- []
       m_extmarks.Clear()
+      m_extmarks_oob.Clear()
     #if DEBUG
       trace _gridid $"clearMarks"
     #endif
@@ -335,6 +337,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 // remove dst row marks
                 for m in dst_cell.marks do
                   m_extmarks.Remove m.mark |> ignore
+                  if dst < src then
+                    let oob_pos = {trow = dst - (src - dst); tcol = c}
+                    m_extmarks_oob.[m.mark] <- (m, oob_pos)
                 dst_cell.marks <- []
 
         if rows > 0 then
@@ -419,7 +424,16 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             (this:>IGridUI).Detach()
             CreateFrame this
 
+    let _removeOob = ResizeArray()
     let setWinViewport win top bot row col lc =
+        let delta = top - m_scrollbar_top
+        _removeOob.Clear()
+        for mark,trackpos in m_extmarks_oob.Values do
+          trackpos.trow <- trackpos.trow - delta
+          if trackpos.trow >= 0 then
+            _removeOob.Add(mark.mark)
+        for m in _removeOob do
+          ignore <| m_extmarks_oob.Remove(m)
         m_winhnd <- win
         m_scrollbar_top <- top
         m_scrollbar_bot <- bot
@@ -782,6 +796,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.IsMsg = m_is_msg
     member __.BufNr = m_bufnr
     member __.Extmarks = m_extmarks
+    member __.ExtmarksOob = m_extmarks_oob
     member __.FindTargetWidget (r: int) (c: int) (pred: WidgetPlacement -> bool) =
       if this.AboveGadgets then -1 else
       let placements = getGuiWidgetPlacements m_bufnr
