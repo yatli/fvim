@@ -287,15 +287,21 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, vm_bounds: Rect, fg: Col
     _sp_brush.Color <- sp
 
     //  clip and fill bg
-    skcanvas.ClipRect(region.ToSKRect())
+    if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+      ctx.PushClip(region)
+    else
+      skcanvas.ClipRect(region.ToSKRect())
     skcanvas.DrawColor(bg.ToSKColor(), SKBlendMode.Src)
     if not clip then 
       //  don't clip all along. see #60
       //  but no clipping = symbols overflow bounds. see #164
       //  so we treat symbols & characters differently... with the `clip` arg
-      skcanvas.RestoreToCount(-1)
-      let _ = skcanvas.Save()
-      skcanvas.ClipRect(vm_bounds.ToSKRect())
+      if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+        ctx.PopClip()
+      else
+        skcanvas.RestoreToCount(1)
+        let _ = skcanvas.Save()
+        skcanvas.ClipRect(vm_bounds.ToSKRect())
 
     use glyphrun = 
       match text with
@@ -314,14 +320,17 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, vm_bounds: Rect, fg: Col
     ctx.DrawGlyphRun(_render_brush, glyphrun)
 
     if clip then 
-      // note: we explicitly arrange it like this so we don't
-      // call ctx.PushClip(..) or ctx.PopClip()
-      // It first pops all clip states from the canvas and then push
-      // a new state containing no rect clips.
-      // this improves performance -- reason unknown.
-      skcanvas.RestoreToCount(-1)
-      let _ = skcanvas.Save()
-      skcanvas.ClipRect(vm_bounds.ToSKRect())
+      if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+        ctx.PopClip()
+      else
+        // note: we explicitly arrange it like this so we don't
+        // call ctx.PushClip(..) or ctx.PopClip()
+        // It first pops all clip states from the canvas and then push
+        // a new state containing no rect clips.
+        // this improves performance -- reason unknown.
+        skcanvas.RestoreToCount(1)
+        let _ = skcanvas.Save()
+        skcanvas.ClipRect(vm_bounds.ToSKRect())
 
     //  Text bounding box drawing:
     if states.font_drawBounds then
