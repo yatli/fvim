@@ -286,22 +286,25 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, vm_bounds: Rect, fg: Col
     _sp_pen.Thickness <- sp_thickness
     _sp_brush.Color <- sp
 
+(* Undocumented clip operators taken from native Skia:
+enum Op {
+    kDifference_Op,        // 0
+    kIntersect_Op,         // 1
+    kUnion_Op,             // 2
+    kXOR_Op,               // 3
+    kReverseDifference_Op, // 4
+    kReplace_Op,           // 5
+    kLastOp = kReplace_Op
+}; *)
+
     //  clip and fill bg
-    if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-      ctx.PushClip(region)
-    else
-      skcanvas.ClipRect(region.ToSKRect())
-    skcanvas.DrawColor(bg.ToSKColor(), SKBlendMode.Src)
+    skcanvas.ClipRect(region.ToSKRect(), enum 5)
+    skcanvas.Clear(bg.ToSKColor())
     if not clip then 
       //  don't clip all along. see #60
       //  but no clipping = symbols overflow bounds. see #164
       //  so we treat symbols & characters differently... with the `clip` arg
-      if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-        ctx.PopClip()
-      else
-        skcanvas.RestoreToCount(1)
-        let _ = skcanvas.Save()
-        skcanvas.ClipRect(vm_bounds.ToSKRect())
+      skcanvas.ClipRect(vm_bounds.ToSKRect(), enum 5)
 
     use glyphrun = 
       match text with
@@ -320,17 +323,11 @@ let RenderText (ctx: IDrawingContextImpl, region: Rect, vm_bounds: Rect, fg: Col
     ctx.DrawGlyphRun(_render_brush, glyphrun)
 
     if clip then 
-      if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-        ctx.PopClip()
-      else
-        // note: we explicitly arrange it like this so we don't
-        // call ctx.PushClip(..) or ctx.PopClip()
-        // It first pops all clip states from the canvas and then push
-        // a new state containing no rect clips.
-        // this improves performance -- reason unknown.
-        skcanvas.RestoreToCount(1)
-        let _ = skcanvas.Save()
-        skcanvas.ClipRect(vm_bounds.ToSKRect())
+      // note: we explicitly arrange it like this so we don't
+      // call ctx.PushClip(..) or ctx.PopClip()
+      // It uses undocumented kReplace_Op to force update
+      // the clip region, and this improves performance.
+      skcanvas.ClipRect(vm_bounds.ToSKRect(), enum 5)
 
     //  Text bounding box drawing:
     if states.font_drawBounds then
