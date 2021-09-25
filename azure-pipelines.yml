@@ -7,7 +7,7 @@ trigger:
 - master
 
 jobs:
-- job: Windows_builds
+- job: win_x64
   pool:
     vmImage: 'windows-latest'
   steps:
@@ -22,12 +22,54 @@ jobs:
   - task: PowerShell@2
     inputs:
       filePath: 'pack.ps1'
+      arguments: 'win-x64'
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'publish'
       ArtifactName: 'drop-windows'
       publishLocation: 'Container'
-
+- job: win7_x64
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: false
+      version: 5.0.x
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: NuGetToolInstaller@1
+  - task: PowerShell@2
+    inputs:
+      filePath: 'pack.ps1'
+      arguments: 'win7-x64'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-windows'
+      publishLocation: 'Container'
+- job: win_arm
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      packageType: sdk
+      includePreviewVersions: false
+      version: 5.0.x
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+  - task: NuGetToolInstaller@1
+  - task: PowerShell@2
+    inputs:
+      filePath: 'pack.ps1'
+      arguments: 'win-arm'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'publish'
+      ArtifactName: 'drop-windows'
+      publishLocation: 'Container'
 
 - job: Linux_x64_builds
   pool:
