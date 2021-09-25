@@ -810,6 +810,12 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         else None)
       |> Option.defaultValue -1
     member __.AboveGadgets = m_is_float || (m_is_msg && m_msg_scrolled)
+    /// get corresponding buffer col for grid column 0
+    member __.WinCol =
+      // XXX we don't want col 0 actually. we want the cell after number cols.
+      let cursor_bufcol = m_scrollbar_col
+      let cursor_wincol = m_cursor_vm.col
+      cursor_bufcol - cursor_wincol
 
     static member MakeGridComparer() =
           { new IComparer<GridViewModel> with

@@ -131,48 +131,45 @@ type Nvim() as nvim =
             | Disconnected -> failwith "not connected."
 
         let read (ob: IObserver<obj>) (cancel: CancellationToken) = 
-            let F() = 
-              let t = task {
-                trace "begin read loop"
-                let mutable channelClosed = false
-                let mutable unhandledException = None
-                use reader = new MessagePackStreamReader(stdout)
-                while not channelClosed && not cancel.IsCancellationRequested && unhandledException.IsNone do
-                  try
-                    let! data = reader.ReadAsync(cancel) 
-                    if data.HasValue then
-                        let mutable v = data.Value
-                        let data = MessagePackSerializer.Deserialize<obj>(&v, options=msgpackOpts)
-                        ob.OnNext(data)
-                    else
-                        channelClosed <- true
-                  with 
-                  | :? InvalidOperationException as _ex when _ex.Message = "Invalid MessagePack code was detected, code:-1"
-                       -> channelClosed <- true
-                  | :? System.IO.IOException
-                  | :? System.Net.Sockets.SocketException
-                  | :? ObjectDisposedException
-                       -> channelClosed <- true
-                  | ex -> unhandledException <- Some ex
+          task {
+            trace "begin read loop"
+            let mutable channelClosed = false
+            let mutable unhandledException = None
+            use reader = new MessagePackStreamReader(stdout)
+            while not channelClosed && not cancel.IsCancellationRequested && unhandledException.IsNone do
+              try
+                let! data = reader.ReadAsync(cancel) 
+                if data.HasValue then
+                    let mutable v = data.Value
+                    let data = MessagePackSerializer.Deserialize<obj>(&v, options=msgpackOpts)
+                    ob.OnNext(data)
+                else
+                    channelClosed <- true
+              with 
+              | :? InvalidOperationException as _ex when _ex.Message = "Invalid MessagePack code was detected, code:-1"
+                   -> channelClosed <- true
+              | :? System.IO.IOException
+              | :? System.Net.Sockets.SocketException
+              | :? ObjectDisposedException
+                   -> channelClosed <- true
+              | ex -> unhandledException <- Some ex
 
-                match serverExitCode(), unhandledException with
-                | Some code, _ ->
-                  trace "end read loop: process exited, code = %d" code
-                  if code <> 0 then
-                    m_cancelSrc.Cancel()
-                    ob.OnNext([|box (Crash code)|])
-                  else
-                    ob.OnNext([|box Exit|])
-                | _, Some ex ->
-                  trace "end read loop: unhandled exception."
-                  ob.OnNext([|box (UnhandledException ex)|])
-                | _ ->
-                  trace "end read loop."
-                  ob.OnNext([|box Exit|])
-                ob.OnCompleted()
-              }
-              t :> Task
-            Task.Run(F)
+            match serverExitCode(), unhandledException with
+            | Some code, _ ->
+              trace "end read loop: process exited, code = %d" code
+              if code <> 0 then
+                m_cancelSrc.Cancel()
+                ob.OnNext([|box (Crash code)|])
+              else
+                ob.OnNext([|box Exit|])
+            | _, Some ex ->
+              trace "end read loop: unhandled exception."
+              ob.OnNext([|box (UnhandledException ex)|])
+            | _ ->
+              trace "end read loop."
+              ob.OnNext([|box Exit|])
+            ob.OnCompleted()
+          } :> Task
 
         let reply (id: int) (rsp: Response) = task {
             let result, error = 
@@ -212,8 +209,9 @@ type Nvim() as nvim =
                 | _ -> ()
 
                 match pending.TryRemove msgid with
-                | true, src -> src.SetResult rsp; false
-                | _ -> false
+                | true, src -> src.SetResult rsp
+                | _ -> ()
+                false
             | _ -> true
 
         let rec _startRead() =
@@ -242,8 +240,7 @@ type Nvim() as nvim =
 
         let mutable call_id = 0
         let call (ev: Request) = task {
-            let myid = call_id
-            call_id <- call_id + 1
+            let myid = Interlocked.Increment(&call_id)
             let src = TaskCompletionSource<Response>()
             if not <| pending.TryAdd(myid, src)
             then failwith "call: cannot create call request"

@@ -361,14 +361,18 @@ type Grid() as this =
       let top,bot,row,_,lc = vm.ScrollbarData
       float top, float bot, float row, float lc
     use _mainClip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
+    // infer wincol from viewport + cursor info
+    let wincol = vm.WinCol
 
     // gui widgets
     let placements = getGuiWidgetPlacements vm.BufNr
-    let drawGuiWidgets ({ns = ns; mark = mark}, {trow=r;tcol=c}) =
+    let drawGuiWidgets ({ns = ns; mark = mark; col = mc}, {trow=r;tcol=c}) =
       if ns = guiwidgetNamespace then
         match (placements.TryGetValue mark) with
         | false, _ -> ()
         | true, ({widget=wid; w=grid_w; h=grid_h} as p) ->
+          let computed_col = mc - wincol
+          let c = min c computed_col
           let hideAttr = p.GetHideAttr()
           let singleLine = grid_h = 1
           let lineOverlap = vm.CursorInfo.row |> (r <<-> r+grid_h)
