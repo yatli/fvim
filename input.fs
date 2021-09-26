@@ -229,6 +229,9 @@ let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
     |  MouseRelease(_, r, c, NvimSupportedMouseButton but)        -> Mouse(MB but, "release", r, c, 1)
     |  MouseDrag(_, r, c, NvimSupportedMouseButton but   )        -> Mouse(MB but, "drag", r, c, 1)
     |  MouseWheel(_, r, c, dx, dy)                                -> 
+        // filter bogus wheel events...
+        if abs dx >= 10.0 || abs dy >= 10.0 then Unrecognized
+        else
         // duh! don't like this
         accumulatedX <- accumulatedX + dx
         accumulatedY <- accumulatedY + dy
