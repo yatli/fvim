@@ -279,53 +279,56 @@ let rec (|ModifiersPrefix|_|) (x: InputEvent) =
 let mutable private _imeArmed = false
 
 let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
-    let inputClassifier = 
-        input
-        // filter out pure modifiers
-        |> Observable.filter (fun (_, x) -> 
-            match x with
-            | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin)) 
-                -> false
-            | _ -> true)
-        // translate to nvim input sequence
-        |> Observable.map(fun (gridid, x) ->
-            match x with
-            | ImeEvent    -> _imeArmed <- true
-            | TextInput _ -> ()
-            | _           -> _imeArmed <- false
-            // TODO anything that cancels ime input state?
+  let key,mouse = input |> Observable.partition(function | _, InputEvent.Key _ | _, InputEvent.TextInput _ -> true | _ -> false)
+  let key = 
+    key
+    // filter out pure modifiers
+    |> Observable.filter (fun (_, x) -> 
+        match x with
+        | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin)) 
+            -> false
+        | _ -> true)
+    // translate to nvim input sequence
+    |> Observable.choose(fun (_, x) ->
+        match x with
+        | ImeEvent    -> _imeArmed <- true
+        | TextInput _ -> ()
+        | _           -> _imeArmed <- false
+        // TODO anything that cancels ime input state?
+        match x with
+        | (Special sp) & (ModifiersPrefix pref) -> Some(sprintf "<%s-%s>" pref sp)
+        | (Special sp)                          -> Some(sprintf "<%s>" sp)
+        | (Normal n) & (ModifiersPrefix pref)   -> Some(sprintf "<%s-%s>" pref n)
+        | (Normal n)                            -> Some n 
+        | ImeEvent                              -> None
+        | TextInput txt when _imeArmed          -> Some txt
+        | x                                     -> 
+          #if DEBUG
+          trace "rejected: %A" x
+          #endif
+          None
+        )
 
-            match x with
-            | (Special sp) & (ModifiersPrefix pref) -> Choice1Of3(sprintf "<%s-%s>" pref sp)
-            | (Special sp)                          -> Choice1Of3(sprintf "<%s>" sp)
-            | (Normal n) & (ModifiersPrefix pref)   -> Choice1Of3(sprintf "<%s-%s>" pref n)
-            | (Normal n)                            -> Choice1Of3 n 
-            | (Mouse m)                             -> Choice2Of3(gridid, m, (|ModifiersPrefix|_|)x)
-            | ImeEvent                              -> Choice3Of3 ()
-            | TextInput txt when _imeArmed          -> Choice1Of3 txt
-            | x                                     -> 
-              #if DEBUG
-              trace "rejected: %A" x
-              #endif
-              Choice3Of3 ()
+  let mouse =
+    mouse
+    |> Observable.choose(function 
+                         | gridid, (Mouse m as x) -> Some(gridid, m, (|ModifiersPrefix|_|)x) 
+                         | _ -> None)
 
-        )
-    let key   = inputClassifier |> Observable.choose (function | Choice1Of3 x -> Some x | _ -> None)
-    let mouse = inputClassifier |> Observable.choose (function | Choice2Of3 x -> Some x | _ -> None)
-    Disposables.compose [
-        key |> Observable.subscribe(fun x -> 
-        #if DEBUG
-            trace "OnInput: key: %A" x
-        #endif
-            nvim.input x |> ignore
-        )
-        mouse |> Observable.subscribe(fun ((grid, (but, act, r, c, rep), mods) as ev) -> 
-        #if DEBUG
-            trace "grid #%d: OnInput: mouse: %A" grid ev
-        #endif
-            let mods = match mods with Some mods -> mods | _ -> ""
-            for _ in 1..rep do
-                nvim.input_mouse but act mods grid r c |> ignore
-        )
-    ]
+  Disposables.compose [
+      key |> Observable.subscribe(fun x -> 
+      #if DEBUG
+          trace "OnInput: key: %A" x
+      #endif
+          nvim.input x |> ignore
+      )
+      mouse |> Observable.subscribe(fun ((grid, (but, act, r, c, rep), mods) as ev) -> 
+      #if DEBUG
+          trace "grid #%d: OnInput: mouse: %A" grid ev
+      #endif
+          let mods = match mods with Some mods -> mods | _ -> ""
+          for _ in 1..rep do
+              nvim.input_mouse but act mods grid r c |> ignore
+      )
+  ]
 
