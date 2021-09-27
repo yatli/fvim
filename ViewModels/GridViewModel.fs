@@ -809,7 +809,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         if cr <= r && r < cr + h && cc <= c && c < cc + w && pred p then Some mark
         else None)
       |> Option.defaultValue -1
-    member __.AboveGadgets = m_is_float || (m_is_msg && m_msg_scrolled)
+    member __.AboveGadgets = m_is_float || m_msg_scrolled
     /// get corresponding buffer col for grid column 0
     member __.WinCol =
       // XXX we don't want col 0 actually. we want the cell after number cols.
