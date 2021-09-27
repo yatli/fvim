@@ -64,7 +64,7 @@ jobs:
   - task: PowerShell@2
     inputs:
       filePath: 'pack.ps1'
-      arguments: 'win-arm'
+      arguments: 'win-arm64'
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'publish'
@@ -118,7 +118,7 @@ jobs:
   - task: Bash@3
     inputs:
       filePath: 'pack.sh'
-      arguments: 'linux-arm'
+      arguments: 'linux-arm64'
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: 'publish'
