@@ -2,8 +2,8 @@
 # usage:
 #     pack.sh linux-x64
 #     pack.sh osx-x64
-#     pack.sh linux-arm
-#     pack.sh osx-arm
+#     pack.sh linux-arm64
+#     pack.sh osx.11.0-arm64
 
 mkdir -p publish
 rm -rf bin
@@ -40,7 +40,7 @@ function pack-linux-x64()
     mv {*.deb,*.rpm} publish/
 }
 
-function pack-linux-arm()
+function pack-linux-arm64()
 {
     rm -f ./{*.deb,*.rpm}
 
