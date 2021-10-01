@@ -218,8 +218,7 @@ let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
     |  Key(_, Key.Add)                                            -> Special("kPlus")
     |  Key(_, Key.Subtract)                                       -> Special("kMinus")
     |  Key(_, Key.Divide)                                         -> Special("kDivide")
-    // TODO|  Key(_, Key.Decimal) -> ???
-    // TODO|  Key(_, Key.Separator) -> ???
+    |  Key(_, Key.Separator)                                      -> Special("Bar")
     |  Key(_, (
        Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
     |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
