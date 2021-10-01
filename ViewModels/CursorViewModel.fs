@@ -39,24 +39,3 @@ type CursorViewModel(cursorMode: int option) =
       hash this.Height ^^^
       hash this.Width
 
-    member this.VisualChecksum() =
-      hash this.typeface ^^^
-      hash this.wtypeface ^^^
-      hash this.fontSize ^^^
-      hash this.text ^^^
-      hash this.fg ^^^
-      hash this.bg ^^^
-      hash this.sp ^^^
-      hash this.underline ^^^
-      hash this.undercurl ^^^
-      hash this.bold ^^^
-      hash this.italic ^^^
-      hash this.cellPercentage ^^^
-      hash this.blinkon ^^^
-      hash this.blinkoff ^^^
-      hash this.blinkwait ^^^
-      hash this.shape ^^^
-      hash this.Width ^^^
-      hash this.Height ^^^
-      hash this.X ^^^
-      hash this.Y

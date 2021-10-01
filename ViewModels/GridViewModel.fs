@@ -95,53 +95,6 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
 
-    let cursorConfig() =
-        if theme.mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
-        elif m_gridbuffer.GetLength(0) <= m_cursor_vm.row || m_gridbuffer.GetLength(1) <= m_cursor_vm.col then ()
-        else
-        let _,_,target_vm,target_row,target_col,_ : int*int*GridViewModel*int*int*int = this.FindTargetVm m_cursor_vm.row m_cursor_vm.col
-        let mode              = theme.mode_defs.[m_cursor_vm.modeidx]
-        let hlid              = target_vm.[target_row, target_col].hlid
-        let hlid              = Option.defaultValue hlid mode.attr_id
-        let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
-        let origin : Point    = this.GetPoint m_cursor_vm.row m_cursor_vm.col
-        let text              = target_vm.[target_row, target_col].text
-        let text_type         = wswidth text
-        let width             = float(max <| 1 <| CharTypeWidth text_type) * m_glyphsize.Width
-
-        let on, off, wait =
-            match mode with
-            | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
-                when on > 0 && off > 0 && wait > 0 -> on, off, wait
-            | _ -> 0,0,0
-
-        // do not use the default colors for cursor
-        let colorf = if hlid = 0 then GetReverseColor else id
-        let fg, bg, sp = colorf fg, colorf bg, colorf sp
-
-        m_cursor_vm.typeface       <- theme.guifont
-        m_cursor_vm.wtypeface      <- theme.guifontwide
-        m_cursor_vm.fontSize       <- m_fontsize
-        m_cursor_vm.text           <- text
-        m_cursor_vm.fg             <- fg
-        m_cursor_vm.bg             <- bg
-        m_cursor_vm.sp             <- sp
-        m_cursor_vm.underline      <- attrs.underline
-        m_cursor_vm.undercurl      <- attrs.undercurl
-        m_cursor_vm.bold           <- attrs.bold
-        m_cursor_vm.italic         <- attrs.italic
-        m_cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
-        m_cursor_vm.blinkon        <- on
-        m_cursor_vm.blinkoff       <- off
-        m_cursor_vm.blinkwait      <- wait
-        m_cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
-        m_cursor_vm.X              <- origin.X
-        m_cursor_vm.Y              <- origin.Y
-        m_cursor_vm.Width          <- width
-        m_cursor_vm.Height         <- m_glyphsize.Height
-        m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
-        //trace _gridid "set cursor info, color = %A %A %A" fg bg sp
-
     let markAllDirty () =
         m_griddirty <- true
         for c in m_child_grids do
@@ -155,7 +108,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
         // if the buffer under cursor is updated, also notify the cursor view model
         if row = m_cursor_vm.row && col <= m_cursor_vm.col && m_cursor_vm.col < col + w
-        then cursorConfig()
+        then this.CursorConfig()
 
         // the workarounds below will extend the dirty region -- if we are drawing
         // a base grid displaying the grid boundaries, do not apply them.
@@ -239,6 +192,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                   m_extmarks.Remove m.mark |> ignore
                 m_gridbuffer.[row, col].marks <- []
                 col <- col + 1
+                if m_cursor_vm.row = row && m_cursor_vm.col = col then
+                  this.CursorConfig()
         markDirty { row = row; col = line.col_start; height = 1; width = col - line.col_start } 
 
     let clearMarks() =
@@ -270,7 +225,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let changeMode (name: string) (index: int) = 
         m_cursor_vm.modeidx <- index
-        cursorConfig()
+        this.CursorConfig()
 
     let setCursorEnabled v =
         m_cursor_vm.enabled <- v
@@ -356,7 +311,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
            && left <= m_cursor_vm.col 
            && m_cursor_vm.col <= right
         then
-            cursorConfig()
+            this.CursorConfig()
 
         m_drawops.Add(Scroll(top, bot, left, right, rows, cols))
 
@@ -486,7 +441,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         //trace _gridid "fontConfig: glyphsize=%A, measured font size=%A" m_glyphsize m_fontsize
 
         // sync font to cursor vm
-        cursorConfig()
+        this.CursorConfig()
         // sync font to popupmenu vm
         m_popupmenu_vm.SetFont(theme.guifont, theme.fontsize)
         markAllDirty()
@@ -551,7 +506,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             this.ObservableForProperty(fun x -> x.IsFocused)
             |> Observable.subscribe (fun x ->
               trace _gridid "focus state changed: %A" x.Value
-              cursorConfig()
+              this.CursorConfig()
             )
 
             rpc.register.notify "OnBufWinEnter" this.OnBufWinEnter
@@ -594,35 +549,85 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             m_z <- -100
           markAllDirty()
 
+    member __.CursorConfig() =
+        if m_parent.IsSome then m_parent.Value.CursorConfig()
+        else
+        if theme.mode_defs.Length = 0 || m_cursor_vm.modeidx < 0 then ()
+        elif m_gridbuffer.GetLength(0) <= m_cursor_vm.row || m_gridbuffer.GetLength(1) <= m_cursor_vm.col then ()
+        else
+        let _,_,target_vm,target_row,target_col,_ : int*int*GridViewModel*int*int*int = this.FindTargetVm m_cursor_vm.row m_cursor_vm.col
+        let mode              = theme.mode_defs.[m_cursor_vm.modeidx]
+        let hlid              = target_vm.[target_row, target_col].hlid
+        let hlid              = Option.defaultValue hlid mode.attr_id
+        let fg, bg, sp, attrs = theme.GetDrawAttrs hlid
+        let origin : Point    = this.GetPoint m_cursor_vm.row m_cursor_vm.col
+        let text              = target_vm.[target_row, target_col].text
+        let text_type         = wswidth text
+        let width             = float(max <| 1 <| CharTypeWidth text_type) * m_glyphsize.Width
+
+        let on, off, wait =
+            match mode with
+            | { blinkon = Some on; blinkoff = Some off; blinkwait = Some wait  }
+                when on > 0 && off > 0 && wait > 0 -> on, off, wait
+            | _ -> 0,0,0
+
+        // do not use the default colors for cursor
+        let colorf = if hlid = 0 then GetReverseColor else id
+        let fg, bg, sp = colorf fg, colorf bg, colorf sp
+
+        m_cursor_vm.typeface       <- theme.guifont
+        m_cursor_vm.wtypeface      <- theme.guifontwide
+        m_cursor_vm.fontSize       <- m_fontsize
+        m_cursor_vm.text           <- text
+        m_cursor_vm.fg             <- fg
+        m_cursor_vm.bg             <- bg
+        m_cursor_vm.sp             <- sp
+        m_cursor_vm.underline      <- attrs.underline
+        m_cursor_vm.undercurl      <- attrs.undercurl
+        m_cursor_vm.bold           <- attrs.bold
+        m_cursor_vm.italic         <- attrs.italic
+        m_cursor_vm.cellPercentage <- Option.defaultValue 100 mode.cell_percentage
+        m_cursor_vm.blinkon        <- on
+        m_cursor_vm.blinkoff       <- off
+        m_cursor_vm.blinkwait      <- wait
+        m_cursor_vm.shape          <- Option.defaultValue CursorShape.Block mode.cursor_shape
+        m_cursor_vm.X              <- origin.X
+        m_cursor_vm.Y              <- origin.Y
+        m_cursor_vm.Width          <- width
+        m_cursor_vm.Height         <- m_glyphsize.Height
+        m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+        //trace _gridid "set cursor info, color = %A %A %A" fg bg sp
+
+
+
     member __.CursorGoto id row col =
+      if id = _gridid then
+        m_cursor_vm.row <- row
+        m_cursor_vm.col <- col
         // translation back to parent
-        if m_parent.IsSome && id = _gridid then
+        if m_parent.IsSome then
         #if DEBUG
             trace _gridid "CursorGoto parent"
         #endif
-            m_cursor_vm.row <- row
-            m_cursor_vm.col <- col
             m_parent.Value.CursorGoto m_parent.Value.GridId (row + m_anchor_row) (col + m_anchor_col)
         // goto me
-        elif id = _gridid then
+        else
         #if DEBUG
             trace _gridid "CursorGoto me"
         #endif
             m_cursor_vm.focused <- true
-            m_cursor_vm.row <- row
-            m_cursor_vm.col <- col
             this.IsFocused <- true
-            cursorConfig()
-        // goto my child
-        elif m_child_grids.FindIndex(fun x -> x.GridId = id) > -1 then
-            ()
-        // was me, but not anymore
-        elif m_cursor_vm.focused then
-        #if DEBUG
-            trace _gridid "CursorGoto notme"
-        #endif
-            m_cursor_vm.focused <- false
-            m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
+            this.CursorConfig()
+      // goto my child
+      elif m_child_grids.FindIndex(fun x -> x.GridId = id) > -1 then
+          ()
+      // was me, but not anymore
+      elif m_cursor_vm.focused then
+      #if DEBUG
+          trace _gridid "CursorGoto notme"
+      #endif
+          m_cursor_vm.focused <- false
+          m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
     member __.ShowPopupMenu grid (items: CompleteItem[]) selected row col =
         if m_parent.IsSome && grid = _gridid then
