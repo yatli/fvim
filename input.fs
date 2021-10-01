@@ -92,7 +92,7 @@ let suffix (suf: string, r: int, c: int) =
 let mutable accumulatedX = 0.0
 let mutable accumulatedY = 0.0
 
-let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
+let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
     match x with
     // | Key(HasFlag(KeyModifiers.Control), Key.H)
     // | Key(HasFlag(KeyModifiers.Control), Key.I)
@@ -224,30 +224,10 @@ let (|Mouse|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
     |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
     |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
     |  Key(_, x)                                                  -> Normal (x.ToString())
-    |  MousePress(_, r, c, NvimSupportedMouseButton but)          -> Mouse(MB but, "press", r, c, 1)
-    |  MouseRelease(_, r, c, NvimSupportedMouseButton but)        -> Mouse(MB but, "release", r, c, 1)
-    |  MouseDrag(_, r, c, NvimSupportedMouseButton but   )        -> Mouse(MB but, "drag", r, c, 1)
-    |  MouseWheel(_, r, c, dx, dy)                                -> 
-        // filter bogus wheel events...
-        if abs dx >= 10.0 || abs dy >= 10.0 then Unrecognized
-        else
-        // duh! don't like this
-        accumulatedX <- accumulatedX + dx
-        accumulatedY <- accumulatedY + dy
-        let ax, ay = abs accumulatedX, abs accumulatedY
-        let rpt = max ax ay
-        let dir = DIR(dx, dy, ax >= ay)
-        if rpt >= 1.0 then
-            if ax >= ay then
-                accumulatedX <- accumulatedX - truncate accumulatedX
-            else
-                accumulatedY <- accumulatedY - truncate accumulatedY
-            Mouse("wheel", dir, r, c, int rpt)
-        else
-            Unrecognized
     |  TextInput txt                                              -> TextInput txt
     |  _                                                          -> Unrecognized
-let rec (|ModifiersPrefix|_|) (x: InputEvent) =
+
+let rec ModifiersPrefix (x: InputEvent) =
     match x with
     // -------------- keys with special form do not carry shift modifiers
     |  Key(m & HasFlag(KeyModifiers.Shift), x &
@@ -256,9 +236,9 @@ let rec (|ModifiersPrefix|_|) (x: InputEvent) =
     |  Key.D0 | Key.D1 | Key.D2 | Key.D3 
     |  Key.D4 | Key.D5 | Key.D6 | Key.D7 
     |  Key.D8 | Key.D9)) 
-        -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~KeyModifiers.Shift), x)
+        -> ModifiersPrefix <| InputEvent.Key(m &&& (~~~KeyModifiers.Shift), x)
     | Key(m & HasFlag(KeyModifiers.Shift), Key.Space) when states.key_disableShiftSpace
-        -> (|ModifiersPrefix|_|) <| InputEvent.Key(m &&& (~~~KeyModifiers.Shift), Key.Space)
+        -> ModifiersPrefix <| InputEvent.Key(m &&& (~~~KeyModifiers.Shift), Key.Space)
     | Key(m, _)
     | MousePress(m, _, _, _) 
     | MouseRelease(m, _, _, _) 
@@ -269,39 +249,36 @@ let rec (|ModifiersPrefix|_|) (x: InputEvent) =
         let a = if m.HasFlag(KeyModifiers.Alt)     then "A-" else ""
         let d = if m.HasFlag(KeyModifiers.Meta) then "D-" else ""
         let s = if m.HasFlag(KeyModifiers.Shift)   then "S-" else ""
-        match (sprintf "%s%s%s%s" c a d s).TrimEnd('-') with
-        | "" -> None
-        | x -> Some x
-    | TextInput _ -> None
-    | _ -> None
+        (sprintf "%s%s%s%s" c a d s).TrimEnd('-')
+    | TextInput _ -> ""
+    | _ -> ""
 
 let mutable private _imeArmed = false
 
 let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
   let key,mouse = input |> Observable.partition(function | _, InputEvent.Key _ | _, InputEvent.TextInput _ -> true | _ -> false)
+  // translate to nvim input sequence
   let key = 
     key
-    // filter out pure modifiers
-    |> Observable.filter (fun (_, x) -> 
-        match x with
-        | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin)) 
-            -> false
-        | _ -> true)
-    // translate to nvim input sequence
     |> Observable.choose(fun (_, x) ->
+        // filter out pure modifiers
+        match x with
+        | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin)) -> None
+        | _ ->
         match x with
         | ImeEvent    -> _imeArmed <- true
         | TextInput _ -> ()
         | _           -> _imeArmed <- false
         // TODO anything that cancels ime input state?
-        match x with
-        | (Special sp) & (ModifiersPrefix pref) -> Some(sprintf "<%s-%s>" pref sp)
-        | (Special sp)                          -> Some(sprintf "<%s>" sp)
-        | (Normal n) & (ModifiersPrefix pref)   -> Some(sprintf "<%s-%s>" pref n)
-        | (Normal n)                            -> Some n 
-        | ImeEvent                              -> None
-        | TextInput txt when _imeArmed          -> Some txt
-        | x                                     -> 
+        let pref = ModifiersPrefix x
+        match x,pref with
+        | (Special sp), ""   -> Some(sprintf "<%s>" sp)
+        | (Special sp), pref -> Some(sprintf "<%s-%s>" pref sp)
+        | (Normal n), ""     -> Some n 
+        | (Normal n), pref   -> Some(sprintf "<%s-%s>" pref n)
+        | ImeEvent, _        -> None
+        | TextInput txt, _ when _imeArmed -> Some txt
+        | x                  -> 
           #if DEBUG
           trace "rejected: %A" x
           #endif
@@ -310,9 +287,31 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
 
   let mouse =
     mouse
-    |> Observable.choose(function 
-                         | gridid, (Mouse m as x) -> Some(gridid, m, (|ModifiersPrefix|_|)x) 
-                         | _ -> None)
+    |> Observable.choose(fun (gridid, x) -> 
+      let pref = ModifiersPrefix x
+      match x with
+      |  MousePress(_, r, c, NvimSupportedMouseButton but)   -> Some(gridid, MB but, "press", r, c, 1, pref)
+      |  MouseRelease(_, r, c, NvimSupportedMouseButton but) -> Some(gridid, MB but, "release", r, c, 1, pref)
+      |  MouseDrag(_, r, c, NvimSupportedMouseButton but   ) -> Some(gridid, MB but, "drag", r, c, 1, pref)
+      |  MouseWheel(_, r, c, dx, dy)                         -> 
+           // filter bogus wheel events...
+           if abs dx >= 10.0 || abs dy >= 10.0 then None
+           else
+           // duh! don't like this
+           accumulatedX <- accumulatedX + dx
+           accumulatedY <- accumulatedY + dy
+           let ax, ay = abs accumulatedX, abs accumulatedY
+           let rpt = max ax ay
+           let dir = DIR(dx, dy, ax >= ay)
+           if rpt >= 1.0 then
+               if ax >= ay then
+                   accumulatedX <- accumulatedX - truncate accumulatedX
+               else
+                   accumulatedY <- accumulatedY - truncate accumulatedY
+               Some(gridid, "wheel", dir, r, c, int rpt, pref)
+           else
+               None
+      | _ -> None)
 
   Disposables.compose [
       key |> Observable.subscribe(fun x -> 
@@ -321,11 +320,10 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
       #endif
           nvim.input x |> ignore
       )
-      mouse |> Observable.subscribe(fun ((grid, (but, act, r, c, rep), mods) as ev) -> 
+      mouse |> Observable.subscribe(fun ((grid, but, act, r, c, rep, mods) as ev) -> 
       #if DEBUG
           trace "grid #%d: OnInput: mouse: %A" grid ev
       #endif
-          let mods = match mods with Some mods -> mods | _ -> ""
           for _ in 1..rep do
               nvim.input_mouse but act mods grid r c |> ignore
       )
