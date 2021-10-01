@@ -386,6 +386,7 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
     key
     |> Observable.choose(fun (_, x) ->
         match x with
+        | TextInput "<"        -> Some "<LT>"
         | TextInput txt        -> 
           if blockNextTextInput then
             blockNextTextInput <- false
