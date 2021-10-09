@@ -157,11 +157,13 @@ type Nvim() as nvim =
             match serverExitCode(), unhandledException with
             | Some code, _ ->
               trace "end read loop: process exited, code = %d" code
-              if code <> 0 then
+              // 0 = exit normally
+              // 1 = exit with error message but it's not a crash
+              if code <> 0 && code <> 1 then
                 m_cancelSrc.Cancel()
                 ob.OnNext([|box (Crash code)|])
               else
-                ob.OnNext([|box Exit|])
+                ob.OnNext([|box (Exit code)|])
             | _, Some ex ->
               trace "end read loop: unhandled exception."
               ob.OnNext([|box (UnhandledException ex)|])

@@ -29,7 +29,7 @@ type Event =
 | Crash        of ccode: int32
 | ByteMessage  of bmsg: byte
 | UnhandledException of ex: exn
-| Exit
+| Exit         of ecode: int32
 
 
 [<Struct>]

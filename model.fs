@@ -240,12 +240,12 @@ module rpc =
           _errormsgs.Add err
         | ByteMessage bmsg -> 
           _bytemsg.Add bmsg
-        | Exit -> 
+        | Exit ecode -> 
           if _bytemsg.Count <> 0 then
             let _bytemsg = System.Text.Encoding.UTF8.GetString(_bytemsg.ToArray())
             failwithf "neovim says:\n%s" _bytemsg
           trace "shutting down application lifetime"
-          Shutdown 0
+          Shutdown ecode
         | Crash code -> 
           trace "neovim crashed with code %d" code
           _crashcode <- code
