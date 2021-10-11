@@ -14,10 +14,11 @@ open Avalonia.Svg
 let private s_assetLoader = new AvaloniaAssetLoader() :> Svg.Model.IAssetLoader
 let private s_factory = AvaloniaLocator.Current.GetService<Platform.IPlatformRenderInterface>()
 
+// ported from: https://github.com/wieslawsoltes/Svg.Skia/blob/master/src/Avalonia.Svg/AvaloniaPicture.cs
 type SvgPicture(data: string) =
   let svg = Svg.SvgDocument.FromSvg(data)
-  let picture = 
-    match Svg.Model.SvgExtensions.ToModel(svg, s_assetLoader) with
+  let picture: SKPicture = 
+    match Svg.Model.SvgExtensions.ToModel(svg, s_assetLoader, ignoreAttributes=Unchecked.defaultof<_>) with
     | pic,_,_ -> pic
   let _commands = ResizeArray<DrawCommand>()
   let mutable m_brush: SolidColorBrush = null
