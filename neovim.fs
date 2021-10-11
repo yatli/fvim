@@ -169,7 +169,7 @@ type Nvim() as nvim =
               ob.OnNext([|box (UnhandledException ex)|])
             | _ ->
               trace "end read loop."
-              ob.OnNext([|box Exit|])
+              ob.OnNext([|box (Exit 0)|])
             ob.OnCompleted()
           } :> Task
 
