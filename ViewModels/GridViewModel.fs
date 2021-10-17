@@ -90,6 +90,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_extmarks_oob   = hashmap[] // tracks existing off-screen extmarks and last known position
     let m_gridComparer = GridViewModel.MakeGridComparer() :> IComparer<GridViewModel>
 
+    static let mutable g_create_seq = 0
+    let m_create_seq = g_create_seq
+
     let raiseInputEvent id e = m_input_ev.Trigger(id, e)
 
     let getPos (p: Point) =
@@ -483,6 +486,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         fontConfig()
         setCursorEnabled theme.cursor_enabled
         clearBuffer false
+        g_create_seq <- g_create_seq + 1
 
         this.Watch [
 
@@ -771,6 +775,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ExtWinClosed = m_ext_winclose_ev.Publish
     member __.Parent with get() = m_parent and set(v) = m_parent <- v
     member __.ZIndex with get() = m_z and set(v) = m_z <- v
+    member __.CreateSeq = m_create_seq
     member __.SortChildren() =
         m_child_grids.Sort(m_gridComparer)
     member __.FindTargetVm r c =
@@ -827,7 +832,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 member __.Compare(x: GridViewModel, y: GridViewModel): int = 
                   let dz = x.ZIndex - y.ZIndex
                   if dz = 0 then
-                    y.GridId - x.GridId
+                    y.CreateSeq - x.CreateSeq
                   else dz
           }
 
