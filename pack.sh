@@ -38,6 +38,9 @@ function pack-linux-x64()
     fpm -s dir -t rpm -n fvim -v $VERSION -C $PKG_ROOT
 
     mv {*.deb,*.rpm} publish/
+
+    # also drop version to build pipeline
+    git describe > publish/version
 }
 
 function pack-linux-arm64()
