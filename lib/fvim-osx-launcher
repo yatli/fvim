@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 ENVVARS=""
+set -f
+IFS=$'\n'
 for VAR in `$SHELL --login -c /usr/bin/env`
 do
   if [[ $VAR == *"="* ]]
   then
-    ENVVARS="$ENVVARS $VAR"
+    if [[ $VAR == "PATH="* ]]
+    then
+      THISPATH=$VAR
+    else
+      ENVVARS="$ENVVARS $VAR"
+    fi
   fi
 done
+# Put PATH at the beginning to workaround env size limitation
+ENVVARS="$THISPATH $ENVVARS"
 fvim_exe="$(dirname "$0")/FVim"
 logger "FVim: Starting. env is: $ENVVARS"
 logger "FVim: executable path is: $fvim_exe"
