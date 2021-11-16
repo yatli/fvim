@@ -130,7 +130,7 @@ FVimFontHintLevel 'full'
 FVimFontLigature v:true
 FVimFontLineHeight '+1.0' " can be 'default', '14.0', '-1.0' etc.
 FVimFontSubpixel v:true
-FVimFontNoBuiltInSymbols v:true " Disable built-in Nerd font symbols
+FVimFontNoBuiltinSymbols v:true " Disable built-in Nerd font symbols
 
 " Try to snap the fonts to the pixels, reduces blur
 " in some situations (e.g. 100% DPI).
