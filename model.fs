@@ -13,7 +13,6 @@ open Avalonia.Layout
 open Avalonia.Media
 open Avalonia.Threading
 open FSharp.Control.Reactive
-open FSharp.Control.Tasks.V2
 open SkiaSharp
 open System
 open System.ComponentModel

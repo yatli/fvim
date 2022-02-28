@@ -18,7 +18,6 @@ open System.Security.Principal
 open System.Threading.Tasks
 open System.Threading
 open FSharp.Control.Reactive
-open FSharp.Control.Tasks.V2.ContextSensitive
 open System.Runtime.InteropServices
 
 let inline private trace fmt = trace "neovim.process" fmt
