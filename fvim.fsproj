@@ -12,7 +12,7 @@
     <OutputType>WinExe</OutputType>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <TrimMode>copyused</TrimMode>
+    <TrimMode>link</TrimMode>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
 

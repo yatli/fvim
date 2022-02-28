@@ -104,14 +104,14 @@ let attachFirstSession svrpipe =
   |> function | Some ns -> Ok ns | None -> Error FVR_NO_FREE_SESSION
 
 let serveSession (session: Session) =
-  async {
+  task {
     let pname = pipename (string session.id)
     use client = new NamedPipeClientStream(".", pname, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
-    do! Async.AwaitTask(client.ConnectAsync())
+    do! client.ConnectAsync()
     trace "Connected to NeoVim server at %s" pname
     let fromNvim = client.CopyToAsync(session.server.Value)
     let toNvim = session.server.Value.CopyToAsync(client)
-    let! _ = Async.AwaitTask(Task.WhenAny [| fromNvim; toNvim |])
+    let! _ = Task.WhenAny [| fromNvim; toNvim |]
     // Something is completed, let's investigate why
     if not session.proc.HasExited then
       // the NeoVim server is still up and running
@@ -121,7 +121,7 @@ let serveSession (session: Session) =
   }
 
 let serve nvim stderrenc (pipe: NamedPipeServerStream) = 
-  async {
+  backgroundTask {
     try
       let rbuf = Array.zeroCreate 8192
       let rmem = rbuf.AsMemory()
@@ -170,16 +170,13 @@ let daemon (pname: string option) (nvim: string) (stderrenc: Text.Encoding) =
     let paddr = pipeaddr pname
     trace "FVR server address is '%s'" paddr
 
-    Async.RunSynchronously <| async {
-      while true do
-        let svrpipe =
-            new NamedPipeServerStream(pname, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                                      PipeTransmissionMode.Byte, PipeOptions.Asynchronous)
-        do! Async.AwaitTask(svrpipe.WaitForConnectionAsync())
-        trace "Incoming connection."
-        Async.Start <| serve nvim stderrenc svrpipe
-      return ()
-    }
+    while true do
+      let svrpipe =
+          new NamedPipeServerStream(pname, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+                                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous)
+      svrpipe.WaitForConnection()
+      trace "Incoming connection."
+      serve nvim stderrenc svrpipe |> ignore
     0
 
 let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
@@ -193,7 +190,7 @@ let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
     stdin.Write(intbuf, 0, intbuf.Length)
     stdin.Write(payload, 0, payload.Length)
     stdin.Flush()
-    Async.StartAsTask(read stdout (intbuf.AsMemory())).Wait()
+    (read stdout (intbuf.AsMemory())).Wait()
     toInt32LE intbuf
   with ex ->
     trace "%O" ex

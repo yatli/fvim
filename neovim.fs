@@ -337,7 +337,7 @@ type Nvim() as nvim =
         nvim.call { method = "nvim_ui_attach"; parameters = mkparams3 w h opts }
 
     member __.exists (var: string) =
-        async {
+        task {
             let! response = nvim.call { method = "nvim_call_function"; parameters = mkparams2 "exists" (mkparams1 var) }
             //return response
             trace "exists: response = %A" response
@@ -370,7 +370,7 @@ type Nvim() as nvim =
     member __.edit (file: string) =
         nvim.command ("edit " + file)
 
-    member __.call req = Async.AwaitTask(m_call req)
+    member __.call req = m_call req
 
     member __.quitall () =
         nvim.command "confirm quitall"
@@ -382,7 +382,7 @@ type Nvim() as nvim =
         }
 
     member __.list_chans() =
-        async {
+        task {
             match! nvim.call { method = "nvim_list_chans"; parameters = [||] } with
             | Ok(ObjArray arr) -> return arr
             | _ -> return [||]

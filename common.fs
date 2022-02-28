@@ -125,20 +125,18 @@ let inline (>?=) (x: Result<'a, 'e>) (f: 'a -> Result<'b, 'e>) =
 let run (t: Task) =
     Task.Run(fun () -> t) |> ignore
 
-let inline runAsync<'T> = Async.Ignore<'T> >> Async.Start
-
 let runSync (t: Task) =
     t.ConfigureAwait(false).GetAwaiter().GetResult()
 
 let rec read (stream: System.IO.Stream) (buf: Memory<byte>) = 
-  async {
-    let! n = Async.AwaitTask((stream.ReadAsync buf).AsTask())
+  task {
+    let! n = stream.ReadAsync buf
     if n = 0 then failwith "read"
     if n < buf.Length then return! read stream (buf.Slice n)
   }
 
 let write (stream: System.IO.Stream) (buf: ReadOnlyMemory<byte>) = 
-  Async.AwaitTask(stream.WriteAsync(buf).AsTask())
+  stream.WriteAsync(buf)
 
 let inline toInt32LE (x: _[]) =
   int32 (x.[0])

@@ -130,16 +130,13 @@ type PopupMenuViewModel() =
         m_cancelSrc <- new CancellationTokenSource()
         m_cancelSrc.CancelAfter(200)
         let token = m_cancelSrc.Token
-        let asyncAdd = async {
+        backgroundTask {
             for chunk in chunks do
                 if token.IsCancellationRequested then return ()
-                let task = Dispatcher.UIThread.InvokeAsync(fun () -> 
+                do! Dispatcher.UIThread.InvokeAsync(fun () -> 
                     // new items made their way to the UI thread, abort
                     if not token.IsCancellationRequested then 
                       Array.iter updateItem chunk
                       m_items.AddRange chunk
                       )
-                do! Async.AwaitTask(task)
-        }
-
-        Async.Start(asyncAdd, m_cancelSrc.Token)
+        } |> ignore

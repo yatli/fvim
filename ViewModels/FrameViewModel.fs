@@ -111,10 +111,11 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             rpc.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
         match _maingrid with
-        | Some grid -> Async.StartWithContinuations(
-                           model.GetBufferPath grid.WindowHandle, 
-                           (fun p -> this.Title <- $"[#] {p}"), 
-                           ignore, ignore)
+        | Some grid -> 
+          backgroundTask {
+             let! p = model.GetBufferPath grid.WindowHandle
+             this.Title <- $"[#] {p}"
+          } |> ignore
         | _ -> ()
         model.OnFrameReady this
 

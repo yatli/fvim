@@ -149,7 +149,7 @@ module private ModelImpl =
         ignore <| nvim.grid_resize gridui.Id gridui.GridWidth gridui.GridHeight
 
     let onInitComplete _ =
-      async {
+      backgroundTask {
         trace "init complete."
         // watch gui-widgets extmark namespace
         match! nvim.call { method = "nvim_get_namespaces"; parameters = [||] } with
@@ -159,7 +159,7 @@ module private ModelImpl =
           let! _ = nvim.call { method = "nvim_call_function"; parameters = mkparams2 "GuiWidgetClientAttach" (mkparams1 channel_id) }
           guiwidgetNamespace <- id
         | _ -> ()
-      } |> runAsync
+      } |> ignore
 
     let onSignUpdate [| Integer32 bufnr; signs |] =
         let signs = parseBufferSignPlacements signs
@@ -222,13 +222,13 @@ module rpc =
         | RpcRequest(id, req, reply) -> 
             match requestHandlers.TryGetValue req.method with
             | true, method ->
-                task { 
+                backgroundTask { 
                     try
                         let! rsp = method(req.parameters)
                         do! reply id rsp
                     with
                     | Failure msg -> error "rpc" "request %d(%s) failed: %s" id req.method msg
-                } |> run
+                } |> ignore
             | _ -> error "rpc" "request handler [%s] not found" req.method
         | Notification(req) ->
             let event = getNotificationEvent req.method
@@ -329,12 +329,12 @@ let private UpdateUICapabilities() =
     let opts = hashmap[]
     states.PopulateUIOptions opts
     trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
-    async {
-      do! Async.AwaitTask(init.Task)
+    backgroundTask {
+      do! init.Task
       for KeyValue(k, v) in opts do
         let! _ = nvim.call { method="nvim_ui_set_option"; parameters = mkparams2 k v }
         in ()
-    } |> runAsync
+    } |> ignore
 
 /// <summary>
 /// Call this once at initialization.
@@ -427,9 +427,7 @@ let Start (serveropts, norc, remote) =
 
     trace "commencing early initialization..."
 
-    async {
-      do! Async.SwitchToNewThread()
-
+    backgroundTask {
       let! api_info = nvim.call { method = "nvim_get_api_info"; parameters = [||] }
       let api_query_result = 
           match api_info with
@@ -520,7 +518,7 @@ let Start (serveropts, norc, remote) =
         let scriptPath = Path.Combine(fvimPath, "fvim.vim")
         trace "script path: %A" scriptPath
         if remote then
-          let! scriptText = File.ReadAllTextAsync(scriptPath) |> Async.AwaitTask
+          let! scriptText = File.ReadAllTextAsync(scriptPath)
           let luaText = $"""local uv = vim.loop
 local txt = [[{scriptText}]]
 local template = "fvim-init.vim-XXXXXX"
@@ -552,7 +550,7 @@ end)
 
       // initialization complete. no more messages will be sent from this thread.
       init.SetResult()
-    } |> runAsync
+    } |> ignore
 
 let Flush =
     ev_flush.Publish
@@ -591,13 +589,13 @@ let OnGridReady(gridui: IGridUI) =
         // Notify nvim about its presence
         trace "attaching to nvim on first grid ready signal. size = %A %A" 
               gridui.GridWidth gridui.GridHeight
-        async {
+        backgroundTask {
           let! _ = nvim.set_var "fvim_render_scale" gridui.RenderScale
           let! _ = nvim.ui_attach gridui.GridWidth gridui.GridHeight
           let! _ = nvim.exec "autocmd InsertEnter * call rpcnotify(g:fvim_channel, 'EnableIme', v:true)" false
           let! _ = nvim.exec "autocmd InsertLeave * call rpcnotify(g:fvim_channel, 'EnableIme', v:false)" false
           in ()
-        } |> runAsync
+        } |> ignore
 
 let private _pum_arg4: hashmap<obj,obj> = hashmap[]
 
@@ -606,23 +604,23 @@ let SelectPopupMenuItem (index: int) (insert: bool) (finish: bool) =
     trace "SelectPopupMenuItem: index=%d insert=%b finish=%b" index insert finish
   #endif
     nvim.call { method = "nvim_select_popupmenu_item"; parameters = mkparams4 index insert finish _pum_arg4 }
-              |> runAsync
+              |> ignore
 
 let SetPopupMenuPos width height row col =
   #if DEBUG
     trace "SetPopupMenuPos: w=%f h=%f r=%f c=%f" width height row col
   #endif
     nvim.call { method = "nvim_ui_pum_set_bounds";  parameters = mkparams4 width height row col}
-    |> runAsync
+    |> ignore
 
 let OnFocusLost() =
     nvim.command "if exists('#FocusLost') | doautocmd <nomodeline> FocusLost | endif"
-    |> runAsync
+    |> ignore
 
 // see: https://github.com/equalsraf/neovim-qt/blob/e13251a6774ec8c38e7f124b524cc36e4453eb35/src/gui/shell.cpp#L1405
 let OnFocusGained() =
     nvim.command "if exists('#FocusGained') | doautocmd <nomodeline> FocusGained | endif"
-    |> runAsync
+    |> ignore
 
 let OnTerminated () =
     trace "terminating nvim..."
@@ -632,18 +630,18 @@ let OnTerminating(args: CancelEventArgs) =
     args.Cancel <- true
     trace "window is closing"
     if nvim.isRemote then Detach()
-    else nvim.quitall() |> runAsync
+    else nvim.quitall() |> ignore
 
 let OnExtClosed(win: int) =
     nvim.call {method = "nvim_win_close"; parameters = mkparams2 win true} 
-    |> runAsync
+    |> ignore
 
 let EditFiles (files: string seq) =
-    async {
+    backgroundTask {
       for file in files do
           let! _ = nvim.edit file
           in ()
-    } |> runAsync
+    } |> ignore
 
 let InsertText text =
     let sb = new Text.StringBuilder()
@@ -660,10 +658,10 @@ let InsertText text =
 
     if not <| String.IsNullOrEmpty text then
         let text = sb.ToString()
-        nvim.command text |> runAsync
+        nvim.command text |> ignore
 
 let GetBufferPath (win: int) =
-    async {
+    task {
         match! nvim.call { method = "nvim_win_get_buf"; parameters = mkparams1 win } with
         | Error(_) -> return ""
         | Ok(Integer32 bufnr) -> 
@@ -674,8 +672,8 @@ let GetBufferPath (win: int) =
 
 let GuiWidgetMouseUp (buf: int) (mark: int) =
    nvim.exec_lua $"require('gui-widgets').mouse_up({buf},{mark})" [||]
-   |> runAsync
+   |> ignore
 
 let GuiWidgetMouseDown (buf: int) (mark: int) =
    nvim.exec_lua $"require('gui-widgets').mouse_down({buf},{mark})" [||]
-   |> runAsync
+   |> ignore
