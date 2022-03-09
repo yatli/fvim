@@ -48,7 +48,7 @@
     </Grid.Styles>
     <Image Source="/Assets/fvim.png" Grid.Column="0" Margin="3,3,3,3" Stretch="Uniform" Height="16" />
     <TextBlock Name="Title" Classes="inactive" Text="{Binding $parent[fvim:TitleBar].Title}" Grid.Column="1" VerticalAlignment="Center" />
-    <Button Name="MinimizeButton" Classes="inactive" Content="_" Grid.Column="2" Focusable="False" />
+    <Button Name="MinimizeButton" Classes="inactive" Content="__" Grid.Column="2" Focusable="False" />
     <Button Name="MaximizeButton" Classes="inactive" Content="O" Grid.Column="3" Focusable="False" />
     <Button Name="CloseButton" Classes="inactive" Content="X" Grid.Column="4" Focusable="False" />
   </Grid>
