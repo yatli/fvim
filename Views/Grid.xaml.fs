@@ -59,6 +59,7 @@ type Grid() as this =
   let ev_cursor_rect_changed = Event<EventHandler,EventArgs>()
   let ev_text_view_visual_changed = Event<EventHandler,EventArgs>()
   let ev_active_state_changed = Event<EventHandler,EventArgs>()
+  let ev_surrounding_text_changed = Event<EventHandler, EventArgs>()
 
   // !Only call this if VisualRoot is attached
   let resizeFrameBuffer() =
@@ -259,7 +260,7 @@ type Grid() as this =
   let subscribeAndHandleInput fn (ob: IObservable<#Avalonia.Interactivity.RoutedEventArgs>) =
     ob.Subscribe(fun e ->
       if not e.Handled then
-        e.Handled <- true
+        //e.Handled <- true
         doWithDataContext(fn e))
 
   let drawDebug(dc: IDrawingContextImpl) =
@@ -503,8 +504,9 @@ type Grid() as this =
       ]
     AvaloniaXamlLoader.Load(this)
   static do
-    InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(fun grid e -> 
-        e.Client <- grid) |> ignore
+    InputElement.TextInputMethodClientRequestedEvent.AddClassHandler<Grid>(
+        fun grid e -> e.Client <- grid
+    ) |> ignore
 
   override this.Render ctx =
     if isNull grid_fb then
@@ -601,9 +603,9 @@ type Grid() as this =
       member _.SupportsSurroundingText = false
       member _.SetPreeditText(_) = raise (NotSupportedException())
       member _.SurroundingText = raise (NotSupportedException())
-      member _.TextAfterCursor: string = raise (NotSupportedException())
-      member _.TextBeforeCursor: string = raise (NotSupportedException())
-      [<CLIEvent>] member _.SurroundingTextChanged: IEvent<EventHandler,EventArgs> = raise (NotSupportedException())
+      member _.TextAfterCursor: string = null
+      member _.TextBeforeCursor: string = null
+      [<CLIEvent>] member _.SurroundingTextChanged: IEvent<EventHandler,EventArgs> = ev_surrounding_text_changed.Publish
 
       member _.CursorRectangle: Rect = m_cursor.Bounds
       member _.TextViewVisual: IVisual = this :> IVisual
