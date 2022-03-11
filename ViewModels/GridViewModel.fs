@@ -739,6 +739,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         #endif
             m_bufnr <- 0
 
+    member __.GetRootGrid() =
+        getRootGrid()
     (*******************   Exposed properties   ***********************)
 
     member __.Item with get(row, col) = m_gridbuffer.[row, col]
