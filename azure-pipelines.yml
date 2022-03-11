@@ -16,7 +16,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 5.0.x
+      version: 6.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: NuGetToolInstaller@1
   - task: PowerShell@2
@@ -37,7 +37,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 5.0.x
+      version: 6.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: NuGetToolInstaller@1
   - task: PowerShell@2
@@ -58,7 +58,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 5.0.x
+      version: 6.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: NuGetToolInstaller@1
   - task: PowerShell@2
@@ -80,7 +80,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 5.0.x
+      version: 6.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: Bash@3
     inputs:
@@ -107,7 +107,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 5.0.x
+      version: 6.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: Bash@3
     inputs:
@@ -135,7 +135,7 @@ jobs:
     inputs:
       packageType: sdk
       includePreviewVersions: false
-      version: 5.0.x
+      version: 6.0.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - task: Bash@3
     inputs:
