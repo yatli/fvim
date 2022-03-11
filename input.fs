@@ -70,6 +70,8 @@ let (|HasFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
     if x.HasFlag flag then Some() else None
 let (|NoFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
     if x.HasFlag flag then None else Some()
+let (|DoesntBlockTextInput|_|) (x: KeyModifiers) =
+    if x.HasFlag (KeyModifiers.Alt) || x.HasFlag (KeyModifiers.Control) || x.HasFlag (KeyModifiers.Meta) then None else Some()
 let (|NvimSupportedMouseButton|_|) (mb: MouseButton) =
     match mb with
     | MouseButton.Left | MouseButton.Right | MouseButton.Middle -> Some mb
@@ -86,71 +88,199 @@ let DIR (dx: float, dy: float, horizontal: bool) =
     | _, _,  true   -> "left"
     | _, -1, false  -> "down"
     | _, _, false   -> "up"
-let suffix (suf: string, r: int, c: int) =
-    sprintf "%s><%d,%d" suf r c
 
 let mutable accumulatedX = 0.0
 let mutable accumulatedY = 0.0
+let mutable blockNextTextInput = false
 
-let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
+// Avoid sending Rejected key as a sequence, e.g. "capslock"
+let RejectKeys = set [
+  Key.None
+  Key.Clear
+  Key.Cancel
+  Key.Pause
+  Key.CapsLock
+  Key.Capital
+  Key.NumLock
+  Key.HangulMode
+  Key.KanaMode
+  Key.JunjaMode
+  Key.FinalMode
+  Key.KanjiMode
+  Key.HanjaMode
+  Key.Select
+  Key.Execute
+  Key.Apps
+  Key.Print
+  Key.PrintScreen
+  Key.Sleep
+  Key.BrowserBack
+  Key.BrowserForward
+  Key.BrowserRefresh
+  Key.BrowserStop
+  Key.BrowserSearch
+  Key.BrowserFavorites
+  Key.BrowserHome
+  Key.VolumeUp
+  Key.VolumeDown
+  Key.VolumeMute
+  Key.MediaNextTrack
+  Key.MediaPreviousTrack
+  Key.MediaStop
+  Key.MediaPlayPause
+  Key.LaunchMail
+  Key.SelectMedia
+  Key.LaunchApplication1
+  Key.LaunchApplication2
+  Key.Oem8
+  Key.AbntC1
+  Key.AbntC2
+  Key.System
+  Key.OemAttn
+  Key.DbeAlphanumeric
+  Key.OemFinish
+  Key.DbeKatakana
+  Key.DbeHiragana
+  Key.OemCopy
+  Key.DbeSbcsChar
+  Key.OemAuto
+  Key.DbeDbcsChar
+  Key.OemEnlw
+  Key.OemBackTab
+  Key.DbeRoman
+  Key.DbeNoRoman
+  Key.Attn
+  Key.CrSel
+  Key.DbeEnterWordRegisterMode
+  Key.ExSel
+  Key.DbeEnterImeConfigureMode
+  Key.EraseEof
+  Key.DbeFlushString
+  Key.Play
+  Key.DbeCodeInput
+  Key.DbeNoCodeInput
+  Key.Zoom
+  Key.NoName
+  Key.DbeDetermineString
+  Key.DbeEnterDialogConversionMode
+  Key.Pa1
+  Key.OemClear
+  Key.DeadCharProcessed
+
+  Key.FnLeftArrow
+  Key.FnRightArrow
+  Key.FnUpArrow
+  Key.FnDownArrow
+
+  Key.ImeProcessed  
+  Key.ImeAccept 
+  Key.ImeConvert
+  Key.ImeNonConvert 
+  Key.ImeModeChange
+
+  // filter out pure modifiers
+  Key.LeftCtrl 
+  Key.RightCtrl 
+  Key.LeftShift 
+  Key.RightShift 
+  Key.LeftAlt 
+  Key.RightAlt 
+  Key.LWin 
+  Key.RWin
+]
+
+// Avoid sending unmapped key that also triggers a TextInput
+// To match against this set, ensure there's no modifiers or just shift
+let TextInputKeys = set [
+  Key.Space
+  Key.Oem1
+  Key.Oem102
+  Key.Oem2
+  Key.Oem3
+  Key.Oem4
+  Key.Oem5
+  Key.Oem6
+  Key.Oem7
+  Key.OemBackslash
+  Key.OemCloseBrackets
+  Key.OemComma
+  Key.OemMinus
+  Key.OemOpenBrackets
+  Key.OemPeriod
+  Key.OemPipe
+  Key.OemPlus
+  Key.OemQuestion
+  Key.OemQuotes
+  Key.OemSemicolon
+  Key.OemTilde
+  Key.D0
+  Key.D1
+  Key.D2
+  Key.D3
+  Key.D4
+  Key.D5
+  Key.D6
+  Key.D7
+  Key.D8
+  Key.D9
+  Key.NumPad0 
+  Key.NumPad1 
+  Key.NumPad2 
+  Key.NumPad3 
+  Key.NumPad4 
+  Key.NumPad5 
+  Key.NumPad6 
+  Key.NumPad7 
+  Key.NumPad8 
+  Key.NumPad9
+  Key.Multiply
+  Key.Add
+  Key.Subtract
+  Key.Divide
+  Key.Decimal
+  Key.A
+  Key.B
+  Key.C
+  Key.D
+  Key.E
+  Key.F
+  Key.G
+  Key.H
+  Key.I
+  Key.J
+  Key.K
+  Key.L
+  Key.M
+  Key.N
+  Key.O
+  Key.P
+  Key.Q
+  Key.R
+  Key.S
+  Key.T
+  Key.U
+  Key.V
+  Key.W
+  Key.X
+  Key.Y
+  Key.Z
+]
+
+let (|Special|Normal|Rejected|) (x: InputEvent) =
     match x with
-    // | Key(HasFlag(KeyModifiers.Control), Key.H)
-    // | Key(HasFlag(KeyModifiers.Control), Key.I)
-    // | Key(HasFlag(KeyModifiers.Control), Key.J)
-    // | Key(HasFlag(KeyModifiers.Control), Key.M)
-    // | Key(HasFlag(KeyModifiers.Control), Key.Oem4) // Oem4 is '['
-    // | Key(HasFlag(KeyModifiers.Control), Key.L) // if ^L is sent as <FF> then neovim discards the key.
-
-    //  Avoid sending key sequence, e.g. "capslock"
-    | Key(_, Key.None)              | Key(_, Key.Cancel)     
-    | Key(_, Key.Clear)             | Key(_, Key.Pause)
-    | Key(_, Key.CapsLock)          | Key(_, Key.Capital) | Key(_, Key.NumLock)
-    | Key(_, Key.HangulMode)        // | Key(_, Key.KanaMode)   
-    | Key(_, Key.JunjaMode)         | Key(_, Key.FinalMode)
-    | Key(_, Key.KanjiMode)         // | Key(_, Key.HanjaMode)
-    | Key(_, Key.Select)            | Key(_, Key.Print)
-    | Key(_, Key.Execute)           | Key(_, Key.PrintScreen)
-    | Key(_, Key.Apps)              | Key(_, Key.Sleep)
-    | Key(_, Key.BrowserBack)       | Key(_, Key.BrowserForward)
-    | Key(_, Key.BrowserRefresh)    | Key(_, Key.BrowserStop)
-    | Key(_, Key.BrowserSearch)     | Key(_, Key.BrowserFavorites) 
-    | Key(_, Key.BrowserHome)
-    | Key(_, Key.VolumeUp)          | Key(_, Key.VolumeDown)
-    | Key(_, Key.VolumeMute)
-    | Key(_, Key.MediaNextTrack)    | Key(_, Key.MediaPreviousTrack)
-    | Key(_, Key.MediaStop)         | Key(_, Key.MediaPlayPause)
-    | Key(_, Key.LaunchMail)        | Key(_, Key.SelectMedia)
-    | Key(_, Key.LaunchApplication1)| Key(_, Key.LaunchApplication2)
-    | Key(_, Key.Oem8)              
-    | Key(_, Key.AbntC1)            | Key(_, Key.AbntC2)
-    | Key(_, Key.System)            
-    | Key(_, Key.OemAttn)   //| Key(_, Key.DbeAlphanumeric)   
-    | Key(_, Key.OemFinish) // | Key(_, Key.DbeKatakana)       
-    | Key(_, Key.DbeHiragana) // | Key(_, Key.OemCopy)           
-    | Key(_, Key.DbeSbcsChar) // | Key(_, Key.OemAuto)           
-    | Key(_, Key.DbeDbcsChar) // | Key(_, Key.OemEnlw)           
-    | Key(_, Key.OemBackTab) // | Key(_, Key.DbeRoman)          
-    | Key(_, Key.DbeNoRoman) // | Key(_, Key.Attn)              
-    | Key(_, Key.CrSel) // | Key(_, Key.DbeEnterWordRegisterMode)
-    | Key(_, Key.ExSel) // | Key(_, Key.DbeEnterImeConfigureMode)
-    | Key(_, Key.EraseEof) // | Key(_, Key.DbeFlushString)    
-    | Key(_, Key.Play) // | Key(_, Key.DbeCodeInput)      
-    | Key(_, Key.DbeNoCodeInput)    | Key(_, Key.Zoom)
-    | Key(_, Key.NoName) //| Key(_, Key.DbeDetermineString)
-    | Key(_, Key.DbeEnterDialogConversionMode) // | Key(_, Key.Pa1)
-    | Key(_, Key.OemClear)
-    | Key(_, Key.DeadCharProcessed) 
-    | Key(_, Key.FnLeftArrow)       | Key(_, Key.FnRightArrow)
-    | Key(_, Key.FnUpArrow)         | Key(_, Key.FnDownArrow)
-
-        -> Unrecognized  
-
-    | Key(_, Key.Back)                                            -> Special "BS"
+    | Key(_, k) when RejectKeys.Contains k                        -> Rejected  
+    | Key(DoesntBlockTextInput, k) when TextInputKeys.Contains k  -> Rejected  
+    | Key(m, Key.Back)                                            -> 
+      if m = KeyModifiers.Control then
+        blockNextTextInput <- true
+      Special "BS"
     | Key(_, Key.Tab)                                             -> Special "Tab"
     | Key(_, Key.LineFeed)                                        -> Special "NL"
     | Key(_, Key.Return)                                          -> Special "CR"
     | Key(_, Key.Escape)                                          -> Special "Esc"
-    | Key(_, Key.Space)                                           -> Special "Space"
+    | Key(_, Key.Space)                                           -> 
+      blockNextTextInput <- true
+      Special "Space"
     | Key(HasFlag(KeyModifiers.Shift), Key.OemComma)              -> Special "LT"
     // note, on Windows '\' is recognized as OemPipe but on macOS it's OemBackslash
     | Key(NoFlag(KeyModifiers.Shift), 
@@ -219,13 +349,9 @@ let (|Special|Normal|ImeEvent|TextInput|Unrecognized|) (x: InputEvent) =
     |  Key(_, Key.Divide)                                         -> Special("kDivide")
     |  Key(_, Key.Separator)                                      -> Special("kEnter")
     |  Key(_, Key.Decimal)                                        -> Special("kPoint")
-    |  Key(_, (
-       Key.ImeProcessed  | Key.ImeAccept | Key.ImeConvert
-    |  Key.ImeNonConvert | Key.ImeModeChange))                    -> ImeEvent
     |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
     |  Key(_, x)                                                  -> Normal (x.ToString())
-    |  TextInput txt                                              -> TextInput txt
-    |  _                                                          -> Unrecognized
+    |  _                                                          -> Rejected
 
 let rec ModifiersPrefix (x: InputEvent) =
     match x with
@@ -253,36 +379,33 @@ let rec ModifiersPrefix (x: InputEvent) =
     | TextInput _ -> ""
     | _ -> ""
 
-let mutable private _imeArmed = false
-
 let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
   let key,mouse = input |> Observable.partition(function | _, InputEvent.Key _ | _, InputEvent.TextInput _ -> true | _ -> false)
   // translate to nvim input sequence
   let key = 
     key
     |> Observable.choose(fun (_, x) ->
-        // filter out pure modifiers
         match x with
-        | InputEvent.Key(_, (Key.LeftCtrl | Key.LeftShift | Key.LeftAlt | Key.RightCtrl | Key.RightShift | Key.RightAlt | Key.LWin | Key.RWin)) -> None
-        | _ ->
-        match x with
-        | ImeEvent    -> _imeArmed <- true
-        | TextInput _ -> ()
-        | _           -> _imeArmed <- false
-        // TODO anything that cancels ime input state?
-        let pref = ModifiersPrefix x
-        match x,pref with
-        | (Special sp), ""   -> Some(sprintf "<%s>" sp)
-        | (Special sp), pref -> Some(sprintf "<%s-%s>" pref sp)
-        | (Normal n), ""     -> Some n 
-        | (Normal n), pref   -> Some(sprintf "<%s-%s>" pref n)
-        | ImeEvent, _        -> None
-        | TextInput txt, _ when _imeArmed -> Some txt
-        | x                  -> 
-          #if DEBUG
-          trace "rejected: %A" x
-          #endif
-          None
+        | TextInput "<"        -> Some "<LT>"
+        | TextInput txt        -> 
+          if blockNextTextInput then
+            blockNextTextInput <- false
+            None
+          else 
+            Some txt
+        | InputEvent.Key _     -> 
+          let pref = ModifiersPrefix x
+          match x,pref with
+          | (Special sp), ""   -> Some(sprintf "<%s>" sp)
+          | (Special sp), pref -> Some(sprintf "<%s-%s>" pref sp)
+          | (Normal n), ""     -> Some n 
+          | (Normal n), pref   -> Some(sprintf "<%s-%s>" pref n)
+          | x                  -> 
+            #if DEBUG
+            trace "rejected: %A" x
+            #endif
+            None
+        | _ -> None
         )
 
   let mouse =
