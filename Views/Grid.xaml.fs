@@ -415,6 +415,10 @@ type Grid() as this =
     for tup in vm.ExtmarksOob.Values do
       drawGuiWidgets tup
 
+    let scrollbar_bg_color = m_scrollbar_bg.ToUint32() ||| 0xff000000u
+                             |> Color.FromUInt32
+    let scrollbar_cursor_color = grid_vm.GetRootGrid().CursorInfo.bg
+
     let drawScrollbar() = 
       // scrollbar
       // todo mouse over opacity adjustment
@@ -423,8 +427,7 @@ type Grid() as this =
       let sign_w = 4.0
       // -- bg
       let bar_x = vm_x + vm_w - bar_w
-      let c = m_scrollbar_bg.ToUint32() ||| 0xff000000u
-      m_gadget_brush.Color <- Color.FromUInt32(c)
+      m_gadget_brush.Color <- scrollbar_bg_color
       m_gadget_brush.Opacity <- 0.5 
       ctx.FillRectangle(m_gadget_brush, Rect(bar_x, vm_y, bar_w, vm_h))
       // -- fg
@@ -441,7 +444,7 @@ type Grid() as this =
       if line_count > 0.0 then
         let cur_y = cur_row / line_count * vm_h
         let cur_h = 2.0
-        m_gadget_brush.Color <- vm.CursorInfo.bg
+        m_gadget_brush.Color <- scrollbar_cursor_color
         m_gadget_brush.Opacity <- 1.0
         ctx.FillRectangle(m_gadget_brush, Rect(bar_x, vm_y + cur_y, bar_w, cur_h))
       // -- signs
