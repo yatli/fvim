@@ -260,7 +260,6 @@ type Grid() as this =
   let subscribeAndHandleInput fn (ob: IObservable<#Avalonia.Interactivity.RoutedEventArgs>) =
     ob.Subscribe(fun e ->
       if not e.Handled then
-        //e.Handled <- true
         doWithDataContext(fn e))
 
   let drawDebug(dc: IDrawingContextImpl) =

@@ -6,6 +6,7 @@ open neovim
 open Avalonia.Input
 open System
 open FSharp.Control.Reactive
+open Avalonia.Interactivity
 
 let inline trace fmt = trace "input" fmt
 
@@ -270,6 +271,19 @@ let (|Special|Normal|Rejected|) (x: InputEvent) =
     match x with
     | Key(_, k) when RejectKeys.Contains k                        -> Rejected  
     | Key(DoesntBlockTextInput, k) when TextInputKeys.Contains k  -> Rejected  
+    // !!Note from here on, all TextInput-triggering keys should have been filtered.
+    // All that survived the purge are either non-textinput-triggering keys, or
+    // textinput-triggering keys with non-shift modifier active.
+    // The (possibly unwanted) side effect of this approach is the inconsistency
+    // between TextInput and modifier-active Key:
+    //
+    // | en-US kbd sequence | en result (sent to nvim) | de result (sent to nvim) |
+    // | ------------------ | ------------------------ | ------------------------ |
+    // | z                  | z                        | y                        |
+    // | Ctrl-z             | <C-z>                    | <C-z>                    |
+    // | '                  | '                        | ä                        |
+    // | Ctrl-'             | <C-'>                    | <C-'>                    |
+    //
     | Key(m, Key.Back)                                            -> 
       if m = KeyModifiers.Control then
         blockNextTextInput <- true
@@ -379,21 +393,23 @@ let rec ModifiersPrefix (x: InputEvent) =
     | TextInput _ -> ""
     | _ -> ""
 
-let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
-  let key,mouse = input |> Observable.partition(function | _, InputEvent.Key _ | _, InputEvent.TextInput _ -> true | _ -> false)
+let onInput (nvim: Nvim) (input: IObservable<int*InputEvent*RoutedEventArgs>) =
+  let key,mouse = input |> Observable.partition(function | _, InputEvent.Key _, _ | _, InputEvent.TextInput _, _ -> true | _ -> false)
   // translate to nvim input sequence
   let key = 
     key
-    |> Observable.choose(fun (_, x) ->
+    |> Observable.choose(fun (_, x, ev) ->
         match x with
-        | TextInput "<"        -> Some "<LT>"
-        | TextInput txt        -> 
-          if blockNextTextInput then
+        | TextInput txt -> 
+          ev.Handled <- true
+          if txt = "<" then Some "<LT>"
+          else if blockNextTextInput then
             blockNextTextInput <- false
             None
-          else 
+          else
             Some txt
         | InputEvent.Key _     -> 
+          ev.Handled <- true
           let pref = ModifiersPrefix x
           match x,pref with
           | (Special sp), ""   -> Some(sprintf "<%s>" sp)
@@ -404,13 +420,15 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent>) =
             #if DEBUG
             trace "rejected: %A" x
             #endif
+            ev.Handled <- false
             None
         | _ -> None
         )
 
   let mouse =
     mouse
-    |> Observable.choose(fun (gridid, x) -> 
+    |> Observable.choose(fun (gridid, x, ev) -> 
+      ev.Handled <- true
       let pref = ModifiersPrefix x
       match x with
       |  MousePress(_, r, c, NvimSupportedMouseButton but)   -> Some(gridid, MB but, "press", r, c, 1, pref)

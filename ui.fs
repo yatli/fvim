@@ -15,6 +15,7 @@ open System
 open Avalonia.Media.TextFormatting
 open System.Globalization
 open SkiaSharp
+open Avalonia.Interactivity
 
 #nowarn "0009"
 
@@ -100,7 +101,7 @@ type IGridUI =
     /// Number of columns
     abstract GridWidth: int
     abstract Resized: IEvent<IGridUI>
-    abstract Input: IEvent<int*InputEvent>
+    abstract Input: IEvent<int*InputEvent*RoutedEventArgs>
     abstract BackgroundColor: Color
     abstract HasChildren: bool
     abstract RenderScale: float

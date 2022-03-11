@@ -15,6 +15,7 @@ open System
 open model
 open widgets
 open System.Collections.Generic
+open Avalonia.Interactivity
 
 #nowarn "0025"
 
@@ -46,7 +47,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let m_popupmenu_vm           = new PopupMenuViewModel()
     let m_child_grids            = ResizeArray<GridViewModel>()
     let m_resize_ev              = Event<IGridUI>()
-    let m_input_ev               = Event<int * InputEvent>()
+    let m_input_ev               = Event<int * InputEvent * RoutedEventArgs>()
     let m_ext_winclose_ev        = Event<unit>()
     let m_drawops                = ResizeArray() // keeps the scroll and putBuffer operations
 
@@ -93,7 +94,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     static let mutable g_create_seq = 0
     let m_create_seq = g_create_seq
 
-    let raiseInputEvent id e = m_input_ev.Trigger(id, e)
+    let raiseInputEvent id e ev = m_input_ev.Trigger(id, e, ev)
 
     let getPos (p: Point) =
         int(p.X / m_glyphsize.Width), int(p.Y / m_glyphsize.Height)
@@ -842,7 +843,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     (*******************   Events   ***********************)
 
     member __.OnKey (e: KeyEventArgs) = 
-        raiseInputEvent _gridid <| InputEvent.Key(e.KeyModifiers, e.Key)
+        raiseInputEvent _gridid (InputEvent.Key(e.KeyModifiers, e.Key)) e
 
     member __.OnMouseDown (e: PointerPressedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
@@ -856,7 +857,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
               m_mouse_pressed_widget <- wid
               model.GuiWidgetMouseDown vm.BufNr wid
             else
-              raiseInputEvent vm.GridId <| InputEvent.MousePress(e.KeyModifiers, r, c, button)
+              raiseInputEvent vm.GridId (InputEvent.MousePress(e.KeyModifiers, r, c, button)) e
 
     member __.OnMouseUp (e: PointerReleasedEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
@@ -869,7 +870,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
               model.GuiWidgetMouseUp m_mouse_pressed_vm.BufNr m_mouse_pressed_widget
               m_mouse_pressed_widget <- -1
             else
-              raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseRelease(e.KeyModifiers, r, c, button)
+              raiseInputEvent m_mouse_pressed_vm.GridId (InputEvent.MouseRelease(e.KeyModifiers, r, c, button)) e
 
     member __.OnMouseMove (e: PointerEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en && m_mouse_pressed <> MouseButton.None then
@@ -884,14 +885,14 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                   #if DEBUG
                   trace m_mouse_pressed_vm.GridId "mousemove: %d %d" r c
                   #endif
-                  raiseInputEvent m_mouse_pressed_vm.GridId <| InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)
+                  raiseInputEvent m_mouse_pressed_vm.GridId (InputEvent.MouseDrag(e.KeyModifiers, r, c, m_mouse_pressed)) e
 
     member __.OnMouseWheel (e: PointerWheelEventArgs) (root: Avalonia.VisualTree.IVisual) = 
         if m_mouse_en then
             let x, y = e.GetPosition root |> getPos
             let _, _, vm, r, c, _ = this.FindTargetVm y x
             let dx, dy = e.Delta.X, e.Delta.Y
-            raiseInputEvent vm.GridId <| InputEvent.MouseWheel(e.KeyModifiers, r, c, dx, dy)
+            raiseInputEvent vm.GridId (InputEvent.MouseWheel(e.KeyModifiers, r, c, dx, dy)) e
 
     member __.OnTextInput (e: TextInputEventArgs) = 
-        raiseInputEvent _gridid <| InputEvent.TextInput(e.Text)
+        raiseInputEvent _gridid (InputEvent.TextInput(e.Text)) e
