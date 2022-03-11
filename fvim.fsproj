@@ -80,9 +80,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="0.10.12" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.12" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.10.13" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.13" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.13" />
     <PackageReference Include="Avalonia.Svg" Version="0.10.12" />
 
     <PackageReference Include="FSharp.Control.Reactive" Version="5.0.2" />
