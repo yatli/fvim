@@ -92,7 +92,6 @@ let DIR (dx: float, dy: float, horizontal: bool) =
 
 let mutable accumulatedX = 0.0
 let mutable accumulatedY = 0.0
-let mutable blockNextTextInput = false
 
 // Avoid sending Rejected key as a sequence, e.g. "capslock"
 let RejectKeys = set [
@@ -284,17 +283,12 @@ let (|Special|Normal|Rejected|) (x: InputEvent) =
     // | '                  | '                        | ä                        |
     // | Ctrl-'             | <C-'>                    | <C-'>                    |
     //
-    | Key(m, Key.Back)                                            -> 
-      if m = KeyModifiers.Control then
-        blockNextTextInput <- true
-      Special "BS"
+    | Key(m, Key.Back)                                            -> Special "BS"
     | Key(_, Key.Tab)                                             -> Special "Tab"
     | Key(_, Key.LineFeed)                                        -> Special "NL"
     | Key(_, Key.Return)                                          -> Special "CR"
     | Key(_, Key.Escape)                                          -> Special "Esc"
-    | Key(_, Key.Space)                                           -> 
-      blockNextTextInput <- true
-      Special "Space"
+    | Key(_, Key.Space)                                           -> Special "Space"
     | Key(HasFlag(KeyModifiers.Shift), Key.OemComma)              -> Special "LT"
     // note, on Windows '\' is recognized as OemPipe but on macOS it's OemBackslash
     | Key(NoFlag(KeyModifiers.Shift), 
@@ -387,7 +381,7 @@ let rec ModifiersPrefix (x: InputEvent) =
         ->
         let c = if m.HasFlag(KeyModifiers.Control) then "C-" else ""
         let a = if m.HasFlag(KeyModifiers.Alt)     then "A-" else ""
-        let d = if m.HasFlag(KeyModifiers.Meta) then "D-" else ""
+        let d = if m.HasFlag(KeyModifiers.Meta)    then "D-" else ""
         let s = if m.HasFlag(KeyModifiers.Shift)   then "S-" else ""
         (sprintf "%s%s%s%s" c a d s).TrimEnd('-')
     | TextInput _ -> ""
@@ -402,12 +396,7 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent*RoutedEventArgs>) =
         match x with
         | TextInput txt -> 
           ev.Handled <- true
-          if txt = "<" then Some "<LT>"
-          else if blockNextTextInput then
-            blockNextTextInput <- false
-            None
-          else
-            Some txt
+          if txt = "<" then Some "<LT>" else Some txt
         | InputEvent.Key _     -> 
           ev.Handled <- true
           let pref = ModifiersPrefix x
