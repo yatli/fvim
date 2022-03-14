@@ -30,7 +30,6 @@ open model
 open Avalonia.Input.TextInput
 open Avalonia.Input
 open Avalonia.Media
-open Avalonia.Layout
 open SkiaSharp
 open Avalonia.Skia
 
@@ -49,7 +48,11 @@ type Grid() as this =
   let mutable grid_vm: GridViewModel = Unchecked.defaultof<_>
 
   let mutable m_cursor: FVim.Cursor = Unchecked.defaultof<_>
+  #if DEBUG
+  let mutable m_debug = true
+  #else
   let mutable m_debug = false
+  #endif
   let mutable m_me_focus = false
   let mutable m_scrollbar_fg, m_scrollbar_bg, _, _ = theme.getSemanticHighlightGroup SemanticHighlightGroup.PmenuSbar
   let mutable m_gadget_pen = Pen()
@@ -262,20 +265,6 @@ type Grid() as this =
       if not e.Handled then
         doWithDataContext(fn e))
 
-  let drawDebug(dc: IDrawingContextImpl) =
-    let txt = Media.FormattedText()
-    txt.Text <- $"Grid #{grid_vm.GridId}, Z={this.ZIndex}"
-    txt.Typeface <- Media.Typeface("Iosevka Slab")
-
-    dc.DrawText(Media.Brushes.Tan, Point(10.0, 10.0), txt.PlatformImpl)
-    dc.DrawText(Media.Brushes.Tan, Point(this.Bounds.Width - 60.0, 10.0), txt.PlatformImpl)
-    dc.DrawText(Media.Brushes.Tan, Point(10.0, this.Bounds.Height - 60.0), txt.PlatformImpl)
-    dc.DrawText(Media.Brushes.Tan, Point(this.Bounds.Width - 60.0, this.Bounds.Height - 60.0), txt.PlatformImpl)
-
-    dc.DrawRectangle(null, Media.Pen(Media.Brushes.Red, 3.0), RoundedRect(this.Bounds.Translate(Vector(-this.Bounds.X, -this.Bounds.Y))))
-    dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(this.Bounds.Width, this.Bounds.Height))
-    dc.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, this.Bounds.Height), Point(this.Bounds.Width, 0.0))
-
   // prevent repetitive drawings
   let _drawnRegions = ResizeArray()
   let _drawVMs = ResizeArray()
@@ -357,7 +346,8 @@ type Grid() as this =
     let view_top,view_bot,cur_row,line_count = 
       let top,bot,row,_,lc = vm.ScrollbarData
       float top, float bot, float row, float lc
-    use _mainClip = ctx.PushClip(Rect(vm_x, vm_y, vm_w, vm_h))
+    use _mainTr = ctx.PushPreTransform(Matrix.CreateTranslation(vm_x, vm_y))
+    use _mainClip = ctx.PushClip(Rect(0, 0, vm_w, vm_h))
     // infer wincol from viewport + cursor info
     let wincol = vm.WinCol
 
@@ -380,7 +370,7 @@ type Grid() as this =
                      | _ -> false
           if hide then () else
           let r, c, w, h = float r * gh, float c * gw, float grid_w * gw, float grid_h * gh
-          let bounds = Rect(vm_x + c, vm_y + r, w, h)
+          let bounds = Rect(c, r, w, h)
           use _clip = ctx.PushClip(bounds)
           let widget = getGuiWidget wid
           match widget with
@@ -426,32 +416,32 @@ type Grid() as this =
       let slide_w = 7.0
       let sign_w = 4.0
       // -- bg
-      let bar_x = vm_x + vm_w - bar_w
+      let bar_x = vm_w - bar_w
       m_gadget_brush.Color <- scrollbar_bg_color
       m_gadget_brush.Opacity <- 0.5 
-      ctx.FillRectangle(m_gadget_brush, Rect(bar_x, vm_y, bar_w, vm_h))
+      ctx.FillRectangle(m_gadget_brush, Rect(bar_x, 0, bar_w, vm_h))
       // -- fg
       if view_bot > view_top && line_count > 0.0 then
         let bot = min view_bot line_count
-        let slide_x = vm_x + vm_w - (bar_w + slide_w) / 2.0
+        let slide_x = vm_w - (bar_w + slide_w) / 2.0
         let slide_p1, slide_p2 = view_top / line_count, bot / line_count
         let slide_h = (slide_p2 - slide_p1) * vm_h
         let slide_y = slide_p1 * vm_h
         m_gadget_brush.Color <- m_scrollbar_fg
         m_gadget_brush.Opacity <- 0.5
-        ctx.FillRectangle(m_gadget_brush, Rect(slide_x, vm_y + slide_y, slide_w, slide_h))
+        ctx.FillRectangle(m_gadget_brush, Rect(slide_x, slide_y, slide_w, slide_h))
       // -- cursor
       if line_count > 0.0 then
         let cur_y = cur_row / line_count * vm_h
         let cur_h = 2.0
         m_gadget_brush.Color <- scrollbar_cursor_color
         m_gadget_brush.Opacity <- 1.0
-        ctx.FillRectangle(m_gadget_brush, Rect(bar_x, vm_y + cur_y, bar_w, cur_h))
+        ctx.FillRectangle(m_gadget_brush, Rect(bar_x, cur_y, bar_w, cur_h))
       // -- signs
       if line_count > 0.0 then
         let sign_h = max (vm_h / line_count) 4.0
-        let xl = vm_x + vm_w - bar_w
-        let xr = vm_x + vm_w - sign_w
+        let xl = vm_w - bar_w
+        let xr = vm_w - sign_w
         let signs = getSignPlacements vm.BufNr
         for {line=line;kind=kind} in signs do
           let color,sx = match kind with
@@ -464,9 +454,23 @@ type Grid() as this =
           let sy = float line / line_count * vm_h
           m_gadget_brush.Color <- color
           m_gadget_brush.Opacity <- 1.0
-          ctx.FillRectangle(m_gadget_brush, Rect(sx, vm_y + sy, sign_w, sign_h))
+          ctx.FillRectangle(m_gadget_brush, Rect(sx, sy, sign_w, sign_h))
     if not (vm.IsMsg || vm.IsFloat) then
       drawScrollbar()
+
+    let drawDebug() =
+      let txt = Media.FormattedText()
+      txt.Text <- $"Grid #{vm.GridId}, Z={vm.ZIndex}, S={vm.CreateSeq}"
+      txt.Typeface <- Media.Typeface(ui.DefaultFont)
+      txt.FontSize <- 20
+
+      ctx.DrawText(Media.Brushes.Red, Point(0,0), txt)
+
+      ctx.DrawRectangle(Media.Pen(Media.Brushes.Red, 3.0), Rect(0, 0, vm_w, vm_h))
+      ctx.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, 0.0), Point(vm_w, vm_h))
+      ctx.DrawLine(Media.Pen(Media.Brushes.Red, 1.0), Point(0.0, vm_h), Point(vm_w, 0.0))
+
+    if m_debug then drawDebug()
 
   do
     this.Watch
@@ -507,12 +511,13 @@ type Grid() as this =
         fun grid e -> e.Client <- grid
     ) |> ignore
 
-  override this.Render ctx =
+  override _.Render ctx =
     if isNull grid_fb then
       trace grid_vm "grid_fb is null"
     else
 #if DEBUG
     let timer = System.Diagnostics.Stopwatch.StartNew()
+    use _opacity = ctx.PushOpacity(0.7)
 #endif
     _drawnRegions.Clear()
     _drawVMs.Clear()
@@ -528,7 +533,6 @@ type Grid() as this =
     for vm in _drawVMs do
         let drawn' = drawOps vm gw gh
         drawn <- drawn || drawn'
-    if m_debug then drawDebug grid_dc
 
     grid_vm.MarkClean()
 
