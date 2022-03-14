@@ -835,7 +835,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
                 member __.Compare(x: GridViewModel, y: GridViewModel): int = 
                   let dz = x.ZIndex - y.ZIndex
                   if dz = 0 then
-                    y.CreateSeq - x.CreateSeq
+                    x.CreateSeq - y.CreateSeq
                   else dz
           }
 
