@@ -102,7 +102,7 @@ module CompletionItemHelper =
         Map.map (fun k name -> 
             if name = "Unknown" then null
             else
-            let fname = sprintf "avares://FVim/Assets/intellisense/%s_16x.png" name
+            let fname = $"avares://FVim/Assets/intellisense/{name}_16x.png"
             (*trace "CompleteItem" "loading intellisense icon %s" fname*)
             new Bitmap(assets.Open(new System.Uri(fname)))) 
 

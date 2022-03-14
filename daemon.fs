@@ -56,7 +56,7 @@ let pipeaddr x =
     then @"\\.\pipe\" + x
     else pipeaddrUnix x
 
-let pipename = sprintf "fvr_%s"
+let pipename (x:'a) = $"fvr_{x}"
 
 let defaultDaemonName = pipename "main"
 
@@ -71,7 +71,7 @@ let attachSession id svrpipe =
 let newSession nvim stderrenc args svrpipe = 
   let myid = sessionId
 
-  let pname = pipename (string myid)
+  let pname = pipename myid
   let paddr = pipeaddr pname
   let args = "--headless" :: "--listen" :: paddr :: args
   let proc = newProcess nvim args stderrenc
@@ -105,7 +105,7 @@ let attachFirstSession svrpipe =
 
 let serveSession (session: Session) =
   task {
-    let pname = pipename (string session.id)
+    let pname = pipename session.id
     use client = new NamedPipeClientStream(".", pname, IO.Pipes.PipeDirection.InOut, IO.Pipes.PipeOptions.Asynchronous, TokenImpersonationLevel.Impersonation)
     do! client.ConnectAsync()
     trace "Connected to NeoVim server at %s" pname

@@ -359,7 +359,7 @@ type Nvim() as nvim =
             | 1 -> "1"
             | _ -> "+"
 
-        nvim.command(sprintf "command! -nargs=%s %s %s" nargs name cmd)
+        nvim.command $"command! -nargs={nargs} {name} {cmd}"
 
     member __.exec (src: string) (output: bool) =
         nvim.call { method = "nvim_exec"; parameters = mkparams2 src output }

@@ -6,9 +6,9 @@ open Avalonia.Media
 type CrashReportViewModel(ex: exn, code: int, msgs: ResizeArray<string>) =
     inherit ViewModelBase()
     member __.MainMessage =
-        sprintf "Exit code: %d\n" code + 
-        sprintf "Exception message: %s\n" ex.Message + 
-        join msgs
+        $"""Exit code: {code}
+Exception message: {ex.Message} 
+{join msgs}"""
     member __.StackTrace =
         ex.StackTrace
     member __.TipMessage = 

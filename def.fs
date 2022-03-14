@@ -136,7 +136,7 @@ type Rune =
     override x.ToString() = 
       match x with
       | SingleChar c -> c.ToString()
-      | SurrogatePair(c1, c2) -> sprintf "%c%c" c1 c2
+      | SurrogatePair(c1, c2) -> $"{c1}{c2}"
       | Composed str -> String.Join("", str)
     override x.GetHashCode() = 
       match x with
@@ -432,7 +432,7 @@ type RedrawCommand =
 type EventParseException(data: obj) =
     inherit exn()
     member __.Input = data
-    override __.Message = sprintf "Could not parse the neovim message: %A" data
+    override __.Message = $"Could not parse the neovim message: %A{data}"
 
 ///  Matches ObjArray against the [|string; p1; p2; ... |] form
 let (|C|_|) (x:obj) =

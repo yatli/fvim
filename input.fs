@@ -383,7 +383,7 @@ let rec ModifiersPrefix (x: InputEvent) =
         let a = if m.HasFlag(KeyModifiers.Alt)     then "A-" else ""
         let d = if m.HasFlag(KeyModifiers.Meta)    then "D-" else ""
         let s = if m.HasFlag(KeyModifiers.Shift)   then "S-" else ""
-        (sprintf "%s%s%s%s" c a d s).TrimEnd('-')
+        $"{c}{a}{d}{s}".TrimEnd('-')
     | TextInput _ -> ""
     | _ -> ""
 
@@ -401,10 +401,10 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent*RoutedEventArgs>) =
           ev.Handled <- true
           let pref = ModifiersPrefix x
           match x,pref with
-          | (Special sp), ""   -> Some(sprintf "<%s>" sp)
-          | (Special sp), pref -> Some(sprintf "<%s-%s>" pref sp)
+          | (Special sp), ""   -> Some($"<{sp}>")
+          | (Special sp), pref -> Some($"<{pref}-{sp}>")
           | (Normal n), ""     -> Some n 
-          | (Normal n), pref   -> Some(sprintf "<%s-%s>" pref n)
+          | (Normal n), pref   -> Some($"<{pref}-{n}>")
           | x                  -> 
             #if DEBUG
             trace "rejected: %A" x

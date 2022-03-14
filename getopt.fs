@@ -139,7 +139,7 @@ let parseOptions (args: string[]) =
             | None, None -> 
               let prog, args, r = 
                 if wsl then 
-                    "wsl", ["bash"; "-l"; "-c"; sprintf "nvim --embed %s" (args |> escapeArgs |> join)], true
+                    "wsl", ["bash"; "-l"; "-c"; $"nvim --embed {args |> escapeArgs |> join}"], true
                 elif ssh.IsSome then 
                     "ssh", [ssh.Value; nvim; "--embed"] @ argsL, true
                 else 

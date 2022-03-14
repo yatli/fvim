@@ -8,10 +8,10 @@ open System.Collections.Generic
 let mutable private _filter = fun _ -> true
 
 let private _logsSource  = Event<string*string>()
-let private _logsPub     = _logsSource.Publish |> Observable.map (fun (a,b) -> sprintf "%s: %s" a b)
+let private _logsPub     = _logsSource.Publish |> Observable.map (fun (a,b) -> $"{a}: {b}")
 
 let private _logsESource = Event<string*string>()
-let private _logsEPub    = _logsESource.Publish |> Observable.map (fun (a,b) -> sprintf "error: %s: %s" a b)
+let private _logsEPub    = _logsESource.Publish |> Observable.map (fun (a,b) -> $"error: {a}: {b}")
 
 let private _logsSink    = Observable.merge _logsPub _logsEPub 
                            |> Observable.filter(fun x -> _filter x) 
@@ -45,7 +45,7 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
         | _ -> "fvim"
     if logToFile then
         _n_logsSink <- _n_logsSink + 1
-        let logname = sprintf "%s-%s.log" fprefix ftime
+        let logname = $"{fprefix}-{ftime}.log"
         let logToFile = System.IO.Path.Combine(config.configdir, logname)
         try System.IO.File.Delete logToFile
         with _ -> ()

@@ -99,10 +99,11 @@ let main(args: string[]) =
   let _ = Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
 
   AppDomain.CurrentDomain.UnhandledException.Add(fun exArgs -> 
-    let filename = Path.Combine(config.configdir, sprintf "fvim-crash-%s.txt" (DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")))
+    let datetime = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")
+    let filename = Path.Combine(config.configdir, $"fvim-crash-{datetime}.txt")
     use dumpfile = new StreamWriter(filename)
-    dumpfile.WriteLine(sprintf "Unhandled exception: (terminating:%A)" exArgs.IsTerminating)
-    dumpfile.WriteLine(exArgs.ExceptionObject.ToString())
+    dumpfile.WriteLine($"Unhandled exception: (terminating:%A{exArgs.IsTerminating})")
+    dumpfile.WriteLine($"{exArgs.ExceptionObject}")
   )
   System.Console.OutputEncoding <- System.Text.Encoding.Unicode
 

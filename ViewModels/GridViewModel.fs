@@ -21,7 +21,7 @@ open Avalonia.Interactivity
 
 module private GridViewModelHelper =
   let inline trace id fmt =
-    FVim.log.trace (sprintf "editorvm #%d" id) fmt
+    FVim.log.trace $"editorvm #{id}" fmt
 
 open GridViewModelHelper
 

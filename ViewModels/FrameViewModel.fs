@@ -58,7 +58,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
     let toggleFullScreen() =
         if mainGrid.IsFocused then
             this.Fullscreen <- not this.Fullscreen
-            trace (sprintf "FrameVM #%d" mainGrid.GridId) "ToggleFullScreen %A" this.Fullscreen
+            trace $"FrameVM #{mainGrid.GridId}" "ToggleFullScreen %A" this.Fullscreen
 
     let updateBackgroundImage() =
         try
@@ -69,7 +69,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
                             path.[2..])
                         else
                           path
-            trace (sprintf "FrameVM #%d" mainGrid.GridId) "%s" path
+            trace $"FrameVM #{mainGrid.GridId}" "%s" path
             let new_img = new Bitmap(path)
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_src, new_img, "BackgroundImage")
             ignore <| this.RaiseAndSetIfChanged(&m_bgimg_w, m_bgimg_src.Size.Width, "BackgroundImageW")

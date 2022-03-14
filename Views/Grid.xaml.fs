@@ -264,7 +264,7 @@ type Grid() as this =
 
   let drawDebug(dc: IDrawingContextImpl) =
     let txt = Media.FormattedText()
-    txt.Text <- sprintf "Grid #%d, Z=%d" grid_vm.GridId this.ZIndex
+    txt.Text <- $"Grid #{grid_vm.GridId}, Z={this.ZIndex}"
     txt.Typeface <- Media.Typeface("Iosevka Slab")
 
     dc.DrawText(Media.Brushes.Tan, Point(10.0, 10.0), txt.PlatformImpl)

@@ -60,7 +60,7 @@ let private win32RegisterFileAssociation() =
     let HKCR = Registry.ClassesRoot
     let HKLM = Registry.LocalMachine
     let exe = Path.Combine(FVimDir, "FVim.exe")
-    let fvicon = sprintf "%s,0" exe
+    let fvicon = $"{exe},0"
 
     let setupShell(key: RegistryKey) (ico: string) =
 
@@ -81,7 +81,7 @@ let private win32RegisterFileAssociation() =
             _edit.SetValue("", "Open with FVim")
             _edit.SetValue("Icon", fvicon)
             use command = _edit.CreateSubKey("command")
-            command.SetValue("", sprintf "\"%s\" \"%%1\"" exe)
+            command.SetValue("", $"\{exe}\" \"%%1\"")
     
     // https://docs.microsoft.com/en-us/windows/desktop/shell/app-registration
     do

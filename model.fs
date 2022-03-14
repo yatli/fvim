@@ -328,7 +328,7 @@ let Detach() =
 let private UpdateUICapabilities() =
     let opts = hashmap[]
     states.PopulateUIOptions opts
-    trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> sprintf "%s=%b" k v) opts)
+    trace "UpdateUICapabilities: %A" <| String.Join(", ", Seq.map (fun (KeyValue(k, v)) -> $"{k}={v}") opts)
     backgroundTask {
       do! init.Task
       for KeyValue(k, v) in opts do
