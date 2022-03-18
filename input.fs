@@ -72,7 +72,9 @@ let (|HasFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
 let (|NoFlag|_|) (flag: KeyModifiers) (x: KeyModifiers) =
     if x.HasFlag flag then None else Some()
 let (|DoesntBlockTextInput|_|) (x: KeyModifiers) =
-    if x.HasFlag (KeyModifiers.Alt) || x.HasFlag (KeyModifiers.Control) || x.HasFlag (KeyModifiers.Meta) then None else Some()
+    if states.key_altGr && x.HasFlag (KeyModifiers.Alt) && x.HasFlag (KeyModifiers.Control) then Some()
+    elif x.HasFlag (KeyModifiers.Alt) || x.HasFlag (KeyModifiers.Control) || x.HasFlag (KeyModifiers.Meta) then None 
+    else Some()
 let (|NvimSupportedMouseButton|_|) (mb: MouseButton) =
     match mb with
     | MouseButton.Left | MouseButton.Right | MouseButton.Middle -> Some mb

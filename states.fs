@@ -12,6 +12,7 @@ let mutable channel_id = 1
 // keyboard mapping
 let mutable key_disableShiftSpace = false
 let mutable key_autoIme = false
+let mutable key_altGr = false
 
 // clipboard
 let mutable clipboard_lines: string[] = [||]

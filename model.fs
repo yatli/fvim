@@ -364,6 +364,7 @@ let Start (serveropts, norc, remote) =
     rpc.register.bool "cursor.smoothmove"
     rpc.register.bool "key.disableShiftSpace"
     rpc.register.bool "key.autoIme"
+    rpc.register.bool "key.altGr"
     //rpc.register.bool "ui.multigrid"
     rpc.register.bool "ui.popupmenu"
     //rpc.register.bool "ui.tabline"

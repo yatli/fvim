@@ -28,6 +28,7 @@ command! -complete=expression -nargs=1 FVimFontBoldWeight call rpcnotify(g:fvim_
 command! -complete=expression -nargs=1 FVimFontNoBuiltinSymbols call rpcnotify(g:fvim_channel, 'font.nonerd', <args>)
 command! -complete=expression -nargs=1 FVimKeyDisableShiftSpace call rpcnotify(g:fvim_channel, 'key.disableShiftSpace', <args>)
 command! -complete=expression -nargs=1 FVimKeyAutoIme call rpcnotify(g:fvim_channel, 'key.autoIme', <args>)
+command! -complete=expression -nargs=1 FVimKeyAltGr call rpcnotify(g:fvim_channel, 'key.altGr', <args>)
 
 " let! _ = nvim.``command!`` -complete=expression FVimUIMultiGrid 1 call rpcnotify(g:fvim_channel, 'ui.multigrid', <args>)
 command! -complete=expression -nargs=1 FVimUIPopupMenu call rpcnotify(g:fvim_channel, 'ui.popupmenu', <args>)

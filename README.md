@@ -150,6 +150,7 @@ FVimUIWildMenu v:false      " external wildmenu -- work in progress
 " Keyboard mapping options
 FVimKeyDisableShiftSpace v:true " disable unsupported sequence <S-Space>
 FVimKeyAutoIme v:true           " Automatic input method engagement in Insert mode
+FVimKeyAltGr v:true             " Recognize AltGr. Side effect is that <C-A-Key> is then impossible
 
 " Detach from a remote session without killing the server
 " If this command is executed on a standalone instance,
