@@ -23,7 +23,6 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
         ```
             git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f net5.0 -c Release -r linux-x64 --self-contained
         ```
-- Note, currently FVim will treat all keyboards as en-US so characters and symbols are mapped incorrectly if you use a non en-US layout. [The issue is tracked here](https://github.com/yatli/fvim/issues/36).
 
 ### Features
 
