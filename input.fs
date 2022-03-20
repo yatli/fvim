@@ -5,6 +5,7 @@ open neovim
 
 open Avalonia.Input
 open System
+open System.Runtime.InteropServices
 open FSharp.Control.Reactive
 open Avalonia.Interactivity
 
@@ -94,6 +95,7 @@ let DIR (dx: float, dy: float, horizontal: bool) =
 
 let mutable accumulatedX = 0.0
 let mutable accumulatedY = 0.0
+let mutable blockNextTextInput = false
 
 // Avoid sending Rejected key as a sequence, e.g. "capslock"
 let RejectKeys = set [
@@ -285,7 +287,7 @@ let (|Special|Normal|Rejected|) (x: InputEvent) =
     // | '                  | '                        | ä                        |
     // | Ctrl-'             | <C-'>                    | <C-'>                    |
     //
-    | Key(m, Key.Back)                                            -> Special "BS"
+    | Key(_, Key.Back)                                            -> Special "BS"
     | Key(_, Key.Tab)                                             -> Special "Tab"
     | Key(_, Key.LineFeed)                                        -> Special "NL"
     | Key(_, Key.Return)                                          -> Special "CR"
@@ -359,8 +361,14 @@ let (|Special|Normal|Rejected|) (x: InputEvent) =
     |  Key(_, Key.Divide)                                         -> Special("kDivide")
     |  Key(_, Key.Separator)                                      -> Special("kEnter")
     |  Key(_, Key.Decimal)                                        -> Special("kPoint")
-    |  Key(NoFlag(KeyModifiers.Shift), x)                         -> Normal (x.ToString().ToLowerInvariant())
-    |  Key(_, x)                                                  -> Normal (x.ToString())
+    |  Key(NoFlag(KeyModifiers.Shift) as m, x)                    ->
+       if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && m = KeyModifiers.Alt
+       then blockNextTextInput <- true
+       Normal (x.ToString().ToLowerInvariant())
+    |  Key(m, x)                                                  ->
+       if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && m = (KeyModifiers.Alt ||| KeyModifiers.Shift)
+       then blockNextTextInput <- true
+       Normal (x.ToString())
     |  _                                                          -> Rejected
 
 let rec ModifiersPrefix (x: InputEvent) =
@@ -398,7 +406,11 @@ let onInput (nvim: Nvim) (input: IObservable<int*InputEvent*RoutedEventArgs>) =
         match x with
         | TextInput txt -> 
           ev.Handled <- true
-          if txt = "<" then Some "<LT>" else Some txt
+          if blockNextTextInput then
+            blockNextTextInput <- false
+            None
+          elif txt = "<" then Some "<LT>"
+          else Some txt
         | InputEvent.Key _     -> 
           ev.Handled <- true
           let pref = ModifiersPrefix x
