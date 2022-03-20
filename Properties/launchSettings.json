@@ -25,6 +25,10 @@
     "fvim-terminal": {
       "commandName": "Project",
       "commandLineArgs": "--terminal --terminal-cmd powershell"
+    },
+    "fvr client": {
+      "commandName": "Project",
+      "commandLineArgs": "--fvr n --ssh yatao-nas"
     }
   }
 }
