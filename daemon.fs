@@ -86,6 +86,8 @@ let newSession nvim stderrenc args svrpipe =
         sessions.[myid].exitHandle.Dispose()
         sessions.Remove(myid) |> ignore
         proc.Dispose()
+        try svrpipe.Dispose()
+        with dispose_ex -> trace "%O" dispose_ex
         )
     }
 
@@ -132,7 +134,8 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
       if rbuf.[0..3] <> FVR_MAGIC then 
         trace "Incorrect handshake magic. Got: %A" rbuf.[0..3]
         return()
-      let len = rbuf.[4..7] |> toInt32LE
+      let lenbuf = rbuf.[4..7]
+      let len = lenbuf |> toInt32LE
       if len >= rbuf.Length || len <= 0 then 
         trace "Invalid payload length %d" len
         return()
@@ -158,10 +161,10 @@ let serve nvim stderrenc (pipe: NamedPipeServerStream) =
         trace "Request %A is attaching to session %d" request session.id
         do! fromInt32LE session.id |> readonlymemory |> write pipe
         do! serveSession session
-    finally
-      try
-        pipe.Dispose()
-      with ex -> trace "%O" ex
+    with ex -> 
+      trace "%O" ex
+      try pipe.Dispose()
+      with dispose_ex -> trace "%O" dispose_ex
   }
 
 let daemon (pname: string option) (nvim: string) (stderrenc: Text.Encoding) =
