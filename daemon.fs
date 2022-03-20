@@ -190,7 +190,10 @@ let fvrConnect (stdin: Stream) (stdout: Stream) (verb: FVimRemoteVerb) =
     stdin.Write(intbuf, 0, intbuf.Length)
     stdin.Write(payload, 0, payload.Length)
     stdin.Flush()
-    (read stdout (intbuf.AsMemory())).Wait()
+    // this doesn't drive the task:
+    // (read stdout (intbuf.AsMemory())).Wait()
+    // this *does* drive the task:
+    read stdout (intbuf.AsMemory()) |> Async.AwaitTask |> Async.StartImmediate
     toInt32LE intbuf
   with ex ->
     trace "%O" ex

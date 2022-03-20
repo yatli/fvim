@@ -627,11 +627,17 @@ let OnTerminated () =
     trace "terminating nvim..."
     nvim.stop 1
 
+let mutable _detaching = false
+
 let OnTerminating(args: CancelEventArgs) =
-    args.Cancel <- true
     trace "window is closing"
-    if nvim.isRemote then Detach()
-    else nvim.quitall() |> ignore
+    if nvim.isRemote then 
+        if not _detaching then
+            _detaching <- true
+            Detach()
+    else 
+        args.Cancel <- true
+        nvim.quitall() |> ignore
 
 let OnExtClosed(win: int) =
     nvim.call {method = "nvim_win_close"; parameters = mkparams2 win true} 
