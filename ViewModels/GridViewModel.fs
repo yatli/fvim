@@ -73,7 +73,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable _m_anchor_row    = 0
     let mutable _m_anchor_col    = 0
     let mutable _m_anchor        = NorthWest
-    let mutable _m_anchor_grid   = 1
+    let mutable _m_anchor_grid   = -1
     let mutable m_is_hidden      = false
     let mutable m_is_external    = false
     let mutable m_is_float       = false
@@ -348,13 +348,13 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     // even if their anchored positions do not change.
     // e.g. anchored to SW, but parent grid shrinked.
     let setWinPos startrow startcol r c f =
-        initBuffer r c true
         (* manually resize and position the child grid as per neovim docs *)
-        let r0, c0 = this.RelAnchor
+        let r0, c0 = this.AbsAnchor
         let oldRegion = { row = r0; col = c0; height = m_gridsize.rows; width = m_gridsize.cols}
+        initBuffer r c true
         _m_anchor_col <- startcol
         _m_anchor_row <- startrow
-        let r1, c1 = this.RelAnchor
+        let r1, c1 = this.AbsAnchor
         let newRegion = { row = r1; col = c1; height = r; width = c}
         m_is_hidden <- false
         let grid = _gridid
@@ -362,10 +362,11 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, r = %A, c = %A" grid m_parent.Value.GridId startrow startcol r c
         #endif
         this.Focusable <- f
+        // XXX actually we want to notify root
         m_parent.Value.OnChildChanged oldRegion newRegion
 
     let setMsgWinPos startrow scrolled sep_char =
-        setAnchor NorthWest 1
+        setAnchor NorthWest -1
         setWinPos startrow 0 m_gridsize.rows m_gridsize.cols true
         m_is_msg <- true
         m_msg_scrolled <- scrolled
@@ -762,11 +763,18 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.Cols with get() = m_gridsize.cols
     member __.Rows with get() = m_gridsize.rows
     member __.RelAnchor with get() =
+        #if DEBUG
+        if _m_anchor_grid <> -1 then
+            match m_parent with
+            | Some p when p.GridId <> _m_anchor_grid ->
+                failwith "unsupported anchor"
+            | _ -> ()
+        #endif
         match _m_anchor with
         | NorthWest -> _m_anchor_row, _m_anchor_col
-        | NorthEast -> _m_anchor_row, m_parent.Value.Cols - this.Cols
-        | SouthWest -> m_parent.Value.Rows - this.Rows, _m_anchor_col
-        | SouthEast -> m_parent.Value.Rows - this.Rows, m_parent.Value.Cols - this.Cols
+        | NorthEast -> _m_anchor_row, _m_anchor_col - this.Cols
+        | SouthWest -> _m_anchor_row - this.Rows, _m_anchor_col
+        | SouthEast -> _m_anchor_row - this.Rows, _m_anchor_col - this.Cols
     member __.AbsAnchor with get() =
         let rr,rc = this.RelAnchor
         match m_parent with
