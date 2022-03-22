@@ -70,8 +70,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     let mutable m_fb_h           = 10.0
     let mutable m_fb_w           = 10.0
-    let mutable m_anchor_row     = 0
-    let mutable m_anchor_col     = 0
+    let mutable _m_anchor_row    = 0
+    let mutable _m_anchor_col    = 0
+    let mutable _m_anchor        = NorthWest
+    let mutable _m_anchor_grid   = 1
     let mutable m_is_hidden      = false
     let mutable m_is_external    = false
     let mutable m_is_float       = false
@@ -338,38 +340,48 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
             m_is_hidden <- true
             getRootGrid().MarkDirty()
 
+    let setAnchor anchor anchor_grid =
+        _m_anchor <- anchor
+        _m_anchor_grid <- anchor_grid
+
+    // luckily, setWinPos will be called for non-NW anchored windows
+    // even if their anchored positions do not change.
+    // e.g. anchored to SW, but parent grid shrinked.
     let setWinPos startrow startcol r c f =
-        let oldRegion = { row = m_anchor_row; col = m_anchor_col; height = m_gridsize.rows; width = m_gridsize.cols}
-        let newRegion = { row = startrow; col = startcol; height = r; width = c}
+        initBuffer r c true
+        (* manually resize and position the child grid as per neovim docs *)
+        let r0, c0 = this.RelAnchor
+        let oldRegion = { row = r0; col = c0; height = m_gridsize.rows; width = m_gridsize.cols}
+        _m_anchor_col <- startcol
+        _m_anchor_row <- startrow
+        let r1, c1 = this.RelAnchor
+        let newRegion = { row = r1; col = c1; height = r; width = c}
         m_is_hidden <- false
-        let parent = 
-            match m_parent with
-            | Some p -> p
-            | None -> failwith "setWinPos: no parent"
         let grid = _gridid
         #if DEBUG
-        trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, c = %A, r = %A" grid parent.GridId startrow startcol c r
+        trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, r = %A, c = %A" grid m_parent.Value.GridId startrow startcol r c
         #endif
-        (* manually resize and position the child grid as per neovim docs *)
-        initBuffer r c true
-        m_anchor_col <- startcol
-        m_anchor_row <- startrow
         this.Focusable <- f
-        parent.OnChildChanged oldRegion newRegion
+        m_parent.Value.OnChildChanged oldRegion newRegion
 
     let setMsgWinPos startrow scrolled sep_char =
+        setAnchor NorthWest 1
         setWinPos startrow 0 m_gridsize.rows m_gridsize.cols true
         m_is_msg <- true
         m_msg_scrolled <- scrolled
         m_msg_sepchar <- sep_char
         m_z <- 9999 // always put msg window on the top
 
+    // example:
+    // editorvm #5: setWinFloatPos: r = 51.000000 c = 0.000000 z = 50 anchor = SouthWest anchor_grid = 1
+    // editorvm #5: setWinPos: grid = 5, parent = 1, startrow = 51, startcol = 0, c = 182, r = 5
     let setWinFloatPos win anchor anchor_grid r c f z =
         m_winhnd <- win
         m_is_float <- true
         m_z <- z
+        setAnchor anchor anchor_grid
         #if DEBUG
-        trace _gridid "setWinFloatPos: z = %d" z
+        trace _gridid "setWinFloatPos: r = %f c = %f z = %d anchor = %A anchor_grid = %A" r c z anchor anchor_grid
         #endif
         setWinPos (int r) (int c) m_gridsize.rows m_gridsize.cols f // XXX assume assume NW
         m_parent.Value.SortChildren()
@@ -378,8 +390,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_winhnd <- win
         if not m_is_external then
             m_is_external <- true
-            m_anchor_col <- 0
-            m_anchor_row <- 0
+            _m_anchor_col <- 0
+            _m_anchor_row <- 0
             (this:>IGridUI).Detach()
             CreateFrame this
 
@@ -614,7 +626,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         #if DEBUG
             trace _gridid "CursorGoto parent"
         #endif
-            m_parent.Value.CursorGoto m_parent.Value.GridId (row + m_anchor_row) (col + m_anchor_col)
+            let rr, rc = this.RelAnchor
+            m_parent.Value.CursorGoto m_parent.Value.GridId (row + rr) (col + rc)
         // goto me
         else
         #if DEBUG
@@ -636,7 +649,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
 
     member __.ShowPopupMenu grid (items: CompleteItem[]) selected row col =
         if m_parent.IsSome && grid = _gridid then
-            m_parent.Value.ShowPopupMenu m_parent.Value.GridId items selected (row + m_anchor_row) (col + m_anchor_col)
+            let rr, rc = this.RelAnchor
+            m_parent.Value.ShowPopupMenu m_parent.Value.GridId items selected (row + rr) (col + rc)
         elif grid <> _gridid then
             hidePopupMenu()
         else
@@ -747,14 +761,19 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.Item with get(row, col) = m_gridbuffer.[row, col]
     member __.Cols with get() = m_gridsize.cols
     member __.Rows with get() = m_gridsize.rows
-    member __.AnchorRow with get() = m_anchor_row
-    member __.AnchorCol with get() = m_anchor_col
+    member __.RelAnchor with get() =
+        match _m_anchor with
+        | NorthWest -> _m_anchor_row, _m_anchor_col
+        | NorthEast -> _m_anchor_row, m_parent.Value.Cols - this.Cols
+        | SouthWest -> m_parent.Value.Rows - this.Rows, _m_anchor_col
+        | SouthEast -> m_parent.Value.Rows - this.Rows, m_parent.Value.Cols - this.Cols
     member __.AbsAnchor with get() =
+        let rr,rc = this.RelAnchor
         match m_parent with
         | Some p ->
             let pr,pc = p.AbsAnchor
-            pr + m_anchor_row, pc + m_anchor_col
-        | _ -> m_anchor_row, m_anchor_col
+            pr + rr, pc + rc
+        | _ -> rr, rc
     member __.Dirty with get() = m_griddirty
     member __.DrawOps with get() = m_drawops
     member __.Hidden with get():bool = m_is_hidden
@@ -781,28 +800,37 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.CreateSeq = m_create_seq
     member __.SortChildren() =
         m_child_grids.Sort(m_gridComparer)
+    // Find a child vm that contains (r,c), and return translated coords.
+    // Coordinate systems:
+    // (r,c):       Target point    relative to me
+    // (rr, rc):    My coord        relative to parent
+    // (vmr, vmc):  Child vm coord  relative to parent
+    // (tr, tc):    Target point    relative to child
     member __.FindTargetVm r c =
         let mutable target_vm = this
-        let mutable target_row = r
-        let mutable target_col = c
-        let mutable target_z = m_z
-        let mutable target_ar = this.AnchorRow
-        let mutable target_ac = this.AnchorCol
+        let mutable tr = r
+        let mutable tc = c
+        let mutable tz = m_z
+        let rr, rc = this.RelAnchor
+        let mutable vmr, vmc = rr, rc
         for cg in m_child_grids do
             if cg.Hidden then ()
             else
-            let ar,ac,vm,row,col,z = cg.FindTargetVm (r-cg.AnchorRow) (c-cg.AnchorCol)
+            let cr, cc = cg.RelAnchor // child coord relative to me
+            let ar,ac,vm,row,col,z = cg.FindTargetVm (r-cr) (c-cc)
             if ar <= r && r < ar + vm.Rows &&
                ac <= c && c < ac + vm.Cols &&
-               z >= target_z
+               z >= tz
             then
                 target_vm <- vm
-                target_row <- row
-                target_col <- col
-                target_z <- z
-                target_ar <- ar + this.AnchorRow
-                target_ac <- ac + this.AnchorCol
-        target_ar,target_ac,target_vm,target_row,target_col,target_z
+                // keep child coords
+                tr <- row
+                tc <- col
+                tz <- z
+                // translate to parent coords
+                vmr <- ar + rr
+                vmc <- ac + rc
+        vmr,vmc,target_vm,tr,tc,tz
     member __.DrawMsgSeparator = m_msg_scrolled
     member __.ScrollbarData = m_scrollbar_top,m_scrollbar_bot,m_scrollbar_row,m_scrollbar_col,m_scrollbar_linecount
     member __.IsFloat = m_is_float
