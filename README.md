@@ -83,6 +83,10 @@ Detaching a window into an external OS window with `Ctrl-w ge`:
 ![ext_win](https://raw.githubusercontent.com/yatli/fvim/master/images/ext_win.gif)
 Detach as many and span them over your monitors!
 
+Custom popup menu entry icons (see below for how to configure):
+![image](https://user-images.githubusercontent.com/20684720/159672096-2630cbda-243d-46c3-b8f7-6d0a4743dffe.png)
+
+
 ### Building from source
 We're now targeting `net6.0` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet/6.0).
 We're actively tracking the head of `Avalonia`, and fetch the nightly packages from myget (see `NuGet.config`).
@@ -225,6 +229,39 @@ FVim-args:
 
 The FVim arguments will be consumed and filtered before the rest are passed to NeoVim.
 ```
+
+### Custom PUM icons
+
+| Category | PUM text | NERD equivalent |
+|----------|----------|-----------------|
+|Text|t||
+|Method|:||
+|Function|f||
+|Constructor|c||
+|Field|.|ﰠ|
+|Variable|v||
+|Class|C|ﴯ|
+|Interface|I||
+|Module|M||
+|Property|p|ﰠ|
+|Unit|U|塞|
+|Value|l||
+|Enum|E||
+|Keyword|k||
+|Snippet|s||
+|Color|K||
+|File|F||
+|Reference|r||
+|Folder|d||
+|EnumMember|m||
+|Constant|0||
+|Struct|S|פּ|
+|Event|e||
+|Operator|o||
+|TypeParameter|T|T|
+
+
+So instead of populating your symbol dictionary with the NERD-specific characters, use textual characters. FVim will pick them up and display graphical icons stored in `Assets/intellisense` instead.
 
 ### Goals
 
