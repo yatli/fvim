@@ -239,14 +239,14 @@ The FVim arguments will be consumed and filtered before the rest are passed to N
 | Function      | f        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Method_16x.png)              |                |
 | Constructor   | c        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/NewClass_16x.png)            |                |
 | Field         | .        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Field_16x.png)               | ﰠ               |
-| Variable      | v        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Variable_16x.png)            |                |
+| Variable      | v        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/LocalVariable_16x.png)       |                |
 | Class         | C        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Class_16x.png)               | ﴯ               |
 | Interface     | I        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Interface_16x.png)           |                |
 | Module        | M        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Module_16x.png)              |                |
 | Property      | p        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Property_16x.png)            | ﰠ               |
 | Unit          | U        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Dimension_16x.png)           | 塞              |
 | Value         | l        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Literal_16x.png)             |                |
-| Enum          | E        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Enmerator_16x.png)           |                |
+| Enum          | E        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Enumerator_16x.png)          |                |
 | Keyword       | k        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/IntelliSenseKeyword_16x.png) |                |
 | Snippet       | s        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Snippet_16x.png)             |                |
 | Color         | K        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/ColorPalette_16x.png)        |                |
@@ -255,7 +255,7 @@ The FVim arguments will be consumed and filtered before the rest are passed to N
 | Folder        | d        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Folder_16x.png)              |                |
 | EnumMember    | m        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/EnumItem_16x.png)            |                |
 | Constant      | 0        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Constant_16x.png)            |                |
-| Struct        | S        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Structre_16x.png)            | פּ               |
+| Struct        | S        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Structure_16x.png)           | פּ               |
 | Event         | e        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Event_16x.png)               |                |
 | Operator      | o        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Operator_16x.png)            |                |
 | TypeParameter | T        | ![Symbol](https://github.com/yatli/fvim/raw/master/Assets/intellisense/Type_16x.png)                | T               |
