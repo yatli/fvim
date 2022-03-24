@@ -1,25 +1,17 @@
-Extracted from https://github.com/ryanoasis/nerd-fonts/blob/4b87cdd656a093ab033f48a15cfa832de5ee851e/font-patcher#L516
+Extracted from: https://github.com/ryanoasis/nerd-fonts/wiki/Glyph-Sets-and-Code-Points
 
-Copies from [SymStart..SymEnd] to [SourceStart..SourceEnd]
-If SourceStart/SourceEnd are None, then copy exact code points (no shift)
+Glyph Sets (sorted)
 
-0x23FB, 0x23FE, "Power Symbols",           
-0x2665, 0x2665, "Octicons",                
-0x26A1, 0x26A1, "Octicons",                
-0x2B58, 0x2B58, "Power Symbols",           
-0xE000, 0xE00A, "Pomicons",                
-0xE0A0, 0xE0A2, "Powerline Symbols",       
-0xE0A3, 0xE0A3, "Powerline Extra Symbols", 
-0xE0B0, 0xE0B3, "Powerline Symbols",       
-0xE0B4, 0xE0C8, "Powerline Extra Symbols", 
-0xE0CA, 0xE0CA, "Powerline Extra Symbols", 
-0xE0CC, 0xE0D4, "Powerline Extra Symbols", 
-0xE200, 0xE2A9, "Font Awesome Extension",  
-0xE300, 0xE3EB, "Weather Icons",           
-0xE5FA, 0xE62F, "Seti-UI + Custom",        
-0xE700, 0xE7C5, "Devicons",                
-0xF000, 0xF2E0, "Font Awesome",            
-0xF300, 0xF31C, "Font Logos (Font Linux)", 
-0xF400, 0xF505, "Octicons",                
-0xF4A9, 0xF4A9, "Octicons",                
-0xF500, 0xFD46, "Material",                
+23FB-23FE,2B58                    IEC Power Symbols Adding new characters into Unicode / (website)
+E000-E00A                         Pomicons 8 symbols for the "Pomodoro Technique"®. / (repo)
+E0A0-E0A2,E0B0-E0B3               [Powerline Symbols] 
+E0A3,E0B4-E0C8,E0CA,E0CC-E0D4     Powerline glyphs. Provides extra Powerline separator glyphs and a column number glyph (CN). / (repo)
+E200-E2A9                         Font Awesome Extension Simple Font Awesome Extension. / (repo) / (website)
+E300-E3EB                         Weather 215 Weather Themed Icons and CSS. / (repo) / (website is now dead)
+E5FA-E631                         Seti-UI + Custom Based off of Seti-UI Icomoon with extra custom glyphs.
+E700-E7C5                         Devicons An iconic font made for developers, code jedis, ninjas, HTTPsters, evangelists and nerds(sic). / (repo) / (website)
+EA60-EBEB                         Codicons The icon font for Visual Studio Code. / (repo)
+F000-F2E0                         Font Awesome The iconic font and CSS toolkit. / (repo) / (website)
+F300-F32D                         Font Logos (Formerly Font Linux) Font-logos is an icon font containing logos of popular linux distributions and other open source software for inclusion in websites. / (repo)
+F400-F4A9,2665,26A1               Octicons GitHub's icons. / (repo) / (website) * To avoid conflicts between icon sets, these were modified in the 'Complete' fonts. To view the original codepoints see the Wiki.
+F500-FD46                         Material Design Icons 2000+ Material Design Icons from the Community. / (repo) / (website)

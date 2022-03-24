@@ -5,6 +5,7 @@
 module FVim.wcwidth
 
 open def
+open common
 
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
 // at commit 0d7de112202cc8b2ebe9232ff4a5c954f19d561a (2016-07-02):
@@ -488,36 +489,28 @@ let WideEastAsian = [|
 |]
 
 let Powerline = [|
-    (0xE0A0u, 0xE0A2u)  // Powerline Symbols
-    (0xE0A3u, 0xE0A3u)  // Powerline Extra Symbols
-    (0xE0B0u, 0xE0B3u)  // Powerline Symbols 
-    (0xE0B4u, 0xE0C8u)  // Powerline Extra Symbols
-    (0xE0CAu, 0xE0CAu)  // Powerline Extra Symbols
-    (0xE0CCu, 0xE0D4u)  // Powerline Extra Symbols
+    (0xE0A0u, 0xE0A3u)
+    (0xE0B0u, 0xE0C8u)
+    (0xE0CAu, 0xE0CAu)
+    (0xE0CCu, 0xE0D4u)
 |]
 
 // The complete set is recorded in nerdfont.txt
 let NerdFont = [|
-    (0x23fbu, 0x23feu)  // Power Symbols
+    (0x23FBu, 0x23FEu)  // Power Symbols
     (0x2665u, 0x2665u)  // Octicons
-    (0x26a1u, 0x26a1u)  // Octicons
-    (0x2b58u, 0x2b58u)  // Power Symbols
-    (0xe000u, 0xe00au)  // Pomicons
-    (0xe0a0u, 0xe0a2u)  // Powerline Symbols
-    (0xe0a3u, 0xe0a3u)  // Powerline Extra Symbols
-    (0xe0b0u, 0xe0b3u)  // Powerline Symbols
-    (0xe0b4u, 0xe0c8u)  // Powerline Extra Symbols
-    (0xe0cau, 0xe0cau)  // Powerline Extra Symbols
-    (0xe0ccu, 0xe0d4u)  // Powerline Extra Symbols
-    (0xe200u, 0xe2a9u)  // Font Awesome Extension
-    (0xe300u, 0xe3ebu)  // Weather Icons
-    (0xe5fau, 0xe62fu)  // Seti-UI + Custom
-    (0xe700u, 0xe7c5u)  // Devicons
-    (0xf000u, 0xf2e0u)  // Font Awesome
-    (0xf300u, 0xf31cu)  // Font Logos (Font Linux)
-    (0xf400u, 0xf505u)  // Octicons
-    (0xf4a9u, 0xf4a9u)  // Octicons
-    (0xf500u, 0xfd46u)  // Material
+    (0x26A1u, 0x26A1u)  // Octicons
+    (0x2B58u, 0x2B58u)  // Power Symbols
+    (0xE000u, 0xE00Au)  // Pomicons
+    (0xE200u, 0xE2A9u)  // Font Awesome Extension
+    (0xE300u, 0xE3EBu)  // Weather Icons
+    (0xE5FAu, 0xE631u)  // Seti-UI + Custom
+    (0xE700u, 0xE7C5u)  // Devicons
+    (0xEA60u, 0xEBEBu)  // Codicons
+    (0xF000u, 0xF2E0u)  // Font Awesome
+    (0xF300u, 0xF32Du)  // Font Logos (Font Linux)
+    (0xF400u, 0xF4A9u)  // Octicons
+    (0xF500u, 0xFD46u)  // Material
 |]
 
 let private intable (table: (uint*uint)[]) (ucs: uint) =
@@ -539,29 +532,45 @@ type CharType =
 | Wide        = 3
 | Nerd        = 4
 | Emoji       = 5
+| Braille     = 6
 
-let wcwidth(ucs: uint) =
+let private _wcwidth_cache: hashmap<uint, CharType> = hashmap []
+
+let private _wcwidth_impl =
+    function
     // NOTE: created by hand, there isn't anything identifiable other than
     // general Cf category code to identify these, and some characters in Cf
     // category code are of non-zero width.
-    if ucs = 0u      || ucs = 0x034Fu || (0x200Bu <= ucs && ucs <= 0x200Fu) ||
-       ucs = 0x2028u || ucs = 0x2029u || (0x202Au <= ucs && ucs <= 0x202Eu) ||
-                                       (0x2060u <= ucs && ucs <= 0x2063u)     then CharType.Invisible
+    | 0x0000u | 0x034Fu | 0x2028u | 0x2029u  -> CharType.Invisible
+    | x when    0x200Bu <= x && x <= 0x200Fu
+             || 0x202Au <= x && x <= 0x202Eu
+             || 0x2060u <= x && x <= 0x2063u -> CharType.Invisible
     // C0/C1 control characters.
-    elif ucs < 32u || (0x07Fu <= ucs && ucs < 0x0A0u)                         then CharType.Control
+    | x when                    x < 0x0020u
+             || 0x007Fu <= x && x < 0x00A0u  -> CharType.Control
     // neovim uses these in drawing the UI
-    elif ucs = 0x2502u || ucs = 0x2630u || ucs = 0x2026u                      then CharType.Narrow
+    | 0x2502u | 0x2630u | 0x2026u            -> CharType.Narrow
     // ASCII-7
-    elif ucs < 0x7Fu                                                          then CharType.Narrow
-    elif intable Emoji ucs                                                    then CharType.Emoji
-    elif intable Powerline ucs                                                then CharType.Powerline
-    elif intable NerdFont ucs                                                 then CharType.Nerd
-    elif intable WideEastAsian ucs                                            then CharType.Wide
+    | x when                    x < 0x007Fu  -> CharType.Narrow
+    | x when intable Emoji x                 -> CharType.Emoji
+    | x when intable Powerline x             -> CharType.Powerline
+    | x when intable NerdFont x              -> CharType.Nerd
+    | x when intable WideEastAsian x         -> CharType.Wide
     // Combining characters with zero width.
-    elif intable ZeroWidth ucs                                                then CharType.Invisible
-    else 
+    | x when intable ZeroWidth x             -> CharType.Invisible
+    // Braille patterns
+    | x when    0x2800u <= x && x <= 0x28FFu -> CharType.Braille
+    | _ ->
         (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
         CharType.Narrow
+
+let wcwidth(ucs: uint) =
+    match _wcwidth_cache.TryGetValue ucs with
+    | true, ty -> ty
+    | _ ->
+    let ty = _wcwidth_impl ucs
+    _wcwidth_cache.[ucs] <- ty
+    ty
 
 let wswidth (x: Rune) = 
   match x with
@@ -587,7 +596,6 @@ let isProgrammingSymbol =
 let CharTypeWidth(x: CharType): int =
     match x with
     | CharType.Control | CharType.Invisible -> 0
-    | CharType.Narrow  | CharType.Powerline -> 1
     | CharType.Wide | CharType.Nerd | CharType.Emoji -> 2
     | _ -> 1
 

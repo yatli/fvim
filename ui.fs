@@ -143,7 +143,7 @@ let DefaultFontEmoji =
     else "Noto Color Emoji"
 
 let private nerd_typeface = 
-    let name = if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then "Iosevka Nerd Font"
+    let name = if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then "Iosevka NF"
                else "Iosevka"
     Typeface($"resm:fvim.Fonts.nerd.ttf?assembly=FVim#{name}")
 let private emoji_typeface = Typeface(DefaultFontEmoji)
