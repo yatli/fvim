@@ -6,6 +6,7 @@ module FVim.wcwidth
 
 open def
 open common
+open log
 
 // From https://github.com/jquast/wcwidth/blob/master/wcwidth/table_zero.py
 // at commit 0d7de112202cc8b2ebe9232ff4a5c954f19d561a (2016-07-02):
@@ -560,8 +561,10 @@ let private _wcwidth_impl =
     | x when intable ZeroWidth x             -> CharType.Invisible
     // Braille patterns
     | x when    0x2800u <= x && x <= 0x28FFu -> CharType.Braille
-    | _ ->
-        (*trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)*)
+    | ucs ->
+    #if DEBUG
+        trace "wcwidth" "unknown codepoint: %c (%X)" (char ucs) (ucs)
+    #endif
         CharType.Narrow
 
 let wcwidth(ucs: uint) =

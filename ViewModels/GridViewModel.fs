@@ -78,6 +78,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     let mutable m_is_external    = false
     let mutable m_is_float       = false
     let mutable m_is_msg         = false
+    let mutable _m_msg_win_row   = 0
+    let mutable _m_is_msg_root   = false
     let mutable m_msg_scrolled   = false
     let mutable m_msg_sepchar    = ""
     let mutable m_z              = -100
@@ -372,6 +374,8 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_msg_scrolled <- scrolled
         m_msg_sepchar <- sep_char
         m_z <- 9999 // always put msg window on the top
+        let r, _ = this.AbsAnchor
+        getRootGrid().SetMsgWinRow r // notify root about our position
 
     // example:
     // editorvm #5: setWinFloatPos: r = 51.000000 c = 0.000000 z = 50 anchor = SouthWest anchor_grid = 1
@@ -622,29 +626,36 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
       if id = _gridid then
         m_cursor_vm.row <- row
         m_cursor_vm.col <- col
+        // do not move to msg window 1st character
         // translation back to parent
         if m_parent.IsSome then
-        #if DEBUG
-            trace _gridid "CursorGoto parent"
-        #endif
+            #if DEBUG
+            trace _gridid "CursorGoto: %d %d %d -> parent" id row col
+            #endif
             let rr, rc = this.RelAnchor
             m_parent.Value.CursorGoto m_parent.Value.GridId (row + rr) (col + rc)
-        // goto me
+        // goto me (a top-level grid)
         else
-        #if DEBUG
-            trace _gridid "CursorGoto me"
-        #endif
-            m_cursor_vm.focused <- true
-            this.IsFocused <- true
-            this.CursorConfig()
+            if _m_is_msg_root && row = _m_msg_win_row && col = 0 then
+                #if DEBUG
+                trace _gridid "CursorGoto: %d %d %d -> root msg ignore" id row col
+                #endif
+                ()
+            else
+                #if DEBUG
+                trace _gridid "CursorGoto: %d %d %d -> me" id row col
+                #endif
+                m_cursor_vm.focused <- true
+                this.IsFocused <- true
+                this.CursorConfig()
       // goto my child
       elif m_child_grids.FindIndex(fun x -> x.GridId = id) > -1 then
           ()
       // was me, but not anymore
       elif m_cursor_vm.focused then
-      #if DEBUG
-          trace _gridid "CursorGoto notme"
-      #endif
+          #if DEBUG
+          trace _gridid "CursorGoto: %d %d %d notme" id row col
+          #endif
           m_cursor_vm.focused <- false
           m_cursor_vm.RenderTick <- m_cursor_vm.RenderTick + 1
 
@@ -843,6 +854,9 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
     member __.ScrollbarData = m_scrollbar_top,m_scrollbar_bot,m_scrollbar_row,m_scrollbar_col,m_scrollbar_linecount
     member __.IsFloat = m_is_float
     member __.IsMsg = m_is_msg
+    member __.SetMsgWinRow x = 
+        _m_msg_win_row <- x
+        _m_is_msg_root <- true
     member __.BufNr = m_bufnr
     member __.Extmarks = m_extmarks
     member __.ExtmarksOob = m_extmarks_oob
