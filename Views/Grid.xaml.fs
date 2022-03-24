@@ -190,7 +190,7 @@ type Grid() as this =
       //  Therefore, we have to break them into single glyphs
       //  to prevent overflow into later cells.
       let hlidchange = prev_hlid <> current.hlid
-      if hlidchange || mywc <> wc || bold || sym <> mysym then
+      if hlidchange || mywc <> wc || bold || sym <> mysym || mywc = CharType.Braille then
         //  If the span split is caused by symbols, we put [x+1]
         //  into the current span because nr_symbols has latched one rune.
         let prev_span = if mysym && not sym && mywc = wc && not bold && not hlidchange 

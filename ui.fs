@@ -142,11 +142,19 @@ let DefaultFontEmoji =
     elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Apple Color Emoji"
     else "Noto Color Emoji"
 
+let DefaultFontBraille =
+    if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "Segoe UI Symbol"
+    elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "Monospace" // ?
+    elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX)   then "Menlo" // ?
+    else "Monospace"
+
+
 let private nerd_typeface = 
     let name = if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then "Iosevka NF"
                else "Iosevka"
     Typeface($"resm:fvim.Fonts.nerd.ttf?assembly=FVim#{name}")
 let private emoji_typeface = Typeface(DefaultFontEmoji)
+let private braille_typeface = Typeface(DefaultFontBraille)
 let private fontcache = System.Collections.Generic.Dictionary<string*bool*bool, Typeface>()
 
 let InvalidateFontCache () =
@@ -182,6 +190,7 @@ let GetTypeface(txt, italic, bold, font, wfont) =
     | CharType.Powerline
     | CharType.Nerd when not states.font_nonerd -> nerd_typeface
     | CharType.Emoji -> emoji_typeface
+    | CharType.Braille -> braille_typeface
     | _              -> _get font
 
 let MeasureText (rune: Rune, font: string, wfont: string, fontSize: float, scaling: float) =
