@@ -36,7 +36,7 @@ open Avalonia.Layout
 ///   the frame should organize the grids.
 /// </summary>
 type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridViewModel) as this =
-    inherit ThemableViewModelBase(Some 300.0, Some 300.0, Some 800.0, Some 600.0)
+    inherit ThemableViewModelBase(Some 300.0, Some 300.0, Some states.default_width, Some states.default_height)
 
     let mainGrid = 
         if _maingrid.IsNone then GridViewModel(1)

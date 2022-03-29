@@ -41,6 +41,9 @@ let startMainWindow app opts =
     >>= fun comp -> parseBackgroundComposition(box comp)
     >>= fun comp -> states.background_composition <- comp; None
     |> ignore
+    cfg.Default
+    >>= fun defs -> states.default_height <- defs.H; states.default_width <- defs.W; None
+    |> ignore
 
     model.CreateFrame <- fun _gridui ->
         let gridui = _gridui :?> GridViewModel
@@ -74,7 +77,13 @@ let startMainWindow app opts =
     app <| mainwin
     boundcheck()
     let x, y, w, h = (int mainwinVM.X), (int mainwinVM.Y), (int mainwinVM.Width), (int mainwinVM.Height)
-    config.save cfg x y w h (mainwinVM.WindowState.ToString()) (backgroundCompositionToString states.background_composition) mainwinVM.CustomTitleBar
+    let def_w, def_h = states.default_width, states.default_height
+    config.save cfg 
+        x y w h 
+        def_w def_h
+        (mainwinVM.WindowState.ToString()) 
+        (backgroundCompositionToString states.background_composition) 
+        mainwinVM.CustomTitleBar
     0
 
 let startCrashReportWindow app ex = 

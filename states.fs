@@ -71,6 +71,9 @@ let mutable background_image_stretch = Stretch.None
 let mutable background_image_halign  = HorizontalAlignment.Left
 let mutable background_image_valign  = VerticalAlignment.Top
 
+// defaults
+let mutable default_width            = 800
+let mutable default_height           = 600
 
 ///  !Note does not include rgb and ext_linegrid
 let PopulateUIOptions (opts: hashmap<_,_>) =

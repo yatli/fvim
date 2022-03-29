@@ -155,6 +155,10 @@ FVimKeyDisableShiftSpace v:true " disable unsupported sequence <S-Space>
 FVimKeyAutoIme v:true           " Automatic input method engagement in Insert mode
 FVimKeyAltGr v:true             " Recognize AltGr. Side effect is that <C-A-Key> is then impossible
 
+" Default options (workspace-agnostic)
+FVimDefaultWindowWidth 1600     " Default window size in a new workspace
+FVimDefaultWindowHeight 900
+
 " Detach from a remote session without killing the server
 " If this command is executed on a standalone instance,
 " the embedded process will be terminated anyway.

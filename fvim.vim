@@ -51,6 +51,9 @@ command! -complete=expression -nargs=1 FVimBackgroundImageStretch call rpcnotify
 command! -complete=expression -nargs=1 FVimBackgroundImageHAlign call rpcnotify(g:fvim_channel, 'background.image.halign', <args>)
 command! -complete=expression -nargs=1 FVimBackgroundImageVAlign call rpcnotify(g:fvim_channel, 'background.image.valign', <args>)
 
+command! -complete=expression -nargs=1 FVimDefaultWindowWidth call rpcnotify(g:fvim_channel, 'default.width', <args>)
+command! -complete=expression -nargs=1 FVimDefaultWindowHeight call rpcnotify(g:fvim_channel, 'default.height', <args>)
+
 function! s:fvim_on_bufwinenter()
   let l:bufnr=expand("<abuf>")
   let l:wins=win_findbuf(l:bufnr)

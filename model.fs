@@ -313,6 +313,7 @@ module rpc =
 
         let bool = prop<bool> (|Bool|_|)
         let string = prop<string> (|String|_|)
+        let int = prop<int> (|Integer32|_|)
         let float = prop<float> (function
             | Integer32 x -> Some(float x)
             | :? float as x -> Some x
@@ -383,6 +384,9 @@ let Start (serveropts, norc, remote) =
     rpc.register.prop<Stretch> parseStretch "background.image.stretch"
     rpc.register.prop<HorizontalAlignment> parseHorizontalAlignment "background.image.halign"
     rpc.register.prop<VerticalAlignment> parseVerticalAlignment "background.image.valign"
+
+    rpc.register.int "default.width"
+    rpc.register.int "default.height"
 
 
     List.iter ignore [
