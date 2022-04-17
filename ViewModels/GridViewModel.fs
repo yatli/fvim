@@ -361,11 +361,10 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_is_hidden <- false
         let grid = _gridid
         #if DEBUG
-        trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, r = %A, c = %A" grid m_parent.Value.GridId startrow startcol r c
+        trace _gridid "setWinPos: grid = %A, parent = %A, startrow = %A, startcol = %A, r = %A, c = %A oldRegion = %A newRegion = %A" grid m_parent.Value.GridId startrow startcol r c oldRegion newRegion
         #endif
         this.Focusable <- f
-        // XXX actually we want to notify root
-        m_parent.Value.OnChildChanged oldRegion newRegion
+        getRootGrid().OnChildChanged oldRegion newRegion
 
     let setMsgWinPos startrow scrolled sep_char =
         setAnchor NorthWest -1
