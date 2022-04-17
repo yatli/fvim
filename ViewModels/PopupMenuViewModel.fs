@@ -38,6 +38,8 @@ type PopupMenuViewModel() =
         with get(): bool = m_show
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_show, v, "Show")
 
+    member val Passive: bool = false with get,set
+
     member this.Selection
         with get(): int = m_selection
         and set(v) = ignore <| this.RaiseAndSetIfChanged(&m_selection, v, "Selection")

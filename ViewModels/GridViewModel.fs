@@ -420,10 +420,21 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         m_popupmenu_vm.Show <- false
 
     let selectPopupMenuPassive i =
+        // mark the change as passive
+        if m_popupmenu_vm.Selection <> i then
+            m_popupmenu_vm.Passive <- true
         m_popupmenu_vm.Selection <- i
 
     let selectPopupMenuActive i =
-        model.SelectPopupMenuItem i true false
+        // only changes caused by active selection (not notified from neovim)
+        // should cause a notification message to be sent back to neovim.
+        if m_popupmenu_vm.Passive then
+        #if DEBUG
+            trace _gridid "selectPopupMenuActive: muting passive change"
+        #endif
+            m_popupmenu_vm.Passive <- false
+        else
+            model.SelectPopupMenuItem i true false
 
     let commitPopupMenu i =
         model.SelectPopupMenuItem i true true

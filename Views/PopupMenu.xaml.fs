@@ -33,3 +33,6 @@ type PopupMenu() as this =
 
     override this.OnTextInput(e) =
         relayToParent e
+
+    override this.OnPointerReleased(e) =
+        e.Handled <- true
