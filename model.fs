@@ -155,7 +155,6 @@ module private ModelImpl =
         match! nvim.call { method = "nvim_get_namespaces"; parameters = [||] } with
         | Ok(FindKV("GuiWidget")(Integer32 id)) -> 
           trace "nvim supports gui-widgets."
-          let! _ = nvim.call { method = "nvim_ui_watch_extmark"; parameters = mkparams1 id }
           let! _ = nvim.call { method = "nvim_call_function"; parameters = mkparams2 "GuiWidgetClientAttach" (mkparams1 channel_id) }
           guiwidgetNamespace <- id
         | _ -> ()
