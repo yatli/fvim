@@ -459,8 +459,7 @@ and GridViewModel(_gridid: int, ?_parent: GridViewModel, ?_gridsize: GridSize) a
         | PopupMenuHide                                                      -> hidePopupMenu ()
         | WinExternalPos(_,win)                                              -> setWinExternalPos win
         | WinViewport(id, win, top, bot, row, col, lc)                       -> setWinViewport win top bot row col lc
-        | WinExtmarks(win, marks)                                            -> if win = m_winhnd then putExtmarks marks
-        | WinExtmarksClear(win)                                              -> if win = m_winhnd then clearMarks()
+        | WinExtmarks(id, win, marks)                                        -> putExtmarks marks
         | x -> trace _gridid "unimplemented command: %A" x
 
     let fontConfig() =
