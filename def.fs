@@ -385,9 +385,7 @@ type RedrawCommand =
 ///  there are filler lines past the end.
 | WinViewport of grid:int * win: int * topline: int * botline: int * curline: int * curcol: int * linecount: int
 ///  Updates the position of an extmark which is currently visible in a
-///	 window. Only emitted after the client calls `nvim_ui_watch_extmark` to
-///	 watch for a specific namespace `ns_id`. `start_row`, `end_row` and
-///	 `start_col` are relative to the window.
+///	 window. `start_row`, `end_row` and `start_col` are relative to the window.
 | WinExtmarks of grid:int * win: int * marks: Extmark[]
 ///  Display messages on `grid`.  The grid will be displayed at `row` on the
 ///  default grid (grid=1), covering the full column width. `scrolled`
@@ -693,13 +691,13 @@ let parse_int_singleton =
         -> Some(i)
     | _ -> None
 
-let parse_win_extmarks_1 = 
+let parse_win_extmark_1 = 
     function
     | ObjArray [| Integer32 a; Integer32 b; Integer32 c; Integer32 d; Integer32 e; Integer32 f; |]
         -> Some(a,b,{ns=c;mark=d;row=e;col=f})
     | _ -> None
 
-let parse_win_extmarks_2 (tuples: (int*int*Extmark)[]) = 
+let parse_win_extmark_2 (tuples: (int*int*Extmark)[]) = 
     tuples
     |> Array.groupBy (fun (a,b,c) -> (a, b))
     |> Array.map(fun ((grid, win), marks) -> 
@@ -745,7 +743,7 @@ let parse_redrawcmd (x: obj) =
     | C("win_scroll_over_reset", _)                                                        -> WinScrollOverReset
     | C("win_close", PX(parse_int_singleton)ids)                                           -> ids |> Array.map(WinClose) |> unwrap_multi
     | C("win_viewport", PX(parse_win_viewport)cmds)                                        -> unwrap_multi cmds
-    | C("win_extmarks", PX(parse_win_extmarks_1)cmds)                                      -> cmds |> parse_win_extmarks_2 |> unwrap_multi 
+    | C("win_extmark", PX(parse_win_extmark_1)cmds)                                        -> cmds |> parse_win_extmark_2 |> unwrap_multi 
     | C1("msg_set_pos", [| 
         (Integer32 grid); (Integer32 row)
         (Bool scrolled); (String sep_char) |])                                             -> MsgSetPos(grid, row,scrolled, sep_char)
