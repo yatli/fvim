@@ -81,7 +81,7 @@ let private win32RegisterFileAssociation() =
             _edit.SetValue("", "Open with FVim")
             _edit.SetValue("Icon", fvicon)
             use command = _edit.CreateSubKey("command")
-            command.SetValue("", $"\{exe}\" \"%%1\"")
+            command.SetValue("", $"{exe}\" \"%%1\"")
     
     // https://docs.microsoft.com/en-us/windows/desktop/shell/app-registration
     do
