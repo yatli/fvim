@@ -68,6 +68,33 @@ function pack-linux-arm64()
     mv {*.deb,*.rpm} publish/
 }
 
+function pack-osx.11.0-arm64()
+{
+    rm -rf ./*.app
+    rm -f ./*.zip
+
+    pushd $PKG_ROOT
+    cd ..
+    mv publish fvim_pkg
+    mkdir -p publish/Contents/
+    mv fvim_pkg publish/Contents/MacOS
+    mkdir -p publish/Contents/Resources/
+    popd
+    cp lib/fvim-osx-launcher $PKG_ROOT/Contents/MacOS/fvim-osx-launcher
+    cp images/icon.icns $PKG_ROOT/Contents/Resources/fvim.icns
+    cp lib/Info.plist $PKG_ROOT/Contents/Info.plist
+    cp icons-icns/* $PKG_ROOT/Contents/Resources/
+    rm -rf $PKG_ROOT/Contents/MacOS/icons
+
+    chmod +x $PKG_ROOT/Contents/MacOS/FVim
+    chmod +x $PKG_ROOT/Contents/MacOS/fvim-osx-launcher
+
+    mv $PKG_ROOT FVim.app
+    zip -r FVim.$VERSION.zip FVim.app
+    rm -rf FVim.app
+    mv FVim.$VERSION.zip publish/
+}
+
 function pack-osx-x64()
 {
     rm -rf ./*.app
