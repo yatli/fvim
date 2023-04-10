@@ -9,7 +9,8 @@
     },
     "norc": {
       "commandName": "Project",
-      "commandLineArgs": "-u NORC"
+      "commandLineArgs": "-u NORC",
+      "workingDirectory": "C:\\Users\\Yatao"
     },
     "built_nvim": {
       "commandName": "Project",
