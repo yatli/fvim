@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <AssemblyName>FVim</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationIcon>Assets\fvim.ico</ApplicationIcon>
@@ -80,16 +80,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="0.10.13" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.13" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.13" />
-    <PackageReference Include="Avalonia.Svg" Version="0.10.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.10.19" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.19" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.19" />
+    <PackageReference Include="Avalonia.Svg" Version="0.10.18" />
 
-    <PackageReference Include="FSharp.Control.Reactive" Version="5.0.2" />
-    <PackageReference Include="FSharp.Data" Version="4.2.7" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="5.0.5" />
+    <PackageReference Include="FSharp.Data" Version="5.0.2" />
     <PackageReference Include="FSharp.Span.Utils" Version="1.1.3353.13900" />
-    <PackageReference Include="FSharp.SystemTextJson" Version="0.17.4" />
-    <PackageReference Include="MessagePack" Version="2.3.85" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="1.1.23" />
+    <PackageReference Include="MessagePack" Version="2.5.108" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageReference Include="NSubsys" Version="1.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -99,7 +99,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="6.0.3" />
+    <PackageReference Update="FSharp.Core" Version="7.0.200" />
   </ItemGroup>
 
 
