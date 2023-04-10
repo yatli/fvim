@@ -84,6 +84,7 @@ let startMainWindow app opts =
         (mainwinVM.WindowState.ToString()) 
         (backgroundCompositionToString states.background_composition) 
         mainwinVM.CustomTitleBar
+        mainwinVM.NoTitleBar
     0
 
 let startCrashReportWindow app ex = 

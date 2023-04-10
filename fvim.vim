@@ -41,6 +41,7 @@ command! -complete=expression -nargs=1 FVimUIWildMenu call rpcnotify(g:fvim_chan
 
 command! -complete=expression -nargs=1 FVimDrawFPS call rpcnotify(g:fvim_channel, 'DrawFPS', <args>)
 command! -complete=expression -nargs=1 FVimCustomTitleBar call rpcnotify(g:fvim_channel, 'CustomTitleBar', <args>)
+command! -complete=expression -nargs=1 FVimNoTitleBar call rpcnotify(g:fvim_channel, 'NoTitleBar', <args>)
 
 command! -complete=expression -nargs=1 FVimBackgroundOpacity call rpcnotify(g:fvim_channel, 'background.opacity', <args>)
 command! -complete=expression -nargs=1 FVimBackgroundComposition call rpcnotify(g:fvim_channel, 'background.composition', <args>)

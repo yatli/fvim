@@ -44,6 +44,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
 
     let mutable m_windowState = WindowState.Normal
     let mutable m_customTitleBar = false
+    let mutable m_noTitleBar = false
     let mutable m_fullscreen = false
     let mutable m_title = "FVim"
 
@@ -94,6 +95,9 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             match cfg.Mainwin.CustomTitleBar with
             | Some true -> m_customTitleBar <- true
             | _ -> ()
+            match cfg.Mainwin.NoTitleBar with
+            | Some true -> m_noTitleBar <- true
+            | _ -> ()
         | _, Some grid ->
             this.Height <- grid.BufferHeight
             this.Width <- grid.BufferWidth
@@ -103,11 +107,15 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
                 match cfg.Mainwin.CustomTitleBar with
                 | Some true -> m_customTitleBar <- true
                 | _ -> ()
+                match cfg.Mainwin.NoTitleBar with
+                | Some true -> m_noTitleBar <- true
+                | _ -> ()
             | _ -> ()
         | _ -> ()
         this.Watch [
             rpc.register.notify "ToggleFullScreen" (fun _ -> toggleFullScreen())
             rpc.register.notify "CustomTitleBar"   (fun [| Bool(v) |] -> this.CustomTitleBar <- v )
+            rpc.register.notify "NoTitleBar"   (fun [| Bool(v) |] -> this.NoTitleBar <- v )
             rpc.register.watch "background.image"  (fun _ -> updateBackgroundImage())
         ]
         match _maingrid with
@@ -141,14 +149,16 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
 
     member this.CustomTitleBarHeight 
         with get() =
-            if this.CustomTitleBar && (not this.Fullscreen) then GridLength 26.0
-            else GridLength 0.0
+            GridLength <|
+            if this.CustomTitleBar && (not this.Fullscreen) && (not this.NoTitleBar) then 26.0
+            else 0.0
 
     member this.BorderSize 
         with get() =
-            if this.CustomTitleBar && (not this.Fullscreen) && (this.WindowState <> WindowState.Maximized) 
-            then GridLength 1.0
-            else GridLength 0.0
+            GridLength <|
+            if (this.NoSystemTitleBar) && (not this.Fullscreen) && (this.WindowState <> WindowState.Maximized) 
+            then 1.0
+            else 0.0
 
     member this.CustomTitleBar
         with get() = m_customTitleBar
@@ -156,6 +166,18 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
             ignore <| this.RaiseAndSetIfChanged(&m_customTitleBar, v)
             this.RaisePropertyChanged("CustomTitleBarHeight")
             this.RaisePropertyChanged("BorderSize")
+            this.RaisePropertyChanged("NoSystemTitleBar")
+
+    member this.NoTitleBar
+        with get() = m_noTitleBar
+        and set(v) = 
+            ignore <| this.RaiseAndSetIfChanged(&m_noTitleBar, v)
+            this.RaisePropertyChanged("CustomTitleBarHeight")
+            this.RaisePropertyChanged("BorderSize")
+            this.RaisePropertyChanged("NoSystemTitleBar")
+
+    member __.NoSystemTitleBar
+        with get() = m_customTitleBar || m_noTitleBar
 
     member __.BackgroundImage with get(): IBitmap = m_bgimg_src :> IBitmap
     member __.BackgroundImageHAlign with get(): HorizontalAlignment = m_bgimg_halign
@@ -174,6 +196,7 @@ type FrameViewModel(cfg: config.ConfigObject.Workspace option, ?_maingrid: GridV
         member __.Sync(_other: IFrame) =
             let that = _other :?> FrameViewModel
             m_customTitleBar <- that.CustomTitleBar
+            m_noTitleBar <- that.NoTitleBar
             m_bgimg_src <- that.BackgroundImage :?> Bitmap
             m_bgimg_halign <- that.BackgroundImageHAlign
             m_bgimg_valign <- that.BackgroundImageVAlign

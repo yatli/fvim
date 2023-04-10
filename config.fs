@@ -19,7 +19,8 @@ let sample_config = """
                 "h": 600,
                 "state": "Normal",
                 "BackgroundComposition": "acrylic",
-                "CustomTitleBar": false
+                "CustomTitleBar": false,
+                "NoTitleBar": false
             }
         },
         {
@@ -67,10 +68,10 @@ let save
     (cfg: ConfigObject.Root) 
     (x: int) (y: int) (w: int) (h: int) 
     (def_w: int) (def_h: int)
-    (state: string) (composition: string) (customTitleBar: bool) = 
+    (state: string) (composition: string) (customTitleBar: bool) (noTitleBar: bool) = 
     let dict = cfg.Workspace |> Array.map (fun ws -> (ws.Path, ws)) |> Map.ofArray
     let cwd  = Environment.CurrentDirectory |> Path.GetFullPath
-    let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, w, h, state, Some composition, Some customTitleBar))
+    let ws   = ConfigObject.Workspace(cwd, ConfigObject.Mainwin(x, y, w, h, state, Some composition, Some customTitleBar, Some noTitleBar))
     let wss = dict.Add(cwd, ws)
     let defaults = ConfigObject.Default(def_w, def_h)
     let cfg  = ConfigObject.Root(wss |> Map.toArray |> Array.map snd, cfg.Logging, Some defaults)

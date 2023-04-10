@@ -65,15 +65,15 @@ type Frame() as this =
     let setCursor c =
         this.Cursor <- c
 
-    let toggleTitleBar(custom) =
-        this.SystemDecorations <- if custom then SystemDecorations.BorderOnly else SystemDecorations.Full
+    let toggleTitleBar(noTitleBar) =
+        this.SystemDecorations <- if noTitleBar then SystemDecorations.BorderOnly else SystemDecorations.Full
 
     let toggleFullscreen(v) =
         if not v then
             this.WindowState <- m_saved_state
             this.PlatformImpl.Resize(m_saved_size)
             this.Position <- m_saved_pos
-            toggleTitleBar this.ViewModel.CustomTitleBar
+            toggleTitleBar this.ViewModel.NoSystemTitleBar
         else
             //  The order of actions is very important.
             //  1. Remove decorations
@@ -180,7 +180,7 @@ type Frame() as this =
     override this.OnDataContextChanged _ =
         let ctx = this.DataContext :?> FrameViewModel
         this.ViewModel <- ctx
-        toggleTitleBar ctx.CustomTitleBar
+        toggleTitleBar ctx.NoSystemTitleBar
 
         if ctx.MainGrid.Id = 1 then
             let pos = PixelPoint(int ctx.X, int ctx.Y)
@@ -227,5 +227,5 @@ type Frame() as this =
                 m_bgcolor <- c.Value
                 configBackground())
             ctx.ObservableForProperty((fun x -> x.Fullscreen), skipInitial=true).Subscribe(fun v -> toggleFullscreen <| v.GetValue())
-            ctx.ObservableForProperty((fun x -> x.CustomTitleBar), skipInitial=true).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
+            ctx.ObservableForProperty((fun x -> x.NoSystemTitleBar), skipInitial=true).Subscribe(fun v -> toggleTitleBar <| v.GetValue())
         ]
