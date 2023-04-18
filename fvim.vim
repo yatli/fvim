@@ -9,6 +9,10 @@ let g:clipboard = {
   \ '*': {-> rpcrequest(g:fvim_channel, 'get-clipboard')},
   \ }
 \ }
+if exists('g:loaded_clipboard_provider')
+  unlet g:loaded_clipboard_provider
+  runtime autoload/provider/clipboard.vim
+endif
 
 command! -nargs=0 FVimDetach call rpcnotify(g:fvim_channel, 'remote.detach')
 command! -nargs=0 FVimToggleFullScreen call rpcnotify(g:fvim_channel, 'ToggleFullScreen')
