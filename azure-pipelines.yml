@@ -128,7 +128,7 @@ jobs:
 
 - job: OSX_x64_builds
   pool:
-    vmImage: 'macOS-10.15'
+    vmImage: 'macOS-11'
   steps:
   - task: UseDotNet@2
     displayName: 'Use .NET Core sdk'
