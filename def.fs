@@ -218,6 +218,7 @@ type GridLine =
         row: int 
         col_start: int 
         cells: GridCell[]
+        wrap: bool
     }
 
 [<Struct>]
@@ -624,8 +625,11 @@ let parse_grid_cell (x: obj) =
 
 let parse_grid_line (x: obj) =
     match x with
-    | ObjArray [| (Integer32 grid); (Integer32 row) ; (Integer32 col_start) ; P(parse_grid_cell)cells |] 
-        -> Some {grid = grid; row=row; col_start=col_start; cells=cells}
+    | ObjArray [| (Integer32 grid); (Integer32 row) ; (Integer32 col_start) ; P(parse_grid_cell)cells ; (Bool wrap) |]
+        -> Some {grid = grid; row=row; col_start=col_start; cells=cells; wrap=wrap}
+    // neovim < 0.92 doesn't pass wrap
+    | ObjArray [| (Integer32 grid); (Integer32 row) ; (Integer32 col_start) ; P(parse_grid_cell)cells |]
+        -> Some {grid = grid; row=row; col_start=col_start; cells=cells; wrap=false}
     | _ -> None
 
 let parse_win_pos (x: obj) =
