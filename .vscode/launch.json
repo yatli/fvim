@@ -5,7 +5,7 @@
         "type": "coreclr",
         "request": "launch",
         "preLaunchTask": "build",
-        "program": "${workspaceFolder}/bin/Debug/net6.0/FVim.dll",
+        "program": "${workspaceFolder}/bin/Debug/net8.0/FVim.dll",
         "args": ["--daemon"],
         "cwd": "${workspaceFolder}",
         "stopAtEntry": false,

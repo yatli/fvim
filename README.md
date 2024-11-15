@@ -19,9 +19,9 @@ Cross platform Neovim front-end UI, built with [F#](https://fsharp.org/) + [Aval
     - Arch Linux:  [Install via AUR](https://aur.archlinux.org/packages/fvim/)
     - RPM-based distributions: `rpm -ivh fvim_package_name.rpm`
     - Fedora: `dnf install fvim_package_name.rpm`
-    - Compile from Source (having dotnet-sdk-6.0.x installed):
+    - Compile from Source (having dotnet-sdk-8.0.x installed):
         ```
-            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f net6.0 -c Release -r linux-x64 --self-contained
+            git clone https://github.com/yatli/fvim && cd fvim && dotnet publish -f net8.0 -c Release -r linux-x64 --self-contained
         ```
 
 ### Features
@@ -88,7 +88,7 @@ Custom popup menu entry icons (see below for how to configure):
 
 
 ### Building from source
-We're now targeting `net6.0` so make sure to install the latest preview SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet/6.0).
+We're now targeting `net8.0` so make sure to install the latest SDK from the [.NET site](https://dotnet.microsoft.com/download/dotnet/8.0).
 We're actively tracking the head of `Avalonia`, and fetch the nightly packages from myget (see `NuGet.config`).
 
 Then, simply:
