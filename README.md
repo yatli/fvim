@@ -115,7 +115,7 @@ FVimBackgroundComposition 'acrylic'   " 'none', 'transparent', 'blur' or 'acryli
 FVimBackgroundOpacity 0.85            " value between 0 and 1, default bg opacity.
 FVimBackgroundAltOpacity 0.85         " value between 0 and 1, non-default bg opacity.
 FVimBackgroundImage 'C:/foobar.png'   " background image
-FVimBackgroundImageVAlign 'center'    " vertial position, 'top', 'center' or 'bottom'
+FVimBackgroundImageVAlign 'center'    " vertical position, 'top', 'center' or 'bottom'
 FVimBackgroundImageHAlign 'center'    " horizontal position, 'left', 'center' or 'right'
 FVimBackgroundImageStretch 'fill'     " 'none', 'fill', 'uniform', 'uniformfill'
 FVimBackgroundImageOpacity 0.85       " value between 0 and 1, bg image opacity
