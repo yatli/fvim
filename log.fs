@@ -38,7 +38,7 @@ let init { logToStdout = logToStdout; logToFile = logToFile; logPatterns = logPa
         _n_logsSink <- _n_logsSink + 1
         _logsSink.Add(fun str -> printfn "%s" str)
     let time = System.DateTime.Now
-    let ftime = time.ToString "yyyy-MM-dd-hh-mm-ss"
+    let ftime = time.ToString "yyyy-MM-dd-HH-mm-ss"
     let fprefix = 
         match intent with
         | Daemon _ -> "fvim-daemon"
